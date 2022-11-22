@@ -125,7 +125,6 @@ map<pair<int,int>, int> equal_sides(const SphericalEmbedding& SE) {
         return false;
     };
 
-    // TODO: This may identify as dodecahedrons also other configurations.
     bool is_dodecahedron =
         SE.faces_number() == 12 and SE.edges_number() == (12*5)/2;
 

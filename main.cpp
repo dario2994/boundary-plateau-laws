@@ -4,34 +4,57 @@
 #include "spherical_embedding.cpp"
 #include "identify_equal_sides.cpp"
 
+double triangle_side() {
+    return acos(-1.0 / 3);
+}
+
+// Given the length of one side of a rectangle, returns the length of an
+// adjacent side.
+// Decreasing function.
+// 0 < a < pi. (a = 0 is the area 
+// The limiting case a = 0 (b = pi) is the section delimited by two meridians
+// forming an angle of 60 degres.
+double rectangle_side(double a) {
+    double cosb = (3-5*cos(a)) / (5-3*cos(a));
+    return acos(cosb);
+}
+
+// Given the lengths of two adjacent sides of a pentagon, returns the length
+// of side adjacent to neither.
+// Increasing function (with respect to both parameters).
+double pentagon_side(double a, double b) {
+    double cosd = (1.0/3 +  cos(a) + cos(b) + cos(a) * cos(b) - 2*sin(a)*sin(b)) / 2;
+    return acos(cosd);
+}
 
 // If it returns true, then there is at most one isogonal embedding up to
 // isometries.
-// TODO: Can be cleaned using faces as in the previous function.
 bool unique_isogonal_embedding(const SphericalEmbedding& SE) {
     map<pair<int,int>, int> label = equal_sides(SE);
     vector<bool> is_known(label.size(), false);
-    auto make_known = [&](int u, int v) {
-        is_known[label[{u, v}]] = true;
-        is_known[label[{v, u}]] = true;
-    };
+
+    vector<vector<int>> faces;
+    for (int v = 0; v < SE.G.n; v++) {
+        vector<int> face;
+        for (int u: SE.G.edges[v]) face.push_back(label[{v, u}]);
+        faces.push_back(face);
+    }
 
     while (1) {
         bool changed = false;
         bool finished = true;
-        for (int v = 0; v < SE.G.n; v++) {
+        for (const vector<int>& face: faces) {
             bool is_regular = true;
             int cnt_notknown = 0;
-            for (int u: SE.G.edges[v]) {
-                int l = label[{v, u}];
-                cnt_notknown += !is_known[l];
-                is_regular &= l == label[{v, SE.G.edges[v][0]}];
+            for (int x: face) {
+                cnt_notknown += !is_known[x];
+                is_regular &= x == face[0];
             }
             if (cnt_notknown == 0) continue;
             finished = false;
             if (cnt_notknown <= 3 or is_regular) {
                 changed = true;
-                for (int u: SE.G.edges[v]) make_known(u, v);
+                for (int x: face) is_known[x] = true;
             }
         }
         if (finished) return true;
@@ -43,10 +66,33 @@ bool unique_isogonal_embedding(const SphericalEmbedding& SE) {
 }
 
 int main() {
+    double z = acos(sqrt(5)/3);
+    cout << pentagon_side(z, z) << " " << z << endl;
+    cout << triangle_side() << endl;
+    
+    for (double a = 0.1; a < 3; a += 0.2) {
+        double from = 10;
+        double to = 0;
+        for (double b = 0.01; b < 6; b += 0.001) {
+            double d = pentagon_side(a, b);
+            if (!isnan(d)) {
+                from = min(from, b);
+                to = max(to, b);
+            }
+        }
+        for (double b = 0.1; b < 3; b += 0.1) {
+            double d = pentagon_side(a, b);
+            if (from < b and b < to) assert(!isnan(d));
+        }
+        cout << a << ": " << from << " " << to << endl;
+        cout << a + from << endl;
+    }
+    // cout << rectangle_side(1) << endl;
+    return 0;
     const int max_faces = 20;
     vector<SphericalEmbedding> spherical_triangulations =
             generate_spherical_triangulations(max_faces);
- 
+
     int cnt = 0;
     for (SphericalEmbedding SE: spherical_triangulations) {
         cout << cnt++ << "\t";
@@ -74,7 +120,6 @@ int main() {
 //       may be messy to implement (if one wants also a proof).
 //       Create pictures of the 9 cases.
 //       Improve the comments, in particular in identify_equal_sides.cpp
-//       Make this a git repository urgently.
 //
 //
 // Properties of isogonal embeddings that we are using:

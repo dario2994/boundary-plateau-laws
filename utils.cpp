@@ -118,7 +118,8 @@ void minimal_permutation(vector<int>& v) {
 
 // Returns v[id] interpreting v in a circular fashion.
 // id can be any integer.
-int& get(vector<int>& v, int id) {
+template<typename T>
+T& get(vector<T>& v, int id) {
     int sz = v.size();
     id %= sz;
     if (id < 0) id += sz;

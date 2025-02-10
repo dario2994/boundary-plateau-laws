@@ -191,9 +191,28 @@ vector<vector<ULL>> EdgesMatrix(const PlanarEmbedding& G) {
     return EdgesMatrix(G, G.boundary);
 }
 
-// path containing l vertices (possibly 0) from boundary[x] to boundary[y].
-PlanarEmbedding AddFace(PlanarEmbedding G, int x, int y, int l) {
+// path containing l vertices (possibly 0) from u to v.
+// u, v must be on the boundary
+PlanarEmbedding AddFace(PlanarEmbedding G, int u, int v, int l) {
+    auto& b = G.boundary
+    auto it = find(b.begin(), b.end(), v);
+    assert(it != b.end());
+    it = next(it);
+    if (it == b.end()) it = b.begin();
+    rotate(b.begin(), it, b.end());
+    while (b.back() != u) b.pop_back();
+    for (int i = 0; i < l; i++) {
+        int x = G.n();
+        b.push_back(x);
+        
+        vector<int> vec = {x-1, x+1};
+        if (i == 0) vec[0] = u;
+        if (i == l-1) vec[1] = v;  
+        G.adj.push_back(vec);
+    }
+    b.push_back(v);
     
+    // Now, it remains only to fix G.adj[u] and G.adj[v]
 }
 
 int main() {

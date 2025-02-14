@@ -3,21 +3,35 @@
 using namespace std;
 typedef unsigned long long ULL;
 
+struct Dart {
+    int from, to;
+    int id;
+    
+    bool operator !=(const Dart& other) {
+        return id != other.id;
+    }
+};
+
+ostream& operator<<(ostream& out, const Dart& d) {
+    out << "(" << d.id << ": " << d.from << "->" << d.to << ")";
+    return out;
+}
 
 struct CombinatorialMap {
-    struct Dart {
-        int from, to;
-        int id;
-    };
-
     int V, E, F; // Vertices, Edges, Faces
+    vector<int> degree; // vertex degree
+    // Two "copies" of each edge, one for each direction. 
+    // Even loops are present twice.
     vector<Dart> edges;
     
     vector<int> _rev;
-    Dart Rev(Dart e) const { return edges[_rev[e.id]]; }
+    vector<int> _next, _prev;
+    
     
     pair<Dart,Dart> _AddEdge(int u, int v) {
         assert(0 <= u and u < V and 0 <= v and v < V);
+        degree[u]++, degree[v]++;
+        E++;
     
         Dart d1;
         d1.from = u, d1.to = v, d1.id = edges.size();
@@ -26,15 +40,14 @@ struct CombinatorialMap {
         d2.from = v, d2.to = u, d2.id = edges.size();
         edges.push_back(d2);
         
-        _rev[d1.id] = d2.id, _rev[d2.id] = d1.id;
+        _rev.push_back(d2.id);
+        _rev.push_back(d1.id);
+        
+        _next.push_back(-1), _next.push_back(-1);
+        _prev.push_back(-1), _prev.push_back(-1);
         
         return {d1, d2};
     }
-    
-    vector<int> _next, _prev;
-    Dart Next(Dart e) const { return edges[_next[e.id]]; }
-    Dart Prev(Dart e) const { return edges[_prev[e.id]]; }
-    Dart Phi(Dart e) const { return edges[_next[_rev[e.id]]; } 
     
     void _AssignNext(Dart a, Dart b) {
         assert(a.from == b.from);
@@ -42,69 +55,72 @@ struct CombinatorialMap {
         _prev[b.id] = a.id;
     }
     
-    // Initialize it as two faces with boundary given by _V edges.
-    // _V = 1 is possible and means that the boundary of both faces
-    // is a loop.
-    CombinatorialMap(int _V) {
-        assert(1 <= _V);
-        V = _V;
-        E = V;
-        F = 2;
-        vector<pair<Dart,Dart>> cycle;
-        for (int i = 0; i < V; i++) {
-            cycle.push_back(_AddEdge(i, (i+1) % V));
-        }
-        for (int i = 0; i < V; i++) {
-            auto e1 = cycle[i];
-            auto e2 = cycle[(i+1)% V];
-            _AssignNext(e1.second, e2.first);
-        }
+    // Two vertices connected by an edge.
+    //
+    // ACHTUNG: We implicitly assume the graph does not consist of a 
+    // single vertex and some loops.
+    CombinatorialMap() {
+        V = 2;
+        degree.resize(V, 1);
+        F = 1;
+        E = 0;
+        auto edge = _AddEdge(0, 1);
+        _AssignNext(edge.first, edge.first);
+        _AssignNext(edge.second, edge.second);
     }
     
-    // Attach a path consisting of len edges (if len > 0, then len-1
-    // vertices are added to the graph). This creates a new face.
-    // The first edge must be Next(Rev(bef)) and the last edge must be Rev(Prev(aft)).
+    Dart Rev(Dart e) const { return edges[_rev[e.id]]; }
+    // Next is counterclockwise
+    Dart Next(Dart e) const { return edges[_next[e.id]]; }
+    Dart Prev(Dart e) const { return edges[_prev[e.id]]; }
+    // Phi traverses the boundary of a face clockwise.
+    Dart Phi(Dart e) const { return edges[_next[_rev[e.id]]]; } 
+    
+    // Create a new vertex and link it (with a new edge) to an existing one.
     // 
-    // For this function to keep the assumption that the combinatorial
-    // map is induced by a spherical embedding, bef and aft shall belong to
-    // the boundary of an existing face. This condition is never checked. 
-    // Maybe we shall add a check?
-    //
-    //
-    // ACHTUNG: It might be that bef.to == aft.from.
-    //          This special case requires additional care.
-    void AddPath(int len, const Dart& bef, const Dart& aft) {
-        E += len;
-        F += 1;
+    // The new edge is connected so that Next(bef) == new edge.
+    void AddVertex(Dart bef) {
+        V++;
+        degree.push_back(1);
         
+        const Dart& bef_next = Next(bef);
+        pair<Dart,Dart> new_edge = _AddEdge(bef.from, V-1);
+        
+        _AssignNext(new_edge.second, new_edge.second);
+        _AssignNext(bef, new_edge.first);
+        _AssignNext(new_edge.first, bef_next);
+    }
+    
+    // Link with an edge two existing vertices.
+    // phi(bef) = new_edge 
+    // phi(new_edge) = aft
+    // 
+    // This works (i.e., maintains the property that the combinatorial
+    // maps represent a spherical embedding) only if bef and aft
+    // belong to the boundary of the same face.
+    // It may be bef = aft.
+    void AddEdge(Dart bef, Dart aft) {
+        // We check that aft = phi^k(bef) for some k >= 0.
+        auto it = bef;
+        while (it != aft) {
+            it = Phi(it);
+            assert(it != bef);
+        }
+        
+        // We Create the new edge
+        pair<Dart, Dart> new_edge = _AddEdge(bef.to, aft.from);
+        
+        // We update the next function
         const Dart& bef_next = Next(Rev(bef));
         const Dart& aft_prev = Prev(aft);
         
-        vector<int> path_v(len+1);
-        path_v[0] = bef.to;
-        path_v[len] = aft.from;
-        for (int i = 1; i < len; i++) {
-            path_v[i] = V;
-            V++;
-        }
+        _AssignNext(Rev(bef), new_edge.first);
+        _AssignNext(new_edge.first, bef_next);
+        _AssignNext(aft_prev, new_edge.second);
+        _AssignNext(new_edge.second, aft);
         
-        vector<pair<Dart, Dart>> path_e;
-        for (int i = 0; i < len; i++) 
-            path_e.push_back(_AddEdge(path_v[i], path_v[i+1]));
-        
-        _AssignNext(Rev(bef), path_e[0].first);
-        _AssignNext(path_e[0].first, bef_next);
-        _AssignNext(aft_prev, path_e[len-1].second);
-        _AssignNext(path_e[len-1].second, Rev(aft));
-        for (int i = 0; i < len-1; i++)
-            _AssignNext(path_e[i].second, path_e[i+1].first);
-        
-        // Taking care of bef.to == aft.from    
-        if (bef.to == aft.from) {
-            assert(bef_next.id == aft.id);
-            _AssignNext(path_e[0].first, path_e[len-1].second);
-            
-        }
+        // We have added a new face in the process.
+        F++;
     }
 };
 
@@ -177,6 +193,7 @@ ULL IsomorphismSignature(const CombinatorialMap& A) {
     static const ULL p_rev = 984'689'391;
     static const ULL p_next = 123'456'789;
     
+    cout << A.E << endl;
     vector<vector<ULL>> mat(2*A.E, vector<ULL>(2*A.E, 0));
     for (int i = 0; i < 2*A.E; i++) {
         mat[i][i] += p_stay;
@@ -190,9 +207,7 @@ ULL IsomorphismSignature(const CombinatorialMap& A) {
 }
 
 int main() {
-    cout << "Ciao" << endl;
-    
-    
-    //~ PlanarEmbedding X;
-    //~ AreIsomorphic(X, 0, 0, X, 0, 0); 
+    CombinatorialMap A;
+    A.AddEdge(A.edges[0], A.edges[1]);
+    cout << IsomorphismSignature(A) << endl;
 }

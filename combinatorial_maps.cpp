@@ -12,6 +12,14 @@ struct Dart {
     }
 };
 
+bool operator ==(const Dart& d1, const Dart& d2) {
+    return d1.id == d2.id;
+}
+
+bool operator !=(const Dart& d1, const Dart& d2) {
+    return d1.id != d2.id;
+}
+
 ostream& operator<<(ostream& out, const Dart& d) {
     out << "(" << d.id << ": " << d.from << "->" << d.to << ")";
     return out;
@@ -61,7 +69,7 @@ struct CombinatorialMap {
     // single vertex and some loops.
     CombinatorialMap() {
         V = 2;
-        degree.resize(V, 1);
+        degree.resize(V, 0);
         F = 1;
         E = 0;
         auto edge = _AddEdge(0, 1);
@@ -81,7 +89,7 @@ struct CombinatorialMap {
     // The new edge is connected so that Next(bef) == new edge.
     void AddVertex(Dart bef) {
         V++;
-        degree.push_back(1);
+        degree.push_back(0);
         
         const Dart& bef_next = Next(bef);
         pair<Dart,Dart> new_edge = _AddEdge(bef.from, V-1);
@@ -115,8 +123,12 @@ struct CombinatorialMap {
         const Dart& aft_prev = Prev(aft);
         
         _AssignNext(Rev(bef), new_edge.first);
-        _AssignNext(new_edge.first, bef_next);
-        _AssignNext(aft_prev, new_edge.second);
+        if (bef.to != aft.from) {
+            _AssignNext(new_edge.first, bef_next);
+            _AssignNext(aft_prev, new_edge.second);
+        } else {
+            _AssignNext(new_edge.first, new_edge.second);
+        }
         _AssignNext(new_edge.second, aft);
         
         // We have added a new face in the process.
@@ -193,7 +205,6 @@ ULL IsomorphismSignature(const CombinatorialMap& A) {
     static const ULL p_rev = 984'689'391;
     static const ULL p_next = 123'456'789;
     
-    cout << A.E << endl;
     vector<vector<ULL>> mat(2*A.E, vector<ULL>(2*A.E, 0));
     for (int i = 0; i < 2*A.E; i++) {
         mat[i][i] += p_stay;
@@ -206,8 +217,85 @@ ULL IsomorphismSignature(const CombinatorialMap& A) {
     return trace;
 }
 
+vector<CombinatorialMap> Evolve(const CombinatorialMap& A) {
+    vector<CombinatorialMap> res;
+    
+    int leaf = -1;
+    for (int v = 0; v < A.V; v++) if (A.degree[v] == 1) leaf = v;
+    
+    for (Dart d: A.edges) {
+        if (leaf != -1 and d.from != leaf) continue;
+        if (A.degree[d.from] >= 3) continue;
+        CombinatorialMap A2 = A;
+        A2.AddVertex(d);
+        res.push_back(A2);
+    }
+    
+    for (Dart d: A.edges) {
+        if (leaf != -1 and d.to != leaf) continue;
+        if (A.degree[d.to] >= 3) continue;
+
+        Dart d2 = d;
+        while (1) {
+            bool to_consider = !(A.degree[d2.from] >= 3) 
+                           and !(d.to == d2.from and A.degree[d.to] >= 2);
+            
+            if (to_consider) {
+                CombinatorialMap A2 = A;
+                A2.AddEdge(d, d2);
+                res.push_back(A2);
+            }
+            
+            d2 = A.Phi(d2);
+            if (d2 == d) break;
+        }
+    }
+    
+    return res;
+}
+
+
+void RemoveDuplicates(vector<CombinatorialMap>& V) {
+    map<ULL, vector<CombinatorialMap>> signature2list;
+    for (const CombinatorialMap& A: V) {
+        signature2list[IsomorphismSignature(A)].push_back(A);
+    }
+    V.clear();
+    
+    for (const auto& pp: signature2list) {
+        const auto& vec = pp.second;
+        vector<CombinatorialMap> unique_vec;
+        for (const CombinatorialMap& A: vec) {
+            bool to_add = true;
+            for (const CombinatorialMap& B: unique_vec) {
+                if (!FindIsomorphism(A, B).empty()) {
+                    to_add = false;
+                    break;
+                }
+            }
+            if (to_add) {
+                unique_vec.push_back(A);
+                V.push_back(A);
+            }
+        }
+    }
+}
+
+vector<CombinatorialMap> Evolve(const vector<CombinatorialMap>& V) {
+    vector<CombinatorialMap> new_V;
+    for (const CombinatorialMap& A: V) {
+        const vector<CombinatorialMap>& vec = Evolve(A);
+        for (const CombinatorialMap& B: vec) new_V.push_back(B);
+    }
+    RemoveDuplicates(new_V);
+    return new_V;
+}
+
 int main() {
-    CombinatorialMap A;
-    A.AddEdge(A.edges[0], A.edges[1]);
-    cout << IsomorphismSignature(A) << endl;
+    vector<CombinatorialMap> vec(1);
+    
+    for (int i = 2; i <= 12; i++) {
+        vec = Evolve(vec);
+        cout << i << ": " << vec.size() << endl;
+    }
 }

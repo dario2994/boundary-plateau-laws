@@ -87,7 +87,7 @@ struct CombinatorialMap {
     // Create a new vertex and link it (with a new edge) to an existing one.
     // 
     // The new edge is connected so that Next(bef) == new edge.
-    void AddVertex(Dart bef) {
+    pair<Dart,Dart> AddVertex(Dart bef) {
         V++;
         degree.push_back(0);
         
@@ -97,6 +97,8 @@ struct CombinatorialMap {
         _AssignNext(new_edge.second, new_edge.second);
         _AssignNext(bef, new_edge.first);
         _AssignNext(new_edge.first, bef_next);
+        
+        return new_edge;
     }
     
     // Link with an edge two existing vertices.
@@ -107,7 +109,7 @@ struct CombinatorialMap {
     // maps represent a spherical embedding) only if bef and aft
     // belong to the boundary of the same face.
     // It may be bef = aft.
-    void AddEdge(Dart bef, Dart aft) {
+    pair<Dart,Dart> AddEdge(Dart bef, Dart aft) {
         // We check that aft = phi^k(bef) for some k >= 0.
         auto it = bef;
         while (it != aft) {
@@ -133,6 +135,8 @@ struct CombinatorialMap {
         
         // We have added a new face in the process.
         F++;
+        
+        return new_edge;
     }
 };
 
@@ -175,7 +179,7 @@ bool CheckIsomorphism(const CombinatorialMap& A,
 vector<int> FindIsomorphism(const CombinatorialMap& A,
                             const CombinatorialMap& B) {
     if (A.V != B.V or A.E != B.E or A.F != B.F)
-        return {{}, {}};
+        return {};
     
     int E = A.E;
     vector<int> ordA = OrderedVisit(A, 0);
@@ -200,7 +204,18 @@ vector<vector<ULL>> MatrixPow(const vector<vector<ULL>>& A,
     return C;
 }
 
-ULL IsomorphismSignature(const CombinatorialMap& A) {
+ULL Trace(const vector<vector<ULL>>& mat) {
+    ULL trace = 0;
+    for (int i = 0; i < ssize(mat); i++) trace += mat[i][i];
+    return trace;
+}
+
+// Returns a square matrix 2E x 2E. Let M_A be the matrix.
+// If f is a bijection from the darts of A to the darts of B that
+// is a isomorphism of combinatorial maps, then M_B is obtained
+// permuting the rows/columns of M_A according to f.
+// In particular, tr(M_A) = tr(M_B).
+vector<vector<ULL>> MatrixSignature(const CombinatorialMap& A) {
     static const ULL p_stay = 424'142'591;
     static const ULL p_rev = 984'689'391;
     static const ULL p_next = 123'456'789;
@@ -212,9 +227,7 @@ ULL IsomorphismSignature(const CombinatorialMap& A) {
         mat[i][A._next[i]] += p_next;
     }
     for (int _ = 0; _ < 15; _++) mat = MatrixPow(mat, mat);
-    ULL trace = 0;
-    for (int i = 0; i < 2*A.E; i++) trace += mat[i][i];
-    return trace;
+    return mat;
 }
 
 vector<CombinatorialMap> Evolve(const CombinatorialMap& A) {
@@ -258,7 +271,7 @@ vector<CombinatorialMap> Evolve(const CombinatorialMap& A) {
 void RemoveDuplicates(vector<CombinatorialMap>& V) {
     map<ULL, vector<CombinatorialMap>> signature2list;
     for (const CombinatorialMap& A: V) {
-        signature2list[IsomorphismSignature(A)].push_back(A);
+        signature2list[Trace(MatrixSignature(A))].push_back(A);
     }
     V.clear();
     
@@ -294,7 +307,7 @@ vector<CombinatorialMap> Evolve(const vector<CombinatorialMap>& V) {
 int main() {
     vector<CombinatorialMap> vec(1);
     
-    for (int i = 2; i <= 12; i++) {
+    for (int i = 2; i <= 6; i++) {
         vec = Evolve(vec);
         cout << i << ": " << vec.size() << endl;
     }

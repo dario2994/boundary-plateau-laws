@@ -36,6 +36,12 @@ struct CombinatorialMap {
     vector<int> _next, _prev;
     
     
+    // Adds an edge between u and v without properly taking care of
+    // _next and _prev.
+    // This takes only of the graph-theoretic component of a CombinatorialMap.
+    // The user is responsible for properly updating _next and _prev
+    // via _AssignNext.
+    // Returns the new dart u->v and its reverse v->u.
     pair<Dart,Dart> _AddEdge(int u, int v) {
         assert(0 <= u and u < V and 0 <= v and v < V);
         degree[u]++, degree[v]++;
@@ -57,6 +63,7 @@ struct CombinatorialMap {
         return {d1, d2};
     }
     
+    // Assigns Next(a) = b. (updates also Prev appropriately).
     void _AssignNext(Dart a, Dart b) {
         assert(a.from == b.from);
         _next[a.id] = b.id;
@@ -88,24 +95,26 @@ struct CombinatorialMap {
     
     // Create a new vertex and link it (with a new edge) to an existing one.
     // 
-    // The new edge is connected so that Next(bef) == new edge.
+    // The new edge is connected so that Phi(bef) = new edge.
     pair<Dart,Dart> AddVertex(Dart bef) {
         V++;
         degree.push_back(0);
         
-        const Dart& bef_next = Next(bef);
-        pair<Dart,Dart> new_edge = _AddEdge(bef.from, V-1);
+        Dart bef_rev = Rev(bef);
+        
+        const Dart& bef_phi = Phi(bef);
+        pair<Dart,Dart> new_edge = _AddEdge(bef.to, V-1);
         
         _AssignNext(new_edge.second, new_edge.second);
-        _AssignNext(bef, new_edge.first);
-        _AssignNext(new_edge.first, bef_next);
+        _AssignNext(bef_rev, new_edge.first);
+        _AssignNext(new_edge.first, bef_phi);
         
         return new_edge;
     }
     
     // Link with an edge two existing vertices.
-    // phi(bef) = new_edge 
-    // phi(new_edge) = aft
+    // Phi(bef) = new_edge 
+    // Phi(new_edge) = aft
     // 
     // This works (i.e., maintains the property that the combinatorial
     // maps represent a spherical embedding) only if bef and aft
@@ -159,6 +168,18 @@ struct PlanarMap:CombinatorialMap {
         return vec;
     }
 };
+
+ostream& operator<<(ostream& out, const CombinatorialMap& A) {
+    out << "{V = " << A.V;
+    out << ", E = " << A.E;
+    out << ", F = " << A.F;
+    for (auto d: A.edges)
+        out << ", " << d;
+    out << ", next = [";
+    for (int x: A._next) out << x << ", ";
+    out << "]}";
+    return out;
+}
 
 void _dfs(const CombinatorialMap& A, int e, vector<bool>& visited, 
           vector<int>& ord) {
@@ -338,56 +359,50 @@ bool Validate(const PlanarMap& A) {
     if (ssize(faces_sides) <= 2) return true;
     if (*prev(prev(faces_sides.end())) > 5) return false;
     
+    int sum = 0;
+    for (int s: faces_sides) sum += 6-s;
+    int max_sum = 12 + (*faces_sides.rbegin() < 7);
+    
+    if (sum > max_sum) return false;
+    
     return true;
 }
 
 
 vector<PlanarMap> Evolve(const PlanarMap& A) {
-    vector<PlanarMap> res;
+    vector<Dart> boundary = A.BoundaryEdges();
     
-    // If A has a leaf, the next edge we add will be adjacent to a leaf.
-    bool leaf_exists = false;
-    for (int v = 0; v < A.V; v++) leaf_exists |= A.degree[v] == 1;
-    
-    // Edges belonging to the boundary of the unbounded face of A.
-    vector<Dart> boundary = {A.boundary};
-    while (A.Phi(boundary.back()) != A.boundary)
-        boundary.push_back(A.Phi(boundary.back()));
-    
-    // Adding a new vertex "outside" of A.
+    // Selecting the edge bef such that Phi(bef) = new edge.
+    // We are selecting here where the new edge shall be attached.
+    Dart bef;
+    int to_deg = 3;
     for (Dart d: boundary) {
-        d = A.Rev(d);
-        if (leaf_exists and A.degree[d.from] != 1) continue;
-        
-        // This check can be removed as it is enforced by the validator.
-        //~ if (A.degree[d.from] >= 3) continue;
-        
-        PlanarMap A2 = A;
-        A2.AddVertex(d);
-        if (Validate(A2))
-            res.push_back(A2);
+        if (A.degree[d.to] < to_deg) {
+            bef = d;
+            to_deg = A.degree[d.to];
+        }
     }
     
+    if (to_deg == 3)
+        return {};
     
-    for (Dart d1: boundary) for (Dart d2: boundary) {
-        if (leaf_exists and A.degree[d1.to] != 1 and A.degree[d2.from] != 1)
-            continue;
-        
-        // These checks can be removed as they are enforced by
-        // the validator.
-        //~ if (A.degree[d1.to] >= 3 or A.degree[d2.from] >= 3) continue;
-        //~ if (d1.to == d2.from and A.degree[d1.to] >= 2) continue;
-        
+    vector<PlanarMap> res;
+    
+    PlanarMap A2 = A;
+    A2.AddVertex(bef);
+    if (Validate(A2))
+        res.push_back(A2);
+    
+    
+    for (Dart aft: boundary) {
         PlanarMap A2 = A;
-        pair<Dart, Dart> new_edge = A2.AddEdge(d1, d2);
+        pair<Dart, Dart> new_edge = A2.AddEdge(bef, aft);
         A2.boundary = new_edge.first;
         if (Validate(A2))
             res.push_back(A2);
-        if (A.Phi(d1) == d2) {
-            A2.boundary = new_edge.second;
-            if (Validate(A2))
-                res.push_back(A2);
-        }
+        A2.boundary = new_edge.second;
+        if (Validate(A2))
+            res.push_back(A2);
     }
     
     return res;

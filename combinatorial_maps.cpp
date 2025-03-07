@@ -451,7 +451,7 @@ vector<PlanarMap> Evolve(const vector<PlanarMap>& V) {
 int main() {
     vector<PlanarMap> vec(1);
     
-    for (int i = 2; i <= 10; i++) {
+    for (int i = 2; i <= 15; i++) {
         vec = Evolve(vec);
         cout << i << ": " << vec.size() << endl;
     }

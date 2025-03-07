@@ -149,6 +149,23 @@ struct CombinatorialMap {
         
         return new_edge;
     }
+    
+    vector<vector<Dart>> GetFaces() const {
+        vector<vector<Dart>> faces;
+        vector<bool> visited(2*E);
+        for (int i = 0; i < 2*E; i++) {
+            if (visited[i]) continue;
+            Dart curr = edges[i];
+            vector<Dart> face;
+            while (!visited[curr.id]) {
+                visited[curr.id] = true;
+                face.push_back(curr);
+                curr = Phi(curr);
+            }
+            faces.push_back(face);
+        }
+        return faces;
+    }
 };
 
 struct PlanarMap:CombinatorialMap {
@@ -326,9 +343,9 @@ ULL IsomorphismSignature(const PlanarMap& A) {
 
 
 // Checks whether A can eventually be transformed (by attaching edges
-// on the "outside") into a interesting geodesic net.
-bool Validate(const PlanarMap& A) {
-    if (A.E > 32 or A.F > 12)
+// on the "outside") into a valid geodesic net.
+bool ValidateSubgraph(const PlanarMap& A) {
+    if (A.E > 30 or A.F > 12)
         return false;
     
     set<int> boundary_vertices;
@@ -344,23 +361,14 @@ bool Validate(const PlanarMap& A) {
             return false;
     }
     
+    // Computing the number of sides of all internal faces.
+    const auto& faces = A.GetFaces();
     multiset<int> faces_sides;
-    vector<bool> visited(2*A.E);
-    for (int i = 0; i < 2*A.E; i++) {
-        if (visited[i]) continue;
-        Dart curr = A.edges[i];
-        int cnt = 0;
-        while (!visited[curr.id]) {
-            visited[curr.id] = true;
-            cnt++;
-            curr = A.Phi(curr);
-        }
-        faces_sides.insert(cnt);
-    }
-    
+    for (const auto& face: faces) faces_sides.insert(face.size());
+
     auto boundary_it = faces_sides.find(ssize(boundary));
     assert(boundary_it != faces_sides.end());
-    faces_sides.erase(boundary_it);
+    faces_sides.erase(boundary_it); // Discarding the external face.
     
     // We check that: 
     // - there are at most two faces with strictly more than 5 sides.
@@ -414,6 +422,32 @@ bool Validate(const PlanarMap& A) {
     return true;
 }
 
+// Checks whether A is a valid geodesic net.
+bool ValidateNet(const CombinatorialMap& A) {    
+    if (6*A.F - 2*A.E != 12) return false;
+
+    for (int v = 0; v < A.V; v++) {
+        if (A.degree[v] != 3) 
+            return false;
+    }
+    
+    // TODO: Make a member in CombinatorialMap that returns
+    //       the list of faces.
+    const auto& faces = A.GetFaces();
+    multiset<int> faces_sides;
+    for (const auto& face: faces) faces_sides.insert(face.size());
+        
+    // We check that: 
+    // - there are at most two faces with strictly more than 5 sides.
+    // - all faces have at most 7 sides.
+    auto big = faces_sides.end();
+    assert(!faces_sides.empty());
+    if (*prev(big) > 7) return false;
+    if (ssize(faces_sides) > 2 and *prev(prev(prev(big))) > 5) return false;
+        
+    return true;
+}
+
 
 vector<PlanarMap> Evolve(const PlanarMap& A) {
     vector<Dart> boundary = A.BoundaryEdges();
@@ -436,7 +470,7 @@ vector<PlanarMap> Evolve(const PlanarMap& A) {
     
     PlanarMap A2 = A;
     A2.AddVertex(bef);
-    if (Validate(A2))
+    if (ValidateSubgraph(A2))
         res.push_back(A2);
     
     
@@ -444,10 +478,10 @@ vector<PlanarMap> Evolve(const PlanarMap& A) {
         PlanarMap A2 = A;
         pair<Dart, Dart> new_edge = A2.AddEdge(bef, aft);
         A2.boundary = new_edge.first;
-        if (Validate(A2))
+        if (ValidateSubgraph(A2))
             res.push_back(A2);
         A2.boundary = new_edge.second;
-        if (Validate(A2))
+        if (ValidateSubgraph(A2))
             res.push_back(A2);
     }
     
@@ -523,14 +557,15 @@ vector<PlanarMap> Evolve(const vector<PlanarMap>& V) {
 int main() {
     vector<PlanarMap> vec(1);
     
-    for (int i = 2; i <= 15; i++) {
+    vector<CombinatorialMap> nets;
+    
+    for (int E = 2; E <= 30; E++) {
         vec = Evolve(vec);
-        cout << i << ": " << vec.size() << endl;
+        cout << E << ": " << vec.size() << endl;
+        
+        for (const auto& A: vec) if (ValidateNet(A)) nets.push_back(A);
     }
-    
-    //~ map<int,int> boundary_sizes;
-    //~ for (PlanarMap A: vec) boundary_sizes[A.BoundaryEdges().size()]++;
-    //~ for (auto pp: boundary_sizes) cout << pp.first << ": " << pp.second << endl;
-    
-    
+    cout << "Number of nets before removing duplicates: " << nets.size() << endl;
+    RemoveDuplicates(nets);
+    cout << "Number of nets: " << nets.size() << endl;
 }

@@ -181,6 +181,14 @@ ostream& operator<<(ostream& out, const CombinatorialMap& A) {
     return out;
 }
 
+ostream& operator<<(ostream& out, const PlanarMap& A) {
+    out << "(" << static_cast<const CombinatorialMap&>(A) << ", boundary = [";
+    for (Dart d: A.BoundaryEdges())
+        out << d << ", ";
+    out << "])";
+    return out;
+}
+
 void _dfs(const CombinatorialMap& A, int e, vector<bool>& visited, 
           vector<int>& ord) {
     if (visited[e]) return;
@@ -261,7 +269,7 @@ vector<int> FindIsomorphism(const PlanarMap& A,
         return {};
     vector<Dart> boundary = B.BoundaryEdges();
     for (Dart d: boundary) {
-        const vector<int>& iso = FindIsomorphism(A, B, A.edges[0], d);
+        const vector<int>& iso = FindIsomorphism(A, B, A.boundary, d);
         if (!iso.empty())
             return iso;
     }
@@ -300,7 +308,7 @@ vector<vector<ULL>> MatrixSignature(const CombinatorialMap& A) {
         mat[i][A._rev[i]] += p_rev;
         mat[i][A._next[i]] += p_next;
     }
-    for (int _ = 0; _ < 15; _++) mat = MatrixMultiplication(mat, mat);
+    for (int _ = 0; _ < 8; _++) mat = MatrixMultiplication(mat, mat);
     return mat;
 }
 
@@ -350,20 +358,58 @@ bool Validate(const PlanarMap& A) {
         faces_sides.insert(cnt);
     }
     
-    auto it = faces_sides.find(ssize(boundary));
-    assert(it != faces_sides.end());
-    faces_sides.erase(it);
+    auto boundary_it = faces_sides.find(ssize(boundary));
+    assert(boundary_it != faces_sides.end());
+    faces_sides.erase(boundary_it);
     
+    // We check that: 
+    // - there are at most two faces with strictly more than 5 sides.
+    // - all faces have at most 7 sides.
+    auto big = faces_sides.end();
     if (faces_sides.empty()) return true;
-    if (*faces_sides.rbegin() > 7) return false;
+    if (*prev(big) > 7) return false;
     if (ssize(faces_sides) <= 2) return true;
-    if (*prev(prev(faces_sides.end())) > 5) return false;
+    if (*prev(prev(prev(big))) > 5) return false;
     
-    int sum = 0;
-    for (int s: faces_sides) sum += 6-s;
-    int max_sum = 12 + (*faces_sides.rbegin() < 7);
+    // It shall hold \sum (6-sides) = 12 over all faces.
+    // We compute the internal contribution, which we already know,
+    // as well as a lower bound on the external contribution.
+    // Then, we check that the sum of the two is <= 12.
+    int internal_contribution = 0;
+    for (int s: faces_sides) internal_contribution += 6-s;
     
-    if (sum > max_sum) return false;
+    // First, we determine a lower bound on the number of darts that
+    // need to be added to complete the net.
+    int missing_degrees = 0;
+    for (int v: boundary_vertices) missing_degrees += 3-A.degree[v];
+    
+    // Then, we determine a lower bound on the number of darts which, 
+    // in the final configuration, are not the boundary of a, currently,
+    // internal face.
+    int external_sides = ssize(boundary) + missing_degrees;
+    int external_contribution = -external_sides;
+    
+    // Given the lower bound external_sides, we determine a lower bound
+    // on the number of faces that will be added to reach the final
+    // configuration.
+    int external_faces = 0;
+    int big_faces = (*prev(big) > 5)
+                   +(*prev(prev(big)) > 5);
+    while (external_sides > 0) {
+        external_faces++;
+        if (big_faces < 2) {
+            big_faces++;
+            external_sides -= 7;
+        } else external_sides -= 5;
+    }
+    external_contribution += 6 * external_faces;
+    
+    // If it would be possible to have one more large face we must take
+    // that into account to have a correct lower bound.
+    if (big_faces < 2) external_contribution -= 1;
+    
+    if (internal_contribution + external_contribution > 12) 
+        return false;
     
     return true;
 }
@@ -434,6 +480,32 @@ void RemoveDuplicates(vector<T>& V) {
                 V.push_back(A);
             }
         }
+        //~ if (ssize(unique_vec) >= 2) {
+            //~ auto A = unique_vec[0];
+            //~ auto B = unique_vec[1];
+            
+            //~ cout << A << endl;
+            //~ cout << B << endl;
+            
+            //~ vector<int> ordA = OrderedVisit(A, 6);
+            //~ vector<int> ordB = OrderedVisit(B, 4);
+            
+            //~ cout << "ordA = ";
+            //~ for (int i = 0; i < 8; i++)
+                //~ cout << ordA[i] << ", ";
+            //~ cout << endl;
+            //~ cout << "ordB = ";
+            //~ for (int i = 0; i < 8; i++)
+                //~ cout << ordB[i] << ", ";
+            //~ cout << endl;
+            
+            //~ vector<int> iso(8);
+            //~ for (int i = 0; i < 8; i++) iso[ordA[i]] = ordB[i];
+    
+            //~ cout << "Is iso? " << CheckIsomorphism(A, B, iso) << endl;
+
+            //~ exit(0);
+        //~ }
     }
 }
 
@@ -455,4 +527,10 @@ int main() {
         vec = Evolve(vec);
         cout << i << ": " << vec.size() << endl;
     }
+    
+    //~ map<int,int> boundary_sizes;
+    //~ for (PlanarMap A: vec) boundary_sizes[A.BoundaryEdges().size()]++;
+    //~ for (auto pp: boundary_sizes) cout << pp.first << ": " << pp.second << endl;
+    
+    
 }

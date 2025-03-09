@@ -70,20 +70,6 @@ struct CombinatorialMap {
         _prev[b.id] = a.id;
     }
     
-    // Two vertices connected by an edge.
-    //
-    // ACHTUNG: We implicitly assume the graph does not consist of a 
-    // single vertex and some loops.
-    CombinatorialMap() {
-        V = 2;
-        degree.resize(V, 0);
-        F = 1;
-        E = 0;
-        auto edge = _AddEdge(0, 1);
-        _AssignNext(edge.first, edge.first);
-        _AssignNext(edge.second, edge.second);
-    }
-    
     Dart Rev(Dart e) const { return edges[_rev[e.id]]; }
     // Next is counterclockwise
     Dart Next(Dart e) const { return edges[_next[e.id]]; }
@@ -168,11 +154,40 @@ struct CombinatorialMap {
     }
 };
 
+// Starting from either an edge or a loop, one can generate any
+// valid combinatorial map using AddVertex or AddEdge.
+
+// Two vertices connected by an edge.
+CombinatorialMap OneEdgeConstructor() {
+    CombinatorialMap A;
+    A.V = 2;
+    A.degree.resize(A.V, 0);
+    A.F = 1;
+    A.E = 0;
+    auto edge = A._AddEdge(0, 1);
+    A._AssignNext(edge.first, edge.first);
+    A._AssignNext(edge.second, edge.second);
+    return A;
+}
+
+// One vertex with a loop.
+CombinatorialMap OneLoopConstructor() {
+    CombinatorialMap A;
+    A.V = 1;
+    A.degree.resize(A.V, 0);
+    A.F = 2;
+    A.E = 0;
+    auto edge = A._AddEdge(0, 0);
+    A._AssignNext(edge.first, edge.second);
+    A._AssignNext(edge.second, edge.first);
+    return A;
+}
+
 struct PlanarMap:CombinatorialMap {
     // An arbitrary dart on the boundary of the unbounded face.
     Dart boundary;
     
-    PlanarMap(): CombinatorialMap() {
+    PlanarMap(const CombinatorialMap& A): CombinatorialMap(A) {
         boundary = edges[0];
     }
     
@@ -227,7 +242,7 @@ vector<int> OrderedVisit(const CombinatorialMap& A, int e) {
     vector<int> ord;
     _dfs(A, e, visited, ord);
     return ord;
-}
+} // TODO: This function shall be a member of CombinatorialMap?
 
 // Check whether the map iso between the darts of A and B induces
 // an isomorphism of the combinatorial map.
@@ -348,6 +363,10 @@ bool ValidateSubgraph(const PlanarMap& A) {
     if (A.E > 30 or A.F > 12)
         return false;
     
+    int leaves_num = 0;
+    for (int v = 0; v < A.V; v++) if (A.degree[v] == 1) leaves_num++;
+    if (leaves_num > 1) return false;
+    
     set<int> boundary_vertices;
     const vector<Dart>& boundary = A.BoundaryEdges();
     for (const Dart& d: boundary)
@@ -450,122 +469,161 @@ bool ValidateNet(const CombinatorialMap& A) {
 
 
 vector<PlanarMap> Evolve(const PlanarMap& A) {
-    vector<Dart> boundary = A.BoundaryEdges();
-    
-    // Selecting the edge bef such that Phi(bef) = new edge.
-    // We are selecting here where the new edge shall be attached.
-    Dart bef;
-    int to_deg = 3;
-    for (Dart d: boundary) {
-        if (A.degree[d.to] < to_deg) {
-            bef = d;
-            to_deg = A.degree[d.to];
-        }
-    }
-    
-    if (to_deg == 3)
-        return {};
-    
+    const vector<Dart>& boundary = A.BoundaryEdges();
     vector<PlanarMap> res;
     
-    PlanarMap A2 = A;
-    A2.AddVertex(bef);
-    if (ValidateSubgraph(A2))
-        res.push_back(A2);
+    int leaf = -1;
+    for (int v = 0; v < A.V; v++) if (A.degree[v] == 1) leaf = v;
     
+    auto add_to_res = [&](const PlanarMap& B) {
+        if (leaf == -1 or B.degree[leaf] > 1)
+            res.push_back(B);
+    };
     
-    for (Dart aft: boundary) {
+    for (Dart bef: boundary) {
+        PlanarMap A2 = A;
+        A2.AddVertex(bef);
+        add_to_res(A2);
+    }
+        
+    for (Dart bef: boundary) for (Dart aft: boundary) {
         PlanarMap A2 = A;
         pair<Dart, Dart> new_edge = A2.AddEdge(bef, aft);
         A2.boundary = new_edge.first;
-        if (ValidateSubgraph(A2))
-            res.push_back(A2);
-        A2.boundary = new_edge.second;
-        if (ValidateSubgraph(A2))
-            res.push_back(A2);
+        add_to_res(A2);
+        if (bef.to == aft.from) {
+            A2.boundary = new_edge.second;
+            add_to_res(A2);
+        }
     }
     
     return res;
 }
 
-
-// This function supports both CombinatorialMap and PlanarMap.
 template <typename T>
-void RemoveDuplicates(vector<T>& V) {
+struct MaintainUnique {
     map<ULL, vector<T>> signature2list;
-    for (const T& A: V) {
-        signature2list[IsomorphismSignature(A)].push_back(A);
-    }
-    V.clear();
     
-    for (const auto& pp: signature2list) {
-        const auto& vec = pp.second;
-        vector<T> unique_vec;
-        for (const T& A: vec) {
-            bool to_add = true;
-            for (const T& B: unique_vec) {
-                if (!FindIsomorphism(A, B).empty()) {
-                    to_add = false;
-                    break;
-                }
-            }
-            if (to_add) {
-                unique_vec.push_back(A);
-                V.push_back(A);
+    void Add(const T& x) {
+        bool is_new = true;
+        vector<T>& vec = signature2list[IsomorphismSignature(x)];
+        for (const T& y: vec) {
+            if (!FindIsomorphism(x, y).empty()) {
+                is_new = false;
+                break;
             }
         }
+        if (is_new)
+            vec.push_back(x);
+        assert(ssize(vec) < 10);
+    }
+    
+    vector<T> GetUnique() {
+        vector<T> res;
+        for (const auto& pp: signature2list) for (const T& x: pp.second) {
+            res.push_back(x);
+        }
+        return res;
+    }
+};
+
+
+// This function supports both CombinatorialMap and PlanarMap.
+//~ template <typename T>
+//~ void RemoveDuplicates(vector<T>& V) {
+    //~ map<ULL, vector<T>> signature2list;
+    //~ for (const T& A: V) {
+        //~ signature2list[IsomorphismSignature(A)].push_back(A);
+    //~ }
+    //~ V.clear();
+    
+    //~ for (const auto& pp: signature2list) {
+        //~ const auto& vec = pp.second;
+        //~ vector<T> unique_vec;
+        //~ for (const T& A: vec) {
+            //~ bool to_add = true;
+            //~ for (const T& B: unique_vec) {
+                //~ if (!FindIsomorphism(A, B).empty()) {
+                    //~ to_add = false;
+                    //~ break;
+                //~ }
+            //~ }
+            //~ if (to_add) {
+                //~ unique_vec.push_back(A);
+                //~ V.push_back(A);
+            //~ }
+        //~ }
+        // This may happen due to the fact that our signature is invariant
+        // under symmetry.
         //~ if (ssize(unique_vec) >= 2) {
             //~ auto A = unique_vec[0];
             //~ auto B = unique_vec[1];
+            //~ int E = A.E;
             
             //~ cout << A << endl;
             //~ cout << B << endl;
             
-            //~ vector<int> ordA = OrderedVisit(A, 6);
-            //~ vector<int> ordB = OrderedVisit(B, 4);
+            //~ vector<int> ordA = OrderedVisit(A, 8);
+            //~ vector<int> ordB = OrderedVisit(B, 10);
             
             //~ cout << "ordA = ";
-            //~ for (int i = 0; i < 8; i++)
+            //~ for (int i = 0; i < 2*E; i++)
                 //~ cout << ordA[i] << ", ";
             //~ cout << endl;
             //~ cout << "ordB = ";
-            //~ for (int i = 0; i < 8; i++)
+            //~ for (int i = 0; i < 2*E; i++)
                 //~ cout << ordB[i] << ", ";
             //~ cout << endl;
             
-            //~ vector<int> iso(8);
-            //~ for (int i = 0; i < 8; i++) iso[ordA[i]] = ordB[i];
+            //~ vector<int> iso(2*E);
+            //~ for (int i = 0; i < 2*E; i++) iso[ordA[i]] = ordB[i];
     
             //~ cout << "Is iso? " << CheckIsomorphism(A, B, iso) << endl;
 
             //~ exit(0);
         //~ }
-    }
-}
+    //~ }
+//~ }
 
 vector<PlanarMap> Evolve(const vector<PlanarMap>& V) {
-    vector<PlanarMap> new_V;
+    MaintainUnique<PlanarMap> mu;
     for (const PlanarMap& A: V) {
         const vector<PlanarMap>& vec = Evolve(A);
-        for (const PlanarMap& B: vec) new_V.push_back(B);
+        for (const PlanarMap& B: vec) {
+            if (ValidateSubgraph(B))
+                mu.Add(B);
+        }
     }
-    RemoveDuplicates(new_V);
-    return new_V;
+    return mu.GetUnique();
 }
 
 
 int main() {
-    vector<PlanarMap> vec(1);
+    vector<PlanarMap> vec = {OneLoopConstructor()};
     
-    vector<CombinatorialMap> nets;
+    MaintainUnique<CombinatorialMap> nets;
     
     for (int E = 2; E <= 30; E++) {
         vec = Evolve(vec);
-        cout << E << ": " << vec.size() << endl;
         
-        for (const auto& A: vec) if (ValidateNet(A)) nets.push_back(A);
+        // Adding a cycle of length E.
+        PlanarMap cycle = OneEdgeConstructor();
+        for (int k = 2; k < E; k++) {
+            cycle.AddVertex(cycle.edges[2*(k-2)]);
+        }
+        cycle.AddEdge(cycle.edges[2*(E-2)], cycle.edges[0]);
+        if (ValidateSubgraph(cycle)) 
+            vec.push_back(cycle);
+        
+        for (const auto& A: vec) if (ValidateNet(A)) nets.Add(A);
+        
+        cout << E << ": " << vec.size() << " " << nets.GetUnique().size() << endl;
+        
+        if (vec.size() > 1e6) {
+            break;
+        }
     }
-    cout << "Number of nets before removing duplicates: " << nets.size() << endl;
-    RemoveDuplicates(nets);
-    cout << "Number of nets: " << nets.size() << endl;
 }
+
+
+// 16: 39434 92

@@ -1,7 +1,9 @@
+#ifndef COMBINATORIAL_MAPS
+#define COMBINATORIAL_MAPS
+
 #define _USE_MATH_DEFINES
 #include <bits/stdc++.h>
 using namespace std;
-typedef unsigned long long ULL;
 
 struct Dart {
     int from, to;
@@ -25,13 +27,31 @@ ostream& operator<<(ostream& out, const Dart& d) {
     return out;
 }
 
+
+// Class representing a connected CombinatorialMap with at least one
+// edge.
+// Both loops and repeated edges are supported.
 struct CombinatorialMap {
+  private:
+    // The default constructor is private as any user should construct
+    // a CombinatorialMap via OneEdgeConstructor() or OneLoopConstructor()
+    CombinatorialMap() {}
+  public:
+    friend CombinatorialMap OneEdgeConstructor();
+    friend CombinatorialMap OneLoopConstructor();
+    
+  private:
     int _V, _E, _F; // Vertices, Edges, Faces
     vector<int> _degrees; // vertex degree
     // Two "copies" of each edge, one for each direction. 
     // Even loops are present twice.
     vector<Dart> _darts;
     
+    vector<int> _rev;
+    vector<int> _next, _prev;
+    int _phi(int id) const { return _next[_rev[id]]; }
+  
+  public:  
     int V() const { return _V; }
     int E() const { return _E; }
     int F() const { return _F; }
@@ -39,10 +59,7 @@ struct CombinatorialMap {
     const Dart& dart(int i) const { return _darts[i]; }
     const vector<Dart>& darts() const { return _darts; }
     
-    vector<int> _rev;
-    vector<int> _next, _prev;
-    
-    
+  private:
     // Adds an edge between u and v without properly taking care of
     // _next and _prev.
     // This takes only of the graph-theoretic component of a CombinatorialMap.
@@ -77,12 +94,12 @@ struct CombinatorialMap {
         _prev[b.id] = a.id;
     }
     
+  public:
     const Dart& Rev(const Dart& e) const { return _darts[_rev[e.id]]; }
     // Next is counterclockwise
     const Dart& Next(const Dart& e) const { return _darts[_next[e.id]]; }
     const Dart& Prev(const Dart& e) const { return _darts[_prev[e.id]]; }
     // Phi traverses the boundary of a (bounded) face clockwise.
-    int _phi(int id) const { return _next[_rev[id]]; }
     const Dart& Phi(const Dart& e) const { return _darts[_phi(e.id)]; } 
     
     
@@ -166,6 +183,7 @@ struct CombinatorialMap {
         return faces;
     }
     
+  private:
     // Runs a dfs on the Darts Graph.
     void _dfs(int d, vector<bool>& visited, vector<int>& ord) const {
         if (visited[d]) return;
@@ -175,7 +193,7 @@ struct CombinatorialMap {
         _dfs(_next[d], visited, ord);
     }
 
-
+  public:
     // Returns the list of the darts encountered when visiting the darts
     // graph, starting from d. 
     // The visit is a depth first search on the graph with vertices
@@ -261,362 +279,5 @@ ostream& operator<<(ostream& out, const PlanarMap& A) {
     return out;
 }
 
-// Check whether the map iso between the darts of A and B induces
-// an isomorphism of the combinatorial map.
-// It is sufficient to check that it commutes with Rev and Next.
-bool CheckIsomorphism(const CombinatorialMap& A,
-                      const CombinatorialMap& B,
-                      const vector<int>& iso) {
-    int E = A.E();
-    assert(A.E() == E and B.E() == E and ssize(iso) == 2*E);
-    for (int i = 0; i < 2*E; i++) {
-        if (B._rev[iso[i]] != iso[A._rev[i]]) return false;
-        if (B._next[iso[i]] != iso[A._next[i]]) return false;
-    }
-    return true;
-}
 
-// Returns, if it exists, an isomorphism between A and B that maps dart_A
-// into dart_B.
-// The ids of the darts are used for a concise representation.
-vector<int> FindIsomorphism(const CombinatorialMap& A,
-                            const CombinatorialMap& B,
-                            Dart dart_A,
-                            Dart dart_B) {
-    int E = A.E();
-    
-    vector<int> ordA = A.OrderedVisit(dart_A);
-    vector<int> ordB = B.OrderedVisit(dart_B);
-    vector<int> iso(2*E);
-    for (int i = 0; i < 2*E; i++) iso[ordA[i]] = ordB[i];
-    
-    if (CheckIsomorphism(A, B, iso))
-        return iso;
-    return {};
-}
-
-
-// Returns, if it exists, a bijection between the darts that is an
-// isomorphism of the combinatorial maps.
-// The ids of the darts are used for a concise representation.
-vector<int> FindIsomorphism(const CombinatorialMap& A,
-                            const CombinatorialMap& B) {
-    if (A.V() != B.V() or A.E() != B.E() or A.F() != B.F())
-        return {};
-
-    for (Dart d: B.darts()) {
-        const vector<int>& iso = FindIsomorphism(A, B, A.dart(0), d);
-        if (!iso.empty())
-            return iso;
-    }
-    return {};
-}
-
-vector<int> FindIsomorphism(const PlanarMap& A,
-                            const PlanarMap& B) {
-    if (A.V() != B.V() or A.E() != B.E() or A.F() != B.F())
-        return {};
-    vector<Dart> boundary = B.BoundaryEdges();
-    for (Dart d: boundary) {
-        const vector<int>& iso = FindIsomorphism(A, B, A.boundary, d);
-        if (!iso.empty())
-            return iso;
-    }
-    return {};
-}
-
-template<typename T>
-bool AreIsomorphic(const T& A, const T& B) {
-    return !FindIsomorphism(A, B).empty();
-}
-
-vector<vector<ULL>> MatrixMultiplication(const vector<vector<ULL>>& A,
-                                         const vector<vector<ULL>>& B) {
-    int n = A.size();
-    assert(ssize(A[0]) == n and ssize(B) == n and ssize(B[0]) == n);
-    vector<vector<ULL>> C(n, vector<ULL>(n, 0));
-    for (int i = 0; i < n; i++) for (int j = 0; j < n; j++)
-        for (int k = 0; k < n; k++) C[i][j] += A[i][k] * B[k][j];
-    return C;
-}
-
-ULL Trace(const vector<vector<ULL>>& mat) {
-    ULL trace = 0;
-    for (int i = 0; i < ssize(mat); i++) trace += mat[i][i];
-    return trace;
-}
-
-// Returns a square matrix 2E x 2E. Let M_A be the matrix.
-// If f is a bijection from the darts of A to the darts of B that
-// is a isomorphism of combinatorial maps, then M_B is obtained
-// permuting the rows/columns of M_A according to f.
-vector<vector<ULL>> MatrixSignature(const CombinatorialMap& A) {
-    static const ULL p_stay = 424'142'591;
-    static const ULL p_rev = 984'689'391;
-    static const ULL p_next = 123'456'789;
-    
-    vector<vector<ULL>> mat(2*A.E(), vector<ULL>(2*A.E(), 0));
-    for (Dart d: A.darts()) {
-        int i = d.id;
-        mat[i][i] += p_stay;
-        mat[i][A.Rev(d).id] += p_rev;
-        mat[i][A.Next(d).id] += p_next;
-    }
-    for (int _ = 0; _ < 8; _++) mat = MatrixMultiplication(mat, mat);
-    return mat;
-}
-
-ULL IsomorphismSignature(const CombinatorialMap& A) {
-    return Trace(MatrixSignature(A));
-}
-
-ULL IsomorphismSignature(const PlanarMap& A) {
-    const auto& mat = MatrixSignature(A);
-    ULL res = Trace(mat);
-    vector<Dart> boundary = A.BoundaryEdges();
-    for (Dart d: boundary) res += 131'657'115 * mat[d.id][d.id];
-    return res;
-}
-
-
-// Checks whether A can eventually be transformed (by attaching edges
-// on the "outside") into a valid geodesic net.
-bool ValidateSubgraph(const PlanarMap& A) {
-    if (A.E() > 30 or A.F() > 12)
-        return false;
-    
-    int leaves_num = 0;
-    for (int v = 0; v < A.V(); v++) if (A.degree(v) == 1) leaves_num++;
-    assert(leaves_num <= 1);
-    
-    set<int> boundary_vertices;
-    const vector<Dart>& boundary = A.BoundaryEdges();
-    for (const Dart& d: boundary)
-        boundary_vertices.insert(d.from);
-    
-    for (int v = 0; v < A.V(); v++) {
-        if (!boundary_vertices.count(v) and A.degree(v) != 3) 
-            return false;
-
-        if (A.degree(v) > 3)
-            return false;
-    }
-    
-    // Computing the number of sides of all internal faces.
-    const auto& faces = A.GetFaces();
-    multiset<int> faces_sides;
-    for (const auto& face: faces) faces_sides.insert(face.size());
-
-    auto boundary_it = faces_sides.find(ssize(boundary));
-    assert(boundary_it != faces_sides.end());
-    faces_sides.erase(boundary_it); // Discarding the external face.
-    
-    // We check that: 
-    // - there are at most two faces with strictly more than 5 sides.
-    // - all faces have at most 7 sides.
-    auto big = faces_sides.end();
-    if (faces_sides.empty()) return true;
-    if (*prev(big) > 7) return false;
-    if (ssize(faces_sides) <= 2) return true;
-    if (*prev(prev(prev(big))) > 5) return false;
-    
-    // It shall hold \sum (6-sides) = 12 over all faces.
-    // We compute the internal contribution, which we already know,
-    // as well as a lower bound on the external contribution.
-    // Then, we check that the sum of the two is <= 12.
-    int internal_contribution = 0;
-    for (int s: faces_sides) internal_contribution += 6-s;
-    
-    // First, we determine a lower bound on the number of darts that
-    // need to be added to complete the net.
-    int missing_degrees = 0;
-    for (int v: boundary_vertices) missing_degrees += 3-A.degree(v);
-    
-    // Then, we determine a lower bound on the number of darts which, 
-    // in the final configuration, are not the boundary of a, currently,
-    // internal face.
-    int external_sides = ssize(boundary) + missing_degrees;
-    int external_contribution = -external_sides;
-    
-    // Given the lower bound external_sides, we determine a lower bound
-    // on the number of faces that will be added to reach the final
-    // configuration.
-    int external_faces = 0;
-    int big_faces = (*prev(big) > 5)
-                   +(*prev(prev(big)) > 5);
-    while (external_sides > 0) {
-        external_faces++;
-        if (big_faces < 2) {
-            big_faces++;
-            external_sides -= 7;
-        } else external_sides -= 5;
-    }
-    external_contribution += 6 * external_faces;
-    
-    // If it would be possible to have one more large face we must take
-    // that into account to have a correct lower bound.
-    if (big_faces < 2) external_contribution -= 1;
-    
-    if (internal_contribution + external_contribution > 12) 
-        return false;
-    
-    return true;
-}
-
-// Checks whether A is a valid geodesic net.
-bool ValidateNet(const CombinatorialMap& A) {    
-    if (6*A.F() - 2*A.E() != 12) return false;
-
-    for (int v = 0; v < A.V(); v++) {
-        if (A.degree(v) != 3) 
-            return false;
-    }
-    
-    // TODO: Make a member in CombinatorialMap that returns
-    //       the list of faces.
-    const auto& faces = A.GetFaces();
-    multiset<int> faces_sides;
-    for (const auto& face: faces) faces_sides.insert(face.size());
-        
-    // We check that: 
-    // - there are at most two faces with strictly more than 5 sides.
-    // - all faces have at most 7 sides.
-    auto big = faces_sides.end();
-    assert(!faces_sides.empty());
-    if (*prev(big) > 7) return false;
-    if (ssize(faces_sides) > 2 and *prev(prev(prev(big))) > 5) return false;
-        
-    return true;
-}
-
-
-vector<PlanarMap> Evolve(const PlanarMap& A) {
-    const vector<Dart>& boundary = A.BoundaryEdges();
-    vector<PlanarMap> res;
-    
-    int leaf = -1;
-    for (int v = 0; v < A.V(); v++) if (A.degree(v) == 1) leaf = v;
-    
-    auto add_to_res = [&](const PlanarMap& B) {
-        if (leaf == -1 or B.degree(leaf) > 1)
-            res.push_back(B);
-    };
-    
-    for (Dart bef: boundary) {
-        PlanarMap A2 = A;
-        A2.AddVertex(bef);
-        add_to_res(A2);
-    }
-        
-    for (Dart bef: boundary) for (Dart aft: boundary) {
-        PlanarMap A2 = A;
-        pair<Dart, Dart> new_edge = A2.AddEdge(bef, aft);
-        A2.boundary = new_edge.first;
-        add_to_res(A2);
-        if (bef.to == aft.from) {
-            A2.boundary = new_edge.second;
-            add_to_res(A2);
-        }
-    }
-    
-    return res;
-}
-
-template <typename T>
-struct MaintainUnique {
-    map<ULL, vector<T>> signature2list;
-    
-    void Add(const T& x) {
-        bool is_new = true;
-        vector<T>& vec = signature2list[IsomorphismSignature(x)];
-        for (const T& y: vec) {
-            if (AreIsomorphic(x, y)) {
-                is_new = false;
-                break;
-            }
-        }
-        if (is_new)
-            vec.push_back(x);
-        assert(ssize(vec) < 30);
-        //~ if (ssize(vec) > 1) {
-            //~ auto A = vec[0];
-            //~ auto B = vec[1];
-            //~ int E = A.E;
-            
-            //~ cout << A << endl;
-            //~ cout << B << endl;
-            
-            //~ vector<int> ordA = OrderedVisit(A, 8);
-            //~ vector<int> ordB = OrderedVisit(B, 10);
-            
-            //~ cout << "ordA = ";
-            //~ for (int i = 0; i < 2*E; i++)
-                //~ cout << ordA[i] << ", ";
-            //~ cout << endl;
-            //~ cout << "ordB = ";
-            //~ for (int i = 0; i < 2*E; i++)
-                //~ cout << ordB[i] << ", ";
-            //~ cout << endl;
-            
-            //~ vector<int> iso(2*E);
-            //~ for (int i = 0; i < 2*E; i++) iso[ordA[i]] = ordB[i];
-    
-            //~ cout << "Is iso? " << CheckIsomorphism(A, B, iso) << endl;
-            
-            //~ exit(0);
-        //~ }
-    }
-    
-    vector<T> GetUnique() {
-        vector<T> res;
-        for (const auto& pp: signature2list) for (const T& x: pp.second) {
-            res.push_back(x);
-        }
-        return res;
-    }
-};
-
-vector<PlanarMap> Evolve(const vector<PlanarMap>& V) {
-    MaintainUnique<PlanarMap> mu;
-    for (const PlanarMap& A: V) {
-        const vector<PlanarMap>& vec = Evolve(A);
-        for (const PlanarMap& B: vec) {
-            if (ValidateSubgraph(B))
-                mu.Add(B);
-        }
-    }
-    return mu.GetUnique();
-}
-
-
-int main() {
-    vector<PlanarMap> vec = {OneLoopConstructor()};
-    
-    MaintainUnique<CombinatorialMap> nets;
-    
-    for (int E = 2; E <= 30; E++) {
-        vec = Evolve(vec);
-        
-        // Adding a cycle of length E.
-        PlanarMap cycle = OneEdgeConstructor();
-        for (int k = 2; k < E; k++) {
-            cycle.AddVertex(cycle.dart(2*(k-2)));
-        }
-        cycle.AddEdge(cycle.dart(2*(E-2)), cycle.dart(0));
-        if (ValidateSubgraph(cycle)) 
-            vec.push_back(cycle);
-        
-        for (const auto& A: vec) if (ValidateNet(A)) nets.Add(A);
-        
-        cout << E << ": " << vec.size() << " " << nets.GetUnique().size() << endl;
-        
-        if (vec.size() > 1e6) {
-            break;
-        }
-    }
-}
-
-
-// 16: 39434 92
-
-// 11:42, 21 282132 216
+#endif

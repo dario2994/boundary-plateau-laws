@@ -9,18 +9,14 @@ struct Dart {
     int from, to;
     int id;
     
-    bool operator !=(const Dart& other) {
+    bool operator ==(const Dart& other) const {
+        return id == other.id;
+    }
+    
+    bool operator !=(const Dart& other) const {
         return id != other.id;
     }
 };
-
-bool operator ==(const Dart& d1, const Dart& d2) {
-    return d1.id == d2.id;
-}
-
-bool operator !=(const Dart& d1, const Dart& d2) {
-    return d1.id != d2.id;
-}
 
 ostream& operator<<(ostream& out, const Dart& d) {
     out << "(" << d.id << ": " << d.from << "->" << d.to << ")";
@@ -59,10 +55,17 @@ struct CombinatorialMap {
     const Dart& dart(int i) const { return _darts[i]; }
     const vector<Dart>& darts() const { return _darts; }
     
+    const Dart& Rev(const Dart& e) const { return _darts[_rev[e.id]]; }
+    // Next is counterclockwise
+    const Dart& Next(const Dart& e) const { return _darts[_next[e.id]]; }
+    const Dart& Prev(const Dart& e) const { return _darts[_prev[e.id]]; }
+    // Phi traverses the boundary of a (bounded) face clockwise.
+    const Dart& Phi(const Dart& e) const { return _darts[_phi(e.id)]; } 
+    
   private:
     // Adds an edge between u and v without properly taking care of
     // _next and _prev.
-    // This takes only of the graph-theoretic component of a CombinatorialMap.
+    // This changes only the graph-theoretic component of a CombinatorialMap.
     // The user is responsible for properly updating _next and _prev
     // via _AssignNext.
     // Returns the new dart u->v and its reverse v->u.
@@ -95,14 +98,6 @@ struct CombinatorialMap {
     }
     
   public:
-    const Dart& Rev(const Dart& e) const { return _darts[_rev[e.id]]; }
-    // Next is counterclockwise
-    const Dart& Next(const Dart& e) const { return _darts[_next[e.id]]; }
-    const Dart& Prev(const Dart& e) const { return _darts[_prev[e.id]]; }
-    // Phi traverses the boundary of a (bounded) face clockwise.
-    const Dart& Phi(const Dart& e) const { return _darts[_phi(e.id)]; } 
-    
-    
     // Create a new vertex and link it (with a new edge) to an existing one.
     // 
     // The new edge is connected so that Phi(bef) = new edge.
@@ -113,15 +108,8 @@ struct CombinatorialMap {
         Dart bef_rev = Rev(bef);
         Dart bef_phi = Phi(bef);
         
-        //~ cout << bef_rev << endl;
-        
         pair<Dart,Dart> new_edge = _AddEdge(bef.to, V()-1);
-        //~ cout << bef_rev << endl;
-        
-        //~ cout << new_edge.first << " " << new_edge.second << endl;
-        
         _AssignNext(new_edge.second, new_edge.second);
-        //~ cout << bef_rev << " " << new_edge.first << endl;
         _AssignNext(bef_rev, new_edge.first);
         _AssignNext(new_edge.first, bef_phi);
         
@@ -240,6 +228,20 @@ CombinatorialMap OneLoopConstructor() {
     return A;
 }
 
+
+ostream& operator<<(ostream& out, const CombinatorialMap& A) {
+    out << "{V = " << A.V();
+    out << ", E = " << A.E();
+    out << ", F = " << A.F();
+    for (Dart d: A.darts()) 
+        out << ", " << d;
+    out << ", next = [";
+    for (Dart d: A.darts())
+        out << A.Next(d).id << ", ";
+    out << "]}";
+    return out;
+}
+
 struct PlanarMap:CombinatorialMap {
     // An arbitrary dart on the boundary of the unbounded face.
     Dart boundary;
@@ -257,19 +259,6 @@ struct PlanarMap:CombinatorialMap {
         return vec;
     }
 };
-
-ostream& operator<<(ostream& out, const CombinatorialMap& A) {
-    out << "{V = " << A.V();
-    out << ", E = " << A.E();
-    out << ", F = " << A.F();
-    for (Dart d: A.darts()) 
-        out << ", " << d;
-    out << ", next = [";
-    for (Dart d: A.darts())
-        out << A.Next(d).id << ", ";
-    out << "]}";
-    return out;
-}
 
 ostream& operator<<(ostream& out, const PlanarMap& A) {
     out << "(" << static_cast<const CombinatorialMap&>(A) << ", boundary = [";

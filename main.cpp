@@ -7,8 +7,33 @@ typedef unsigned long long ULL;
 #include "isomorphisms.cpp"
 
 
+// Checks whether A is a valid geodesic net.
+bool ValidateNet(const CombinatorialMap& A) {    
+    if (6*A.F() - 2*A.E() != 12) return false;
+
+    for (int v = 0; v < A.V(); v++) {
+        if (A.degree(v) != 3) 
+            return false;
+    }
+    
+    const auto& faces = A.GetFaces();
+    multiset<int> faces_sides;
+    for (const auto& face: faces) faces_sides.insert(face.size());
+        
+    // We check that: 
+    // - there are at most two faces with strictly more than 5 sides.
+    // - all faces have at most 7 sides.
+    auto big = faces_sides.end();
+    assert(!faces_sides.empty());
+    if (*prev(big) > 7) return false;
+    if (ssize(faces_sides) > 2 and *prev(prev(prev(big))) > 5) return false;
+        
+    return true;
+}
+
 // Checks whether A can eventually be transformed (by attaching edges
 // on the "outside") into a valid geodesic net.
+// It (often) gives false positives.
 bool ValidateSubgraph(const PlanarMap& A) {
     if (A.E() > 30 or A.F() > 12)
         return false;
@@ -91,32 +116,6 @@ bool ValidateSubgraph(const PlanarMap& A) {
     return true;
 }
 
-// Checks whether A is a valid geodesic net.
-bool ValidateNet(const CombinatorialMap& A) {    
-    if (6*A.F() - 2*A.E() != 12) return false;
-
-    for (int v = 0; v < A.V(); v++) {
-        if (A.degree(v) != 3) 
-            return false;
-    }
-    
-    // TODO: Make a member in CombinatorialMap that returns
-    //       the list of faces.
-    const auto& faces = A.GetFaces();
-    multiset<int> faces_sides;
-    for (const auto& face: faces) faces_sides.insert(face.size());
-        
-    // We check that: 
-    // - there are at most two faces with strictly more than 5 sides.
-    // - all faces have at most 7 sides.
-    auto big = faces_sides.end();
-    assert(!faces_sides.empty());
-    if (*prev(big) > 7) return false;
-    if (ssize(faces_sides) > 2 and *prev(prev(prev(big))) > 5) return false;
-        
-    return true;
-}
-
 
 vector<PlanarMap> Evolve(const PlanarMap& A) {
     const vector<Dart>& boundary = A.BoundaryEdges();
@@ -168,7 +167,7 @@ int main() {
     
     MaintainUnique<CombinatorialMap> nets;
     
-    for (int E = 2; E <= 13; E++) {
+    for (int E = 2; E <= 30; E++) {
         vec = Evolve(vec);
         
         // Adding a cycle of length E.
@@ -188,9 +187,41 @@ int main() {
             break;
         }
     }
+    
+    vector<CombinatorialMap> res = nets.GetUnique();
+    
+    ofstream human("list_combinatorial_maps_human.txt");
+    ofstream computer("list_combinatorial_maps_computer.txt");
+    
+    computer << ssize(res) << endl;
+    
+    for (int _ = 0; _ < ssize(res); _++) {
+        const CombinatorialMap& A = res[_];
+        human << "Candidate " << _+1 << endl;
+        human << A << endl << endl;
+        
+        computer << A.V() << " " << A.E() << " " << A.F() << endl;
+        for (int i = 0; i < 2*A.E(); i++) {
+            Dart d = A.dart(i);
+            computer << d.from << " " << d.to << endl;
+        }
+        for (int i = 0; i < 2*A.E(); i++) {
+            Dart d = A.dart(i);
+            computer << A.Rev(d).id << " ";
+        }
+        computer << endl;
+        
+        for (int i = 0; i < 2*A.E(); i++) {
+            Dart d = A.dart(i);
+            computer << A.Next(d).id << " ";
+        }
+        computer << endl;    
+    }
 }
 
+// 13: 7517 45, 2.789s
 
 // 16: 39434 92
 
-// 13: 7517 45, 2.789s
+// 20: 200793 156, 6m6.114s
+

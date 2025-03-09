@@ -26,11 +26,18 @@ ostream& operator<<(ostream& out, const Dart& d) {
 }
 
 struct CombinatorialMap {
-    int V, E, F; // Vertices, Edges, Faces
-    vector<int> degree; // vertex degree
+    int _V, _E, _F; // Vertices, Edges, Faces
+    vector<int> _degrees; // vertex degree
     // Two "copies" of each edge, one for each direction. 
     // Even loops are present twice.
-    vector<Dart> edges;
+    vector<Dart> _darts;
+    
+    int V() const { return _V; }
+    int E() const { return _E; }
+    int F() const { return _F; }
+    int degree(int i) const { return _degrees[i]; }
+    const Dart& dart(int i) const { return _darts[i]; }
+    const vector<Dart>& darts() const { return _darts; }
     
     vector<int> _rev;
     vector<int> _next, _prev;
@@ -43,16 +50,16 @@ struct CombinatorialMap {
     // via _AssignNext.
     // Returns the new dart u->v and its reverse v->u.
     pair<Dart,Dart> _AddEdge(int u, int v) {
-        assert(0 <= u and u < V and 0 <= v and v < V);
-        degree[u]++, degree[v]++;
-        E++;
+        assert(0 <= u and u < _V and 0 <= v and v < _V);
+        _degrees[u]++, _degrees[v]++;
+        _E++;
     
         Dart d1;
-        d1.from = u, d1.to = v, d1.id = edges.size();
-        edges.push_back(d1);
+        d1.from = u, d1.to = v, d1.id = _darts.size();
+        _darts.push_back(d1);
         Dart d2;
-        d2.from = v, d2.to = u, d2.id = edges.size();
-        edges.push_back(d2);
+        d2.from = v, d2.to = u, d2.id = _darts.size();
+        _darts.push_back(d2);
         
         _rev.push_back(d2.id);
         _rev.push_back(d1.id);
@@ -64,34 +71,40 @@ struct CombinatorialMap {
     }
     
     // Assigns Next(a) = b. (updates also Prev appropriately).
-    void _AssignNext(Dart a, Dart b) {
+    void _AssignNext(const Dart& a, const Dart& b) {
         assert(a.from == b.from);
         _next[a.id] = b.id;
         _prev[b.id] = a.id;
     }
     
-    Dart Rev(Dart e) const { return edges[_rev[e.id]]; }
+    const Dart& Rev(const Dart& e) const { return _darts[_rev[e.id]]; }
     // Next is counterclockwise
-    Dart Next(Dart e) const { return edges[_next[e.id]]; }
-    Dart Prev(Dart e) const { return edges[_prev[e.id]]; }
+    const Dart& Next(const Dart& e) const { return _darts[_next[e.id]]; }
+    const Dart& Prev(const Dart& e) const { return _darts[_prev[e.id]]; }
     // Phi traverses the boundary of a (bounded) face clockwise.
     int _phi(int id) const { return _next[_rev[id]]; }
-    Dart Phi(Dart e) const { return edges[_phi(e.id)]; } 
+    const Dart& Phi(const Dart& e) const { return _darts[_phi(e.id)]; } 
     
     
     // Create a new vertex and link it (with a new edge) to an existing one.
     // 
     // The new edge is connected so that Phi(bef) = new edge.
     pair<Dart,Dart> AddVertex(Dart bef) {
-        V++;
-        degree.push_back(0);
+        _V++;
+        _degrees.push_back(0);
         
         Dart bef_rev = Rev(bef);
+        Dart bef_phi = Phi(bef);
         
-        const Dart& bef_phi = Phi(bef);
-        pair<Dart,Dart> new_edge = _AddEdge(bef.to, V-1);
+        //~ cout << bef_rev << endl;
+        
+        pair<Dart,Dart> new_edge = _AddEdge(bef.to, V()-1);
+        //~ cout << bef_rev << endl;
+        
+        //~ cout << new_edge.first << " " << new_edge.second << endl;
         
         _AssignNext(new_edge.second, new_edge.second);
+        //~ cout << bef_rev << " " << new_edge.first << endl;
         _AssignNext(bef_rev, new_edge.first);
         _AssignNext(new_edge.first, bef_phi);
         
@@ -131,17 +144,17 @@ struct CombinatorialMap {
         _AssignNext(new_edge.second, aft);
         
         // We have added a new face in the process.
-        F++;
+        _F++;
         
         return new_edge;
     }
     
     vector<vector<Dart>> GetFaces() const {
         vector<vector<Dart>> faces;
-        vector<bool> visited(2*E);
-        for (int i = 0; i < 2*E; i++) {
+        vector<bool> visited(2*E());
+        for (int i = 0; i < 2*E(); i++) {
             if (visited[i]) continue;
-            Dart curr = edges[i];
+            Dart curr = dart(i);
             vector<Dart> face;
             while (!visited[curr.id]) {
                 visited[curr.id] = true;
@@ -152,6 +165,32 @@ struct CombinatorialMap {
         }
         return faces;
     }
+    
+    // Runs a dfs on the Darts Graph.
+    void _dfs(int d, vector<bool>& visited, vector<int>& ord) const {
+        if (visited[d]) return;
+        visited[d] = true;
+        ord.push_back(d);
+        _dfs(_rev[d], visited, ord);
+        _dfs(_next[d], visited, ord);
+    }
+
+
+    // Returns the list of the darts encountered when visiting the darts
+    // graph, starting from d. 
+    // The visit is a depth first search on the graph with vertices
+    // given by the darts and edges:
+    //  d -> rev[d]
+    //  d -> next[d]
+    // First, the visit traverses rev and then next.
+    //
+    // The ids of the darts are used for a concise representation.
+    vector<int> OrderedVisit(const Dart& d) const {
+        vector<bool> visited(2*E(), false);
+        vector<int> ord;
+        _dfs(d.id, visited, ord);
+        return ord;
+    }
 };
 
 // Starting from either an edge or a loop, one can generate any
@@ -160,10 +199,10 @@ struct CombinatorialMap {
 // Two vertices connected by an edge.
 CombinatorialMap OneEdgeConstructor() {
     CombinatorialMap A;
-    A.V = 2;
-    A.degree.resize(A.V, 0);
-    A.F = 1;
-    A.E = 0;
+    A._V = 2;
+    A._degrees.resize(A.V(), 0);
+    A._E = 0;
+    A._F = 1;
     auto edge = A._AddEdge(0, 1);
     A._AssignNext(edge.first, edge.first);
     A._AssignNext(edge.second, edge.second);
@@ -173,10 +212,10 @@ CombinatorialMap OneEdgeConstructor() {
 // One vertex with a loop.
 CombinatorialMap OneLoopConstructor() {
     CombinatorialMap A;
-    A.V = 1;
-    A.degree.resize(A.V, 0);
-    A.F = 2;
-    A.E = 0;
+    A._V = 1;
+    A._degrees.resize(A.V(), 0);
+    A._E = 0;
+    A._F = 2;
     auto edge = A._AddEdge(0, 0);
     A._AssignNext(edge.first, edge.second);
     A._AssignNext(edge.second, edge.first);
@@ -188,7 +227,7 @@ struct PlanarMap:CombinatorialMap {
     Dart boundary;
     
     PlanarMap(const CombinatorialMap& A): CombinatorialMap(A) {
-        boundary = edges[0];
+        boundary = dart(0);
     }
     
     // Returns a list of all darts on the boundary of the unbounded face.
@@ -202,13 +241,14 @@ struct PlanarMap:CombinatorialMap {
 };
 
 ostream& operator<<(ostream& out, const CombinatorialMap& A) {
-    out << "{V = " << A.V;
-    out << ", E = " << A.E;
-    out << ", F = " << A.F;
-    for (auto d: A.edges)
+    out << "{V = " << A.V();
+    out << ", E = " << A.E();
+    out << ", F = " << A.F();
+    for (Dart d: A.darts()) 
         out << ", " << d;
     out << ", next = [";
-    for (int x: A._next) out << x << ", ";
+    for (Dart d: A.darts())
+        out << A.Next(d).id << ", ";
     out << "]}";
     return out;
 }
@@ -221,37 +261,14 @@ ostream& operator<<(ostream& out, const PlanarMap& A) {
     return out;
 }
 
-void _dfs(const CombinatorialMap& A, int e, vector<bool>& visited, 
-          vector<int>& ord) {
-    if (visited[e]) return;
-    visited[e] = true;
-    ord.push_back(e);
-    _dfs(A, A._rev[e], visited, ord);
-    _dfs(A, A._next[e], visited, ord);
-}
-
-// Returns the list of the darts encountered when visiting A starting
-// from e. The visit is a dfs on the graph with vertices given by the
-// darts and edges:
-//  e -> rev[e]
-//  e -> next[e]
-// First, the visit traverses rev and then next.
-vector<int> OrderedVisit(const CombinatorialMap& A, int e) {
-    assert(0 <= e and e < 2*A.E);
-    vector<bool> visited(2*A.E, false);
-    vector<int> ord;
-    _dfs(A, e, visited, ord);
-    return ord;
-} // TODO: This function shall be a member of CombinatorialMap?
-
 // Check whether the map iso between the darts of A and B induces
 // an isomorphism of the combinatorial map.
 // It is sufficient to check that it commutes with Rev and Next.
 bool CheckIsomorphism(const CombinatorialMap& A,
                       const CombinatorialMap& B,
                       const vector<int>& iso) {
-    int E = A.E;
-    assert(A.E == E and B.E == E and ssize(iso) == 2*E);
+    int E = A.E();
+    assert(A.E() == E and B.E() == E and ssize(iso) == 2*E);
     for (int i = 0; i < 2*E; i++) {
         if (B._rev[iso[i]] != iso[A._rev[i]]) return false;
         if (B._next[iso[i]] != iso[A._next[i]]) return false;
@@ -266,10 +283,10 @@ vector<int> FindIsomorphism(const CombinatorialMap& A,
                             const CombinatorialMap& B,
                             Dart dart_A,
                             Dart dart_B) {
-    int E = A.E;
+    int E = A.E();
     
-    vector<int> ordA = OrderedVisit(A, dart_A.id);
-    vector<int> ordB = OrderedVisit(B, dart_B.id);
+    vector<int> ordA = A.OrderedVisit(dart_A);
+    vector<int> ordB = B.OrderedVisit(dart_B);
     vector<int> iso(2*E);
     for (int i = 0; i < 2*E; i++) iso[ordA[i]] = ordB[i];
     
@@ -284,11 +301,11 @@ vector<int> FindIsomorphism(const CombinatorialMap& A,
 // The ids of the darts are used for a concise representation.
 vector<int> FindIsomorphism(const CombinatorialMap& A,
                             const CombinatorialMap& B) {
-    if (A.V != B.V or A.E != B.E or A.F != B.F)
+    if (A.V() != B.V() or A.E() != B.E() or A.F() != B.F())
         return {};
 
-    for (Dart d: B.edges) {
-        const vector<int>& iso = FindIsomorphism(A, B, A.edges[0], d);
+    for (Dart d: B.darts()) {
+        const vector<int>& iso = FindIsomorphism(A, B, A.dart(0), d);
         if (!iso.empty())
             return iso;
     }
@@ -297,7 +314,7 @@ vector<int> FindIsomorphism(const CombinatorialMap& A,
 
 vector<int> FindIsomorphism(const PlanarMap& A,
                             const PlanarMap& B) {
-    if (A.V != B.V or A.E != B.E or A.F != B.F)
+    if (A.V() != B.V() or A.E() != B.E() or A.F() != B.F())
         return {};
     vector<Dart> boundary = B.BoundaryEdges();
     for (Dart d: boundary) {
@@ -306,6 +323,11 @@ vector<int> FindIsomorphism(const PlanarMap& A,
             return iso;
     }
     return {};
+}
+
+template<typename T>
+bool AreIsomorphic(const T& A, const T& B) {
+    return !FindIsomorphism(A, B).empty();
 }
 
 vector<vector<ULL>> MatrixMultiplication(const vector<vector<ULL>>& A,
@@ -328,17 +350,17 @@ ULL Trace(const vector<vector<ULL>>& mat) {
 // If f is a bijection from the darts of A to the darts of B that
 // is a isomorphism of combinatorial maps, then M_B is obtained
 // permuting the rows/columns of M_A according to f.
-// In particular, tr(M_A) = tr(M_B).
 vector<vector<ULL>> MatrixSignature(const CombinatorialMap& A) {
     static const ULL p_stay = 424'142'591;
     static const ULL p_rev = 984'689'391;
     static const ULL p_next = 123'456'789;
     
-    vector<vector<ULL>> mat(2*A.E, vector<ULL>(2*A.E, 0));
-    for (int i = 0; i < 2*A.E; i++) {
+    vector<vector<ULL>> mat(2*A.E(), vector<ULL>(2*A.E(), 0));
+    for (Dart d: A.darts()) {
+        int i = d.id;
         mat[i][i] += p_stay;
-        mat[i][A._rev[i]] += p_rev;
-        mat[i][A._next[i]] += p_next;
+        mat[i][A.Rev(d).id] += p_rev;
+        mat[i][A.Next(d).id] += p_next;
     }
     for (int _ = 0; _ < 8; _++) mat = MatrixMultiplication(mat, mat);
     return mat;
@@ -360,23 +382,23 @@ ULL IsomorphismSignature(const PlanarMap& A) {
 // Checks whether A can eventually be transformed (by attaching edges
 // on the "outside") into a valid geodesic net.
 bool ValidateSubgraph(const PlanarMap& A) {
-    if (A.E > 30 or A.F > 12)
+    if (A.E() > 30 or A.F() > 12)
         return false;
     
     int leaves_num = 0;
-    for (int v = 0; v < A.V; v++) if (A.degree[v] == 1) leaves_num++;
-    if (leaves_num > 1) return false;
+    for (int v = 0; v < A.V(); v++) if (A.degree(v) == 1) leaves_num++;
+    assert(leaves_num <= 1);
     
     set<int> boundary_vertices;
     const vector<Dart>& boundary = A.BoundaryEdges();
     for (const Dart& d: boundary)
         boundary_vertices.insert(d.from);
     
-    for (int v = 0; v < A.V; v++) {
-        if (!boundary_vertices.count(v) and A.degree[v] != 3) 
+    for (int v = 0; v < A.V(); v++) {
+        if (!boundary_vertices.count(v) and A.degree(v) != 3) 
             return false;
 
-        if (A.degree[v] > 3)
+        if (A.degree(v) > 3)
             return false;
     }
     
@@ -408,7 +430,7 @@ bool ValidateSubgraph(const PlanarMap& A) {
     // First, we determine a lower bound on the number of darts that
     // need to be added to complete the net.
     int missing_degrees = 0;
-    for (int v: boundary_vertices) missing_degrees += 3-A.degree[v];
+    for (int v: boundary_vertices) missing_degrees += 3-A.degree(v);
     
     // Then, we determine a lower bound on the number of darts which, 
     // in the final configuration, are not the boundary of a, currently,
@@ -443,10 +465,10 @@ bool ValidateSubgraph(const PlanarMap& A) {
 
 // Checks whether A is a valid geodesic net.
 bool ValidateNet(const CombinatorialMap& A) {    
-    if (6*A.F - 2*A.E != 12) return false;
+    if (6*A.F() - 2*A.E() != 12) return false;
 
-    for (int v = 0; v < A.V; v++) {
-        if (A.degree[v] != 3) 
+    for (int v = 0; v < A.V(); v++) {
+        if (A.degree(v) != 3) 
             return false;
     }
     
@@ -473,10 +495,10 @@ vector<PlanarMap> Evolve(const PlanarMap& A) {
     vector<PlanarMap> res;
     
     int leaf = -1;
-    for (int v = 0; v < A.V; v++) if (A.degree[v] == 1) leaf = v;
+    for (int v = 0; v < A.V(); v++) if (A.degree(v) == 1) leaf = v;
     
     auto add_to_res = [&](const PlanarMap& B) {
-        if (leaf == -1 or B.degree[leaf] > 1)
+        if (leaf == -1 or B.degree(leaf) > 1)
             res.push_back(B);
     };
     
@@ -508,56 +530,17 @@ struct MaintainUnique {
         bool is_new = true;
         vector<T>& vec = signature2list[IsomorphismSignature(x)];
         for (const T& y: vec) {
-            if (!FindIsomorphism(x, y).empty()) {
+            if (AreIsomorphic(x, y)) {
                 is_new = false;
                 break;
             }
         }
         if (is_new)
             vec.push_back(x);
-        assert(ssize(vec) < 10);
-    }
-    
-    vector<T> GetUnique() {
-        vector<T> res;
-        for (const auto& pp: signature2list) for (const T& x: pp.second) {
-            res.push_back(x);
-        }
-        return res;
-    }
-};
-
-
-// This function supports both CombinatorialMap and PlanarMap.
-//~ template <typename T>
-//~ void RemoveDuplicates(vector<T>& V) {
-    //~ map<ULL, vector<T>> signature2list;
-    //~ for (const T& A: V) {
-        //~ signature2list[IsomorphismSignature(A)].push_back(A);
-    //~ }
-    //~ V.clear();
-    
-    //~ for (const auto& pp: signature2list) {
-        //~ const auto& vec = pp.second;
-        //~ vector<T> unique_vec;
-        //~ for (const T& A: vec) {
-            //~ bool to_add = true;
-            //~ for (const T& B: unique_vec) {
-                //~ if (!FindIsomorphism(A, B).empty()) {
-                    //~ to_add = false;
-                    //~ break;
-                //~ }
-            //~ }
-            //~ if (to_add) {
-                //~ unique_vec.push_back(A);
-                //~ V.push_back(A);
-            //~ }
-        //~ }
-        // This may happen due to the fact that our signature is invariant
-        // under symmetry.
-        //~ if (ssize(unique_vec) >= 2) {
-            //~ auto A = unique_vec[0];
-            //~ auto B = unique_vec[1];
+        assert(ssize(vec) < 30);
+        //~ if (ssize(vec) > 1) {
+            //~ auto A = vec[0];
+            //~ auto B = vec[1];
             //~ int E = A.E;
             
             //~ cout << A << endl;
@@ -579,11 +562,19 @@ struct MaintainUnique {
             //~ for (int i = 0; i < 2*E; i++) iso[ordA[i]] = ordB[i];
     
             //~ cout << "Is iso? " << CheckIsomorphism(A, B, iso) << endl;
-
+            
             //~ exit(0);
         //~ }
-    //~ }
-//~ }
+    }
+    
+    vector<T> GetUnique() {
+        vector<T> res;
+        for (const auto& pp: signature2list) for (const T& x: pp.second) {
+            res.push_back(x);
+        }
+        return res;
+    }
+};
 
 vector<PlanarMap> Evolve(const vector<PlanarMap>& V) {
     MaintainUnique<PlanarMap> mu;
@@ -609,9 +600,9 @@ int main() {
         // Adding a cycle of length E.
         PlanarMap cycle = OneEdgeConstructor();
         for (int k = 2; k < E; k++) {
-            cycle.AddVertex(cycle.edges[2*(k-2)]);
+            cycle.AddVertex(cycle.dart(2*(k-2)));
         }
-        cycle.AddEdge(cycle.edges[2*(E-2)], cycle.edges[0]);
+        cycle.AddEdge(cycle.dart(2*(E-2)), cycle.dart(0));
         if (ValidateSubgraph(cycle)) 
             vec.push_back(cycle);
         
@@ -627,3 +618,5 @@ int main() {
 
 
 // 16: 39434 92
+
+// 11:42, 21 282132 216

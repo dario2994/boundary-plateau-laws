@@ -127,7 +127,7 @@ ULL IsomorphismSignature(const CombinatorialMap& A) {
     
     ULL res = 0;
     for (const Dart& d: A.darts()) {
-        res += mat[d.id][A.Next(d).id]^mat[d.id][A.Rev(d).id];
+        res += mat[d.id][A.Rev(d).id] ^ mat[d.id][A.Next(d).id];
     }
     
     return res;

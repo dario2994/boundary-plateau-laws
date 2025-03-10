@@ -31,6 +31,30 @@ bool ValidateNet(const CombinatorialMap& A) {
     return true;
 }
 
+
+int ComputeExternalContribution(int big_faces, int darts) {
+    int res = -darts;
+    while (darts > 0) {
+        res += 6;
+        darts -= (big_faces < 2) ? 7 : 5;
+        big_faces++;
+    }
+    return res;
+}
+
+int memo_external_contribution[3][70];
+void PrecomputeExternalContribution() {
+    for (int big_faces = 0; big_faces <= 2; big_faces++) {
+        for (int darts = 65; darts >= 0; darts--) {
+            int& z = memo_external_contribution[big_faces][darts];
+            z = 1000;
+            if (darts < 62)
+                z = memo_external_contribution[big_faces][darts+3];
+            z = min(z, ComputeExternalContribution(big_faces, darts));
+        }
+    }
+}
+
 // Checks whether A can eventually be transformed (by attaching edges
 // on the "outside") into a valid geodesic net.
 // It (often) gives false positives.
@@ -68,10 +92,9 @@ bool ValidateSubgraph(const PlanarMap& A) {
     // - there are at most two faces with strictly more than 5 sides.
     // - all faces have at most 7 sides.
     auto big = faces_sides.end();
-    if (faces_sides.empty()) return true;
+    assert(!faces_sides.empty());
     if (*prev(big) > 7) return false;
-    if (ssize(faces_sides) <= 2) return true;
-    if (*prev(prev(prev(big))) > 5) return false;
+    if (ssize(faces_sides) >= 3 and *prev(prev(prev(big))) > 5) return false;
     
     // It shall hold \sum (6-sides) = 12 over all faces.
     // We compute the internal contribution, which we already know,
@@ -84,32 +107,25 @@ bool ValidateSubgraph(const PlanarMap& A) {
     // need to be added to complete the net.
     int missing_degrees = 0;
     for (int v: boundary_vertices) missing_degrees += 3-A.degree(v);
+    if (missing_degrees % 2) missing_degrees += 3;
+    if (A.E() + missing_degrees/2 > 30) return false;
     
     // Then, we determine a lower bound on the number of darts which, 
-    // in the final configuration, are not the boundary of a, currently,
-    // internal face.
+    // in the final configuration, are not (currently) the boundary of 
+    // an internal face.
     int external_sides = ssize(boundary) + missing_degrees;
-    int external_contribution = -external_sides;
+    
+    // We compute the number of faces with at least 6 sides already
+    // present.
+    int big_faces = (*prev(big) > 5)
+                   +(ssize(faces_sides) >= 2 and *prev(prev(big)) > 5);
     
     // Given the lower bound external_sides, we determine a lower bound
-    // on the number of faces that will be added to reach the final
-    // configuration.
-    int external_faces = 0;
-    int big_faces = (*prev(big) > 5)
-                   +(*prev(prev(big)) > 5);
-    while (external_sides > 0) {
-        external_faces++;
-        if (big_faces < 2) {
-            big_faces++;
-            external_sides -= 7;
-        } else external_sides -= 5;
-    }
-    external_contribution += 6 * external_faces;
-    
-    // If it would be possible to have one more large face we must take
-    // that into account to have a correct lower bound.
-    if (big_faces < 2) external_contribution -= 1;
-    
+    // on \sum (6-sides) over the faces that will be added to reach 
+    // the final configuration.
+    int external_contribution = 
+        memo_external_contribution[big_faces][external_sides];
+
     if (internal_contribution + external_contribution > 12) 
         return false;
     
@@ -163,6 +179,10 @@ vector<PlanarMap> Evolve(const vector<PlanarMap>& V) {
 
 
 int main() {
+    PrecomputeExternalContribution();
+    //~ cout << memo_external_contribution[0][24] << endl;
+    //~ return 0;
+    
     vector<PlanarMap> vec = {OneLoopConstructor()};
     
     MaintainUnique<CombinatorialMap> nets;
@@ -183,7 +203,34 @@ int main() {
         
         cout << E << ": " << vec.size() << " " << nets.GetUnique().size() << endl;
         
-        if (vec.size() > 1e6) {
+        map<int,int> boundary_size;
+        map<int,int> edges_available;
+        map<int,int> faces_num;
+        for (auto A: vec) {
+            const vector<Dart>& boundary = A.BoundaryEdges();
+            boundary_size[boundary.size()]++;
+            faces_num[A.GetFaces().size()-1]++;
+            
+            set<int> boundary_vertices;
+            for (const Dart& d: boundary)
+                boundary_vertices.insert(d.from);
+            
+            int missing_degrees = 0;
+            for (int v: boundary_vertices) missing_degrees += 3-A.degree(v);
+            if (missing_degrees % 2) missing_degrees += 3;
+            edges_available[ssize(boundary) + missing_degrees/2]++;
+        }
+        //~ cout << "boundary_size: " << endl;
+        //~ for (auto pp: boundary_size) 
+            //~ cout << pp.first << ": " << pp.second << endl;
+        //~ cout << "edges_available: " << endl;
+        //~ for (auto pp: edges_available)
+            //~ cout << pp.first << ": " << pp.second << endl;
+        //~ cout << "faces_num: " << endl;
+        //~ for (auto pp: faces_num)
+            //~ cout << pp.first << ": " << pp.second << endl;
+            
+        if (vec.size() > 2e6) {
             break;
         }
     }
@@ -225,3 +272,31 @@ int main() {
 
 // 20: 200793 156, 6m6.114s
 
+// 19: 548530 156, ?
+
+//~ 2: 2 0
+//~ 3: 6 2
+//~ 4: 8 2
+//~ 5: 16 2
+//~ 6: 42 6
+//~ 7: 89 6
+//~ 8: 203 6
+//~ 9: 500 18
+//~ 10: 1182 18
+//~ 11: 2665 18
+//~ 12: 6184 45
+//~ 13: 13157 45
+//~ 14: 26871 45
+//~ 15: 54319 92
+//~ 16: 98182 92
+//~ 17: 187961 92
+//~ 18: 312123 156
+//~ 19: 548530 156
+//~ 20: 854319 156
+//~ 21: 1353619 216
+//~ 22: 1935872 216
+//~ 23: 2593212 216
+
+//~ real	81m50.020s
+//~ user	81m1.067s
+//~ sys	0m7.217s

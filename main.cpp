@@ -140,25 +140,60 @@ vector<PlanarMap> Evolve(const PlanarMap& A) {
     int leaf = -1;
     for (int v = 0; v < A.V(); v++) if (A.degree(v) == 1) leaf = v;
     
-    auto add_to_res = [&](const PlanarMap& B) {
-        if (leaf == -1 or B.degree(leaf) > 1)
+    auto add_to_res = [&](const PlanarMap& B, Dart new_edge) {
+        //~ cout << B << endl;
+        //~ cout << new_edge << endl;
+        
+        //~ if (B.degree(new_edge.from) > 3 or B.degree(new_edge.to) > 3)
+            //~ return;
+        
+        if (leaf != -1) {
+            if (B.degree(leaf) > 1)
+                res.push_back(B);
+            return;
+        }
+        
+        res.push_back(B);
+        return;
+        
+        if (B.degree(new_edge.from) == 1 or B.degree(new_edge.to) == 1) {
+            res.push_back(B);
+            return;
+        }
+        if (B.degree(new_edge.from) > 3 or B.degree(new_edge.to) > 3)
+            return;
+        // Here we can assume that all vertices have degree 2 or 3.
+        int val = 1e9;
+        set<int> boundary_ids;
+        for (Dart d: B.BoundaryEdges())
+            boundary_ids.insert(d.id);
+        for (Dart d: B.BoundaryEdges()) {
+            if (B.degree(d.from) == 2 and B.degree(d.to) == 2)
+                continue;
+            if (boundary_ids.count(B.Rev(d).id))
+                continue;
+            // This is a valid candidate.
+            val = min<int>(val, ssize(B.GetFace(B.Rev(d))));
+        }
+        
+        if (ssize(B.GetFace(B.Rev(new_edge))) == val)
             res.push_back(B);
     };
     
     for (Dart bef: boundary) {
         PlanarMap A2 = A;
-        A2.AddVertex(bef);
-        add_to_res(A2);
+        const auto& new_edge = A2.AddVertex(bef);
+        add_to_res(A2, new_edge.first);
     }
         
     for (Dart bef: boundary) for (Dart aft: boundary) {
         PlanarMap A2 = A;
         pair<Dart, Dart> new_edge = A2.AddEdge(bef, aft);
         A2.boundary = new_edge.first;
-        add_to_res(A2);
+        add_to_res(A2, new_edge.first);
         if (bef.to == aft.from) {
             A2.boundary = new_edge.second;
-            add_to_res(A2);
+            add_to_res(A2, new_edge.second);
         }
     }
     
@@ -187,7 +222,7 @@ int main() {
     
     MaintainUnique<CombinatorialMap> nets;
     
-    for (int E = 2; E <= 30; E++) {
+    for (int E = 2; E <= 15; E++) {
         vec = Evolve(vec);
         
         // Adding a cycle of length E.

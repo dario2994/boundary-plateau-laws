@@ -154,6 +154,16 @@ struct CombinatorialMap {
         return new_edge;
     }
     
+    vector<Dart> GetFace(Dart d) const {
+        Dart curr = d;
+        vector<Dart> face;
+        do {
+            face.push_back(curr);
+            curr = Phi(curr);
+        } while (curr != d);
+        return face;
+    }
+    
     vector<vector<Dart>> GetFaces() const {
         vector<vector<Dart>> faces;
         vector<bool> visited(2*E());

@@ -35,6 +35,7 @@ struct CombinatorialMap {
   public:
     friend CombinatorialMap OneEdgeConstructor();
     friend CombinatorialMap OneLoopConstructor();
+    friend CombinatorialMap ParserConstructor(istream& in);
     
   private:
     int _V, _E, _F; // Vertices, Edges, Faces
@@ -236,6 +237,31 @@ CombinatorialMap OneLoopConstructor() {
     A._AssignNext(edge.first, edge.second);
     A._AssignNext(edge.second, edge.first);
     return A;
+}
+
+CombinatorialMap ParserConstructor(istream& in) {
+    CombinatorialMap A;
+    in >> A._V >> A._E >> A._F;
+    int n = 2*A._E;
+    
+    A._darts.resize(n);
+    for (int i = 0; i < n; i++) {
+        Dart d;
+        d.id = i;
+        in >> d.from >> d.to;
+        A._darts.push_back(d);
+    }
+    A._rev.resize(n);
+    A._next.resize(n);
+    A._prev.resize(n);
+    
+    for (int i = 0; i < n; i++) in >> A._rev[i];
+    for (int i = 0; i < n; i++) {
+        in >> A._next[i];
+        A._prev[A._next[i]] = i;
+    }
+    return A;
+    
 }
 
 

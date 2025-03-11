@@ -172,38 +172,14 @@ struct MaintainUnique {
         }
         if (is_new)
             vec.push_back(x);
-        assert(ssize(vec) < 30);
-        if (ssize(vec) > 1) {
-            cout << "Collision!" << endl;
-            auto A = vec[0];
-            auto B = vec[1];
-            
-            cout << A << endl;
-            cout << endl;
-            cout << B << endl;
-            cout << endl;
-            
-            int E = A.E();
-            
-            auto mat_A = LargePower(MatrixSignature(A));
-            auto mat_B = LargePower(MatrixSignature(B));
-            
-            auto iso = FindIsomorphism(static_cast<CombinatorialMap>(A),
-                                       static_cast<CombinatorialMap>(B));
-            cout << "Isomorphic as combinatorial maps? "
-                 << !iso.empty()
-                 << endl;
-                 
-            if (!iso.empty()) {
-                cout << "Iso: ";
-                for (int i = 0; i < 2*E; i++) 
-                    cout << i << " -> " << iso[i] << endl;
-            }
-            //~ exit(0);
-        }
+        // The following assert is a safety measure to check that
+        // the signature used is efficient.
+        // In practice, we never run in a collision during the execution,
+        // so it could be replaced by ssize(vec) < 2.
+        assert(ssize(vec) < 10);
     }
     
-    vector<T> GetUnique() {
+    vector<T> GetList() {
         vector<T> res;
         for (const auto& pp: signature2list) for (const T& x: pp.second) {
             res.push_back(x);

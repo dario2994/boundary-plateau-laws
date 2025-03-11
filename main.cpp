@@ -36,20 +36,20 @@ int ComputeExternalContribution(int big_faces, int darts) {
     int res = -darts;
     while (darts > 0) {
         res += 6;
-        darts -= (big_faces < 2) ? 7 : 5;
-        big_faces++;
+        darts -= (big_faces > 0) ? 7 : 5;
+        big_faces--;
     }
     return res;
 }
 
-int memo_external_contribution[3][70];
+int memo_external_contribution[3][80];
 void PrecomputeExternalContribution() {
     for (int big_faces = 0; big_faces <= 2; big_faces++) {
-        for (int darts = 65; darts >= 0; darts--) {
+        for (int darts = 70; darts >= 0; darts--) {
             int& z = memo_external_contribution[big_faces][darts];
             z = 1000;
-            if (darts < 62)
-                z = memo_external_contribution[big_faces][darts+3];
+            if (darts <= 62)
+                z = memo_external_contribution[big_faces][darts+6];
             z = min(z, ComputeExternalContribution(big_faces, darts));
         }
     }
@@ -124,7 +124,7 @@ bool ValidateSubgraph(const PlanarMap& A) {
     // on \sum (6-sides) over the faces that will be added to reach 
     // the final configuration.
     int external_contribution = 
-        memo_external_contribution[big_faces][external_sides];
+        memo_external_contribution[2-big_faces][external_sides];
 
     if (internal_contribution + external_contribution > 12) 
         return false;
@@ -180,20 +180,20 @@ vector<PlanarMap> Evolve(const vector<PlanarMap>& V) {
                 mu.Add(B);
         }
     }
-    return mu.GetUnique();
+    return mu.GetList();
 }
 
 
 int main() {
     PrecomputeExternalContribution();
-    //~ cout << memo_external_contribution[0][24] << endl;
-    //~ return 0;
     
     vector<PlanarMap> vec = {OneLoopConstructor()};
     
     MaintainUnique<CombinatorialMap> nets;
     
-    for (int E = 2; E <= 15; E++) {
+    cout << "Edges = k\tPlanar maps with k edges\tTwice-derived nets with <= k edges" << endl;
+    
+    for (int E = 2; E <= 30; E++) {
         vec = Evolve(vec);
         
         // Adding a cycle of length E.
@@ -207,42 +207,13 @@ int main() {
         
         for (const auto& A: vec) if (ValidateNet(A)) nets.Add(A);
         
-        cout << E << ": " << vec.size() << " " << nets.GetUnique().size() << endl;
-        
-        map<int,int> boundary_size;
-        map<int,int> edges_available;
-        map<int,int> faces_num;
-        for (auto A: vec) {
-            const vector<Dart>& boundary = A.BoundaryEdges();
-            boundary_size[boundary.size()]++;
-            faces_num[A.GetFaces().size()-1]++;
-            
-            set<int> boundary_vertices;
-            for (const Dart& d: boundary)
-                boundary_vertices.insert(d.from);
-            
-            int missing_degrees = 0;
-            for (int v: boundary_vertices) missing_degrees += 3-A.degree(v);
-            if (missing_degrees % 2) missing_degrees += 3;
-            edges_available[ssize(boundary) + missing_degrees/2]++;
-        }
-        //~ cout << "boundary_size: " << endl;
-        //~ for (auto pp: boundary_size) 
-            //~ cout << pp.first << ": " << pp.second << endl;
-        //~ cout << "edges_available: " << endl;
-        //~ for (auto pp: edges_available)
-            //~ cout << pp.first << ": " << pp.second << endl;
-        //~ cout << "faces_num: " << endl;
-        //~ for (auto pp: faces_num)
-            //~ cout << pp.first << ": " << pp.second << endl;
-            
-        if (vec.size() > 2e6) {
-            break;
-        }
+        cout << E << "\t\t" << vec.size() << "\t\t\t\t" << nets.GetList().size() << endl;
     }
     
-    vector<CombinatorialMap> res = nets.GetUnique();
-    
+    // We save the twice-derived nets into two files.
+    // One of the files is optimized for being read by a human, the
+    // other one is optimized for being parsed by a computer.
+    vector<CombinatorialMap> res = nets.GetList();
     ofstream human("list_combinatorial_maps_human.txt");
     ofstream computer("list_combinatorial_maps_computer.txt");
     
@@ -272,14 +243,8 @@ int main() {
     }
 }
 
-// 13: 7517 45, 2.789s
-
-// 16: 39434 92
-
-// 20: 200793 156, 6m6.114s
-
-// 19: 548530 156, ?
-
+//~ Sul laptop di Camillo, una precedente versione (ma forse equivalente):
+//~
 //~ 2: 2 0
 //~ 3: 6 2
 //~ 4: 8 2
@@ -302,7 +267,14 @@ int main() {
 //~ 21: 1353619 216
 //~ 22: 1935872 216
 //~ 23: 2593212 216
+//~ 24: 2609982 276
+//~ 25: 1392917 276
+//~ 26: 460832 276
+//~ 27: 107835 311
+//~ 28: 18496 311
+//~ 29: 2135 311
+//~ 30: 170 333
 
-//~ real	81m50.020s
-//~ user	81m1.067s
-//~ sys	0m7.217s
+//~ real    187m27.562s
+//~ user    186m56.867s
+//~ sys    0m3.095s

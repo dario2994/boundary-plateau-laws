@@ -440,6 +440,8 @@ class PlanarMap: public CombinatorialMap {
     
     // We need to override the definition of EdgeSubdivision as it
     // may invalidate boundary_dart.
+    // TODO: Consider erasing it, as we don't use it.
+    //       Though, in principle, this is a function that may be useful.
     pair<Dart, Dart> EdgeSubdivision(Dart d) {
         vector<Dart> boundary_darts = BoundaryDarts();
         bool on_boundary = false;

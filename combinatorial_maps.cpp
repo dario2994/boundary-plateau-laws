@@ -453,7 +453,7 @@ class PlanarMap: public CombinatorialMap {
         if (on_boundary)
             boundary_dart = pp.first;
         if (on_boundary_rev)
-            boundary_dart = pp.second;
+            boundary_dart = Rev(pp.first);
         
         return pp;
     }

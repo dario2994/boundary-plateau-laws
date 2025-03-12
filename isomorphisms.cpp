@@ -65,9 +65,9 @@ vector<int> FindIsomorphism(const PlanarMap& A,
                             const PlanarMap& B) {
     if (A.V() != B.V() or A.E() != B.E() or A.F() != B.F())
         return {};
-    vector<Dart> boundary = B.BoundaryEdges();
+    vector<Dart> boundary = B.BoundaryDarts();
     for (Dart d: boundary) {
-        const vector<int>& iso = FindIsomorphism(A, B, A.boundary, d);
+        const vector<int>& iso = FindIsomorphism(A, B, A.GetBoundaryDart(), d);
         if (!iso.empty())
             return iso;
     }
@@ -141,7 +141,7 @@ ULL IsomorphismSignature(const PlanarMap& A) {
         res += mat[d.id][A.Next(d).id]^mat[d.id][A.Rev(d).id];
     }
     
-    vector<Dart> boundary = A.BoundaryEdges();
+    vector<Dart> boundary = A.BoundaryDarts();
     for (Dart d: boundary) {
         ULL tmp = 0;
         for (Dart e: A.darts())

@@ -9,8 +9,10 @@ typedef unsigned long long ULL;
 
 // Checks whether A is a valid geodesic net.
 bool ValidateNet(const CombinatorialMap& A) {    
-    if (6*A.F() - 2*A.E() != 12) return false;
+    // A must be embeddable on the sphere.
+    if (A.V() - A.E() + A.F() != 2) return false;
 
+    // A must be 3-regular.
     for (int v = 0; v < A.V(); v++) {
         if (A.degree(v) != 3) 
             return false;
@@ -67,7 +69,7 @@ bool ValidateSubgraph(const PlanarMap& A) {
     assert(leaves_num <= 1);
     
     set<int> boundary_vertices;
-    const vector<Dart>& boundary = A.BoundaryEdges();
+    const vector<Dart>& boundary = A.BoundaryDarts();
     for (const Dart& d: boundary)
         boundary_vertices.insert(d.from);
     
@@ -134,7 +136,7 @@ bool ValidateSubgraph(const PlanarMap& A) {
 
 
 vector<PlanarMap> Evolve(const PlanarMap& A) {
-    const vector<Dart>& boundary = A.BoundaryEdges();
+    const vector<Dart>& boundary = A.BoundaryDarts();
     vector<PlanarMap> res;
     
     int leaf = -1;
@@ -160,10 +162,10 @@ vector<PlanarMap> Evolve(const PlanarMap& A) {
     for (Dart bef: boundary) for (Dart aft: boundary) {
         PlanarMap A2 = A;
         pair<Dart, Dart> new_edge = A2.AddEdge(bef, aft);
-        A2.boundary = new_edge.first;
+        A2.SetBoundaryDart(new_edge.first);
         add_to_res(A2, new_edge.first);
         if (bef.to == aft.from) {
-            A2.boundary = new_edge.second;
+            A2.SetBoundaryDart(new_edge.second);
             add_to_res(A2, new_edge.second);
         }
     }
@@ -205,7 +207,12 @@ int main() {
         if (ValidateSubgraph(cycle)) 
             vec.push_back(cycle);
         
-        for (const auto& A: vec) if (ValidateNet(A)) nets.Add(A);
+        for (const auto& A: vec) {
+            if (ValidateNet(A)) {
+                A.CheckConsistency();
+                nets.Add(A);
+            }
+        }
         
         cout << E << "\t\t" << vec.size() << "\t\t\t\t" << nets.GetList().size() << endl;
     }

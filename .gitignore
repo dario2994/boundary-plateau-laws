@@ -32,3 +32,5 @@
 *.app
 
 main
+main_geometric_classification
+main_combinatorial_classification

@@ -64,13 +64,20 @@ struct CombinatorialMap {
     const Dart& Phi(const Dart& e) const { return _darts[_phi(e.id)]; } 
     
   private:
+    void CheckDart(const Dart& d) const {
+        assert(0 <= d.id and d.id < 2*_E);
+        assert(_darts[d.id].from == d.from);
+        assert(_darts[d.id].to == d.to);
+    }
+    
+  
     // Adds an edge between u and v without properly taking care of
     // _next and _prev.
     // This changes only the graph-theoretic component of a CombinatorialMap.
     // The user is responsible for properly updating _next and _prev
     // via _AssignNext.
     // Returns the new dart u->v and its reverse v->u.
-    pair<Dart,Dart> _AddEdge(int u, int v) {
+    pair<Dart,Dart> CreateGraphEdge(int u, int v) {
         assert(0 <= u and u < _V and 0 <= v and v < _V);
         _degrees[u]++, _degrees[v]++;
         _E++;
@@ -92,7 +99,7 @@ struct CombinatorialMap {
     }
     
     // Assigns Next(a) = b. (updates also Prev appropriately).
-    void _AssignNext(const Dart& a, const Dart& b) {
+    void AssignNext(const Dart& a, const Dart& b) {
         assert(a.from == b.from);
         _next[a.id] = b.id;
         _prev[b.id] = a.id;
@@ -103,16 +110,18 @@ struct CombinatorialMap {
     // 
     // The new edge is connected so that Phi(bef) = new edge.
     pair<Dart,Dart> AddVertex(Dart bef) {
+        CheckDart(bef);
+        
         _V++;
         _degrees.push_back(0);
         
         Dart bef_rev = Rev(bef);
         Dart bef_phi = Phi(bef);
         
-        pair<Dart,Dart> new_edge = _AddEdge(bef.to, V()-1);
-        _AssignNext(new_edge.second, new_edge.second);
-        _AssignNext(bef_rev, new_edge.first);
-        _AssignNext(new_edge.first, bef_phi);
+        pair<Dart,Dart> new_edge = CreateGraphEdge(bef.to, V()-1);
+        AssignNext(new_edge.second, new_edge.second);
+        AssignNext(bef_rev, new_edge.first);
+        AssignNext(new_edge.first, bef_phi);
         
         return new_edge;
     }
@@ -126,7 +135,12 @@ struct CombinatorialMap {
     // belong to the boundary of the same face.
     // It may be bef = aft.
     pair<Dart,Dart> AddEdge(Dart bef, Dart aft) {
-        // We check that aft = phi^k(bef) for some k >= 0.
+        CheckDart(bef);
+        CheckDart(aft);
+        
+        // We check that aft = phi^k(bef) for some k >= 0, which is
+        // equivalent to the fact that bef and aft belong to the
+        // boundary of the same face.
         auto it = bef;
         while (it != aft) {
             it = Phi(it);
@@ -134,20 +148,20 @@ struct CombinatorialMap {
         }
         
         // We Create the new edge
-        pair<Dart, Dart> new_edge = _AddEdge(bef.to, aft.from);
+        pair<Dart, Dart> new_edge = CreateGraphEdge(bef.to, aft.from);
         
         // We update the next function
         const Dart& bef_next = Next(Rev(bef));
         const Dart& aft_prev = Prev(aft);
         
-        _AssignNext(Rev(bef), new_edge.first);
+        AssignNext(Rev(bef), new_edge.first);
         if (bef.to != aft.from) {
-            _AssignNext(new_edge.first, bef_next);
-            _AssignNext(aft_prev, new_edge.second);
+            AssignNext(new_edge.first, bef_next);
+            AssignNext(aft_prev, new_edge.second);
         } else {
-            _AssignNext(new_edge.first, new_edge.second);
+            AssignNext(new_edge.first, new_edge.second);
         }
-        _AssignNext(new_edge.second, aft);
+        AssignNext(new_edge.second, aft);
         
         // We have added a new face in the process.
         _F++;
@@ -155,7 +169,50 @@ struct CombinatorialMap {
         return new_edge;
     }
     
+    // Replaces the edge associated to d with two edges linked by
+    // a vertex. It does not change the structure of the combinatorial
+    // map.
+    // It handles also the case of d being a loop.
+    pair<Dart, Dart> EdgeSubdivision(Dart _d) {
+        CheckDart(_d);
+        
+        Dart& d = _darts[_d.id];
+        Dart& e = _darts[_rev[d.id]];
+        Dart prev_e = Prev(e);
+        Dart next_e = Next(e);
+        
+        // Creating a new vertex.
+        _V++;
+        _degrees.push_back(0);
+        
+        // x is the central vertex
+        int x = _V-1;
+        int y = d.to;
+        
+        // We update e and d to be adjacent to x.
+        d.to = x;
+        e.from = x;
+        _degrees[x] = 1;
+        _degrees[y]--;
+        
+        // We create an edge from x to y.
+        pair<Dart, Dart> pp = CreateGraphEdge(x, y);
+        
+        exit(0);
+        
+        // We fix prev/next in x and y.
+        AssignNext(e, pp.first);
+        AssignNext(pp.first, e);
+        AssignNext(prev_e, pp.second);
+        AssignNext(pp.second, next_e);
+        
+        
+        return {d, pp.first};
+    }
+    
     vector<Dart> GetFace(Dart d) const {
+        CheckDart(d);
+        
         Dart curr = d;
         vector<Dart> face;
         do {
@@ -182,6 +239,89 @@ struct CombinatorialMap {
         return faces;
     }
     
+    // A function that asserts if the class does not satisfy one of
+    // the assumptions that should be satisfied by a well-structured
+    // combinatorial map.
+    // The functions available to the user to create and modify a
+    // combinatorial map (OneEdgeConstructor, OneLoopConstructor, 
+    // AddVertex, AddEdge, EdgeSubdivision) maintain the validity
+    // of all the assumptions.
+    void CheckConsistency() const {
+        // First, we check the consistency of the graph structure.
+        assert(_V > 0);
+        assert(_E > 0);
+        assert(ssize(_darts) == 2*_E);
+        assert(ssize(_degrees) == _V);
+        
+        // Checking that degrees are correct and edges are reasonable.
+        vector<int> new_degrees(_V, 0);
+        for (const Dart& d: _darts) {
+            assert(0 <= d.from and d.from < _V);
+            assert(0 <= d.to and d.to < _V);
+            new_degrees[d.from]++;
+        }
+        assert(_degrees == new_degrees);
+        
+        // Checking connectedness. (we use a DSU)
+        vector<int> father(_V);
+        for (int v = 0; v < _V; v++) father[v] = v;
+        function<int(int)> ancestor = [&](int v) {
+            if (v != father[v]) {
+                father[v] = ancestor(father[v]);
+            }
+            return father[v];
+        };
+        for (const Dart& d: _darts) {
+            int x = d.from, y = d.to;
+            x = ancestor(x), y = ancestor(y);
+            father[x] = y;
+        }
+        int root = ancestor(0);
+        for (int v = 0; v < _V; v++) 
+            assert(ancestor(v) == root);
+        
+        // We move to checking the consistency of the combinatorial
+        // map structure.
+        assert(ssize(_rev) == 2*_E);
+        assert(ssize(_next) == 2*_E);
+        assert(ssize(_prev) == 2*_E);
+        
+        // Checking that _rev, _next, _prev belong to [0, 2*_E).
+        for (int i = 0; i < 2*_E; i++) {
+            assert(0 <= _rev[i] and _rev[i] < 2*_E);
+            assert(0 <= _next[i] and _next[i] < 2*_E);
+            assert(0 <= _prev[i] and _prev[i] < 2*_E);
+        }
+        
+        // Checking that Rev is consistent.
+        for (const Dart& d: _darts) {
+            const Dart& e = Rev(d);
+            assert(d.from == e.to);
+            assert(d.to == e.from);
+            assert(Rev(e) == d);
+        }
+        
+        // Checking that prev(next) = id.
+        for (const Dart& d: _darts) {
+            assert(Prev(Next(d)) == d);
+        }
+        
+        // Checking that, for every vertex, Next is a cycle over
+        // all darts stemming from that vertex.
+        for (const Dart& d: _darts) {
+            int q = _degrees[d.from];
+            Dart curr = Next(d);
+            for (int i = 0; i < q-1; i++) {
+                assert(curr != d);
+                curr = Next(curr);
+            }
+            assert(curr == d);
+        }
+        
+        // Checking that the number of faces is correct.
+        assert(ssize(GetFaces()) == _F);
+    }
+    
   private:
     // Runs a dfs on the Darts Graph.
     void _dfs(int d, vector<bool>& visited, vector<int>& ord) const {
@@ -203,6 +343,8 @@ struct CombinatorialMap {
     //
     // The ids of the darts are used for a concise representation.
     vector<int> OrderedVisit(const Dart& d) const {
+        CheckDart(d);
+        
         vector<bool> visited(2*E(), false);
         vector<int> ord;
         _dfs(d.id, visited, ord);
@@ -220,9 +362,9 @@ CombinatorialMap OneEdgeConstructor() {
     A._degrees.resize(A.V(), 0);
     A._E = 0;
     A._F = 1;
-    auto edge = A._AddEdge(0, 1);
-    A._AssignNext(edge.first, edge.first);
-    A._AssignNext(edge.second, edge.second);
+    auto edge = A.CreateGraphEdge(0, 1);
+    A.AssignNext(edge.first, edge.first);
+    A.AssignNext(edge.second, edge.second);
     return A;
 }
 
@@ -233,9 +375,9 @@ CombinatorialMap OneLoopConstructor() {
     A._degrees.resize(A.V(), 0);
     A._E = 0;
     A._F = 2;
-    auto edge = A._AddEdge(0, 0);
-    A._AssignNext(edge.first, edge.second);
-    A._AssignNext(edge.second, edge.first);
+    auto edge = A.CreateGraphEdge(0, 0);
+    A.AssignNext(edge.first, edge.second);
+    A.AssignNext(edge.second, edge.first);
     return A;
 }
 
@@ -278,27 +420,53 @@ ostream& operator<<(ostream& out, const CombinatorialMap& A) {
     return out;
 }
 
-struct PlanarMap:CombinatorialMap {
+class PlanarMap: public CombinatorialMap {
+  private:
     // An arbitrary dart on the boundary of the unbounded face.
-    Dart boundary;
-    
+    Dart boundary_dart;
+  public:
     PlanarMap(const CombinatorialMap& A): CombinatorialMap(A) {
-        boundary = dart(0);
+        boundary_dart = dart(0);
     }
     
     // Returns a list of all darts on the boundary of the unbounded face.
-    vector<Dart> BoundaryEdges() const {
-        vector<Dart> vec = {boundary};
-        while (Phi(vec.back()) != boundary)
+    vector<Dart> BoundaryDarts() const {
+        vector<Dart> vec = {boundary_dart};
+        while (Phi(vec.back()) != boundary_dart)
             vec.push_back(Phi(vec.back()));
         
         return vec;
     }
+    
+    // We need to override the definition of EdgeSubdivision as it
+    // may invalidate boundary_dart.
+    pair<Dart, Dart> EdgeSubdivision(Dart d) {
+        vector<Dart> boundary_darts = BoundaryDarts();
+        bool on_boundary = false;
+        bool on_boundary_rev = false;
+        for (const Dart& e: boundary_darts) {
+            on_boundary |= d == e;
+            on_boundary_rev |= Rev(d) == e;
+        }
+        
+        pair<Dart,Dart> pp = CombinatorialMap::EdgeSubdivision(d);
+        if (on_boundary)
+            boundary_dart = pp.first;
+        if (on_boundary_rev)
+            boundary_dart = pp.second;
+        
+        return pp;
+    }
+    
+    void SetBoundaryDart(Dart d) {
+        boundary_dart = d;
+    }
+    const Dart& GetBoundaryDart() const { return boundary_dart; }
 };
 
 ostream& operator<<(ostream& out, const PlanarMap& A) {
     out << "(" << static_cast<const CombinatorialMap&>(A) << ", boundary = [";
-    for (Dart d: A.BoundaryEdges())
+    for (Dart d: A.BoundaryDarts())
         out << d << ", ";
     out << "])";
     return out;

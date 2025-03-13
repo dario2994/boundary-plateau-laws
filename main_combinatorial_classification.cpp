@@ -221,8 +221,8 @@ int main() {
     // One of the files is optimized for being read by a human, the
     // other one is optimized for being parsed by a computer.
     vector<CombinatorialMap> res = nets.GetList();
-    ofstream human("list_combinatorial_maps_human.txt");
-    ofstream computer("list_combinatorial_maps_computer.txt");
+    ofstream human("derived_twice_human.txt");
+    ofstream computer("derived_twice_computer.txt");
     
     computer << ssize(res) << endl;
     
@@ -231,22 +231,7 @@ int main() {
         human << "Candidate " << _+1 << endl;
         human << A << endl << endl;
         
-        computer << A.V() << " " << A.E() << " " << A.F() << endl;
-        for (int i = 0; i < 2*A.E(); i++) {
-            Dart d = A.dart(i);
-            computer << d.from << " " << d.to << endl;
-        }
-        for (int i = 0; i < 2*A.E(); i++) {
-            Dart d = A.dart(i);
-            computer << A.Rev(d).id << " ";
-        }
-        computer << endl;
-        
-        for (int i = 0; i < 2*A.E(); i++) {
-            Dart d = A.dart(i);
-            computer << A.Next(d).id << " ";
-        }
-        computer << endl;    
+        A.Serialize(computer);
     }
 }
 

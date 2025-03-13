@@ -6,14 +6,14 @@ typedef unsigned long long ULL;
 #include "combinatorial_maps.cpp"
 #include "isomorphisms.cpp"
 
-class DerivedOnceNets : public CombinatorialMap {
+class DerivedOnceNet : public CombinatorialMap {
   private:
     // If i belongs to _obtuse_angles, then the angle between
     // dart(i) and Phi(dart(i)) is 240 degrees.
     set<int> _obtuse_angles;
     
   public:
-    DerivedOnceNets(const CombinatorialMap& A): CombinatorialMap(A) {}
+    DerivedOnceNet(const CombinatorialMap& A): CombinatorialMap(A) {}
     
     pair<Dart, Dart> AddEdge(Dart bef, Dart aft) = delete;
     pair<Dart, Dart> AddVertex(Dart bef, Dart aft) = delete;
@@ -59,8 +59,8 @@ class DerivedOnceNets : public CombinatorialMap {
 // Returns, if it exists, a bijection between the darts that is an
 // isomorphism of the DerivedOnceNets.
 // The ids of the darts are used for a concise representation.
-vector<int> FindIsomorphism(const DerivedOnceNets& A,
-                            const DerivedOnceNets& B) {
+vector<int> FindIsomorphism(const DerivedOnceNet& A,
+                            const DerivedOnceNet& B) {
     if (A.V() != B.V() or A.E() != B.E() or A.F() != B.F())
         return {};
         
@@ -82,7 +82,7 @@ vector<int> FindIsomorphism(const DerivedOnceNets& A,
     return {};
 }
 
-ULL IsomorphismSignature(const DerivedOnceNets& A) {
+ULL IsomorphismSignature(const DerivedOnceNet& A) {
     const auto& mat = LargePower(MatrixSignature(A));
     
     ULL res = 0;
@@ -102,7 +102,7 @@ ULL IsomorphismSignature(const DerivedOnceNets& A) {
 
 
 vector<CombinatorialMap> ParseDerivedTwiceNetCandidates() {
-    ifstream in("list_combinatorial_maps_computer.txt");
+    ifstream in("data/derived_twice_computer.txt");
     int cnt;
     in >> cnt;
     vector<CombinatorialMap> res;
@@ -114,18 +114,18 @@ vector<CombinatorialMap> ParseDerivedTwiceNetCandidates() {
     return res;
 }
 
-vector<DerivedOnceNets> AddPin(const DerivedOnceNets& A) {
-    vector<DerivedOnceNets> res;
+vector<DerivedOnceNet> AddPin(const DerivedOnceNet& A) {
+    vector<DerivedOnceNet> res;
     
     for (const vector<Dart>& face: A.GetFaces()) {
         // We add a pin inside face.
         // A pin may generate one or two concave angles.
         for (const Dart& d: face) {
-            DerivedOnceNets A2 = A;
+            DerivedOnceNet A2 = A;
             pair<Dart, Dart> pp = A2.EdgeSubdivision(d);
             res.push_back(A2); // One edge coming out of the pin.
             for (const Dart& e: A2.GetFace(pp.first)) {
-                DerivedOnceNets A3 = A2;
+                DerivedOnceNet A3 = A2;
                 A3.EdgeSubdivision(e);
                 res.push_back(A3); // Two edges coming out of the pin.
             }
@@ -135,7 +135,7 @@ vector<DerivedOnceNets> AddPin(const DerivedOnceNets& A) {
     return res;
 }
 
-bool ValidateDerivedOnceNet(const DerivedOnceNets& A) {
+bool ValidateDerivedOnceNet(const DerivedOnceNet& A) {
     // Check that convex faces have distinct edges and the number
     // of sides belongs to [2, 5].
     for (const vector<Dart>& face: A.GetFaces()) {
@@ -197,26 +197,66 @@ bool ValidateDerivedOnceNet(const DerivedOnceNets& A) {
 }
 
 int main() {
-    //~ CombinatorialMap A = OneEdgeConstructor();
-    //~ A.AddEdge(A.dart(0), A.dart(1));
-    //~ A.AddVertex(A.dart(2));
-    //~ A.CheckConsistency();
-    //~ A.EdgeSubdivision(A.dart(0));
-    //~ A.EdgeSubdivision(A.dart(1));
-    //~ A.EdgeSubdivision(A.dart(2));
-    //~ A.EdgeSubdivision(A.dart(3));
-    //~ A.CheckConsistency();
+    vector<CombinatorialMap> derived_twice = 
+        ParseDerivedTwiceNetCandidates();
+    cout << "There are " << derived_twice.size()
+         << " derived-twice net candidates." << endl << endl;
     
-    vector<CombinatorialMap> vec = ParseDerivedTwiceNetCandidates();
+    MaintainUnique<DerivedOnceNet> derived_once;
     
-    MaintainUnique<DerivedOnceNets> nets;
+    auto validate_and_add = [&](const DerivedOnceNet& A) {
+        if (ValidateDerivedOnceNet(A))
+            derived_once.Add(A);
+    };
     
-    for (const CombinatorialMap& A: vec) {
-        vector<DerivedOnceNets> pin1 = AddPin(A);
-        for (const DerivedOnceNets& A2: pin1) {
-            vector<DerivedOnceNets> pin2 = AddPin(A2);
-            for (const DerivedOnceNets& A3: pin2)
-                nets.Add(A3);
+    int it = 1;
+    for (const CombinatorialMap& A: derived_twice) {
+        vector<DerivedOnceNet> pin1 = AddPin(A);
+        for (const DerivedOnceNet& A2: pin1) {
+            vector<DerivedOnceNet> pin2 = AddPin(A2);
+            for (const DerivedOnceNet& A3: pin2)
+                validate_and_add(A3);
         }
+        if (it % 10 == 0) {
+            cout << "Processed successfully " << it 
+                 << " derived-twice net candidates, which generated "
+                 << derived_once.GetList().size() 
+                 << " derived-once net candidates." << endl;
+        }
+        it++;
+    }
+    cout << endl;
+    
+    const vector<DerivedOnceNet> derived_once_vec = derived_once.GetList();
+    cout << "We found " << derived_once_vec.size() 
+         << " derived-once nets candidates." << endl;
+         
+    ofstream computer("derived_once_computer.txt");
+    ofstream human("derived_once_human.txt");
+    computer << derived_once_vec.size() << endl;
+    for (int _ = 0; _ < ssize(derived_once_vec); _++) {
+        const DerivedOnceNet& A = derived_once_vec[_];
+        
+        human << "Candidate " << _+1 << endl;
+        human << A << endl;
+        
+        A.Serialize(computer);
+        
+        vector<Dart> obtuse_angles;
+        for (const Dart& d: A.darts()) {
+            if (A.is_obtuse(d))
+                obtuse_angles.push_back(d);
+        }
+        
+        human << "Obtuse angles: " << endl;
+        for (const Dart& d: obtuse_angles) {
+            human << d << " " << A.Phi(d) << endl;
+        }
+        human << endl;
+        
+        computer << obtuse_angles.size() << endl;
+        for (const Dart& d: obtuse_angles)
+            computer << d.id << " ";
+        computer << endl;
     }
 }

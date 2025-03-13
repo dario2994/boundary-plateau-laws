@@ -172,14 +172,19 @@ struct CombinatorialMap {
     // Replaces the edge associated to d with two edges linked by
     // a vertex. It does not change the structure of the combinatorial
     // map.
-    // It handles also the case of d being a loop.
-    pair<Dart, Dart> EdgeSubdivision(Dart _d) {
-        CheckDart(_d);
+    // This function is very involved for two reasons:
+    // 1. There are a few pesky cases (for example when one of the two
+    //    endpoints of d is a leaf, or if d is a loop).
+    // 2. The required operation invalidates references to darts.
+    pair<Dart, Dart> EdgeSubdivision(Dart d) {
+        CheckDart(d);
+        // We use id to refer to darts as references are going to be 
+        // invalidated once we call CreateGraphEdge
+        int d_id = d.id;
+        int e_id = Rev(d).id;
         
-        Dart& d = _darts[_d.id];
-        Dart& e = _darts[_rev[d.id]];
-        Dart prev_e = Prev(e);
-        Dart next_e = Next(e);
+        Dart prev_e = Prev(dart(e_id));
+        Dart next_e = Next(dart(e_id));
         
         // Creating a new vertex.
         _V++;
@@ -187,27 +192,30 @@ struct CombinatorialMap {
         
         // x is the central vertex
         int x = _V-1;
-        int y = d.to;
+        int y = dart(d_id).to;
         
         // We update e and d to be adjacent to x.
-        d.to = x;
-        e.from = x;
+        _darts[d_id].to = x;
+        _darts[e_id].from = x;
         _degrees[x] = 1;
         _degrees[y]--;
         
         // We create an edge from x to y.
         pair<Dart, Dart> pp = CreateGraphEdge(x, y);
         
-        exit(0);
-        
         // We fix prev/next in x and y.
-        AssignNext(e, pp.first);
-        AssignNext(pp.first, e);
-        AssignNext(prev_e, pp.second);
-        AssignNext(pp.second, next_e);
+        AssignNext(dart(e_id), pp.first);
+        AssignNext(pp.first, dart(e_id));
+        
+        if (_degrees[y] > 1) {
+            AssignNext(prev_e, pp.second);
+            AssignNext(pp.second, next_e);
+        } else {
+            AssignNext(pp.second, pp.second);
+        }
         
         
-        return {d, pp.first};
+        return {dart(d_id), pp.first};
     }
     
     vector<Dart> GetFace(Dart d) const {
@@ -350,6 +358,25 @@ struct CombinatorialMap {
         _dfs(d.id, visited, ord);
         return ord;
     }
+    
+    void Serialize(ostream& out) const {
+        out << V() << " " << E() << " " << F() << endl;
+        for (int i = 0; i < 2*E(); i++) {
+            Dart d = dart(i);
+            out << d.from << " " << d.to << endl;
+        }
+        for (int i = 0; i < 2*E(); i++) {
+            Dart d = dart(i);
+            out << Rev(d).id << " ";
+        }
+        out << endl;
+        
+        for (int i = 0; i < 2*E(); i++) {
+            Dart d = dart(i);
+            out << Next(d).id << " ";
+        }
+        out << endl; 
+    }
 };
 
 // Starting from either an edge or a loop, one can generate any
@@ -386,12 +413,15 @@ CombinatorialMap ParserConstructor(istream& in) {
     in >> A._V >> A._E >> A._F;
     int n = 2*A._E;
     
+    A._degrees.resize(A._V, 0);
+    
     A._darts.resize(n);
     for (int i = 0; i < n; i++) {
         Dart d;
         d.id = i;
         in >> d.from >> d.to;
-        A._darts.push_back(d);
+        A._darts[i] = d;
+        A._degrees[d.from]++;
     }
     A._rev.resize(n);
     A._next.resize(n);
@@ -403,7 +433,6 @@ CombinatorialMap ParserConstructor(istream& in) {
         A._prev[A._next[i]] = i;
     }
     return A;
-    
 }
 
 

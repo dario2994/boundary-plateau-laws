@@ -5,6 +5,8 @@
 #include <bits/stdc++.h>
 using namespace std;
 
+#include "utils.cpp"
+
 struct Dart {
     int from, to;
     int id;
@@ -359,6 +361,51 @@ struct CombinatorialMap {
         return ord;
     }
     
+  protected:
+    
+    // Returns the adjacency matrix of the darts graph, giving different
+    // weights to rev and next edges.
+    // It is a 2E x 2E square matrix. 
+    // Let M_A be the matrix associated to the combinatorial map A.
+    // If f is a bijection from the darts of A to the darts of B that
+    // is a isomorphism of combinatorial maps, then M_B is obtained
+    // permuting the rows/columns of M_A according to f.
+    vector<vector<ULL>> MatrixSignature() const {
+        static const ULL p_rev = 984'689'395;
+        static const ULL p_next = 123'456'789;
+        
+        vector<vector<ULL>> mat(2*E(), vector<ULL>(2*E(), 0));
+        for (Dart d: darts()) {
+            int i = d.id;
+            mat[i][Rev(d).id] += p_rev;
+            mat[i][Next(d).id] += p_next;
+        }
+        return mat;
+    }
+    
+  public:
+
+    // IsomorphismsSignature computes a large power of MatrixSignature, 
+    // and then applies a nonlinear hash function.
+    //
+    // One may think that even much simpler implementations of 
+    // IsomorphismSignature could have a similar ability to tell 
+    // whether two combinatorial maps are isomorphic. 
+    // For example, why not simply returning the trace?
+    // Well, because it does not work.
+    // The current implementations are the simplest we could find that
+    // don't have any collisions during the execution of the algorithm.
+    ULL IsomorphismSignature() const {
+        const auto& mat = FastLargeMatrixPower(MatrixSignature());
+        
+        ULL res = 0;
+        for (const Dart& d: darts()) {
+            res += mat[d.id][Rev(d).id] ^ mat[d.id][Next(d).id];
+        }
+        
+        return res;
+    }
+    
     void Serialize(ostream& out) const {
         out << V() << " " << E() << " " << F() << endl;
         for (int i = 0; i < 2*E(); i++) {
@@ -449,58 +496,62 @@ ostream& operator<<(ostream& out, const CombinatorialMap& A) {
     return out;
 }
 
-class PlanarMap: public CombinatorialMap {
-  private:
-    // An arbitrary dart on the boundary of the unbounded face.
-    Dart boundary_dart;
-  public:
-    PlanarMap(const CombinatorialMap& A): CombinatorialMap(A) {
-        boundary_dart = dart(0);
-    }
-    
-    // Returns a list of all darts on the boundary of the unbounded face.
-    vector<Dart> BoundaryDarts() const {
-        vector<Dart> vec = {boundary_dart};
-        while (Phi(vec.back()) != boundary_dart)
-            vec.push_back(Phi(vec.back()));
-        
-        return vec;
-    }
-    
-    // We need to override the definition of EdgeSubdivision as it
-    // may invalidate boundary_dart.
-    // TODO: Consider erasing it, as we don't use it.
-    //       Though, in principle, this is a function that may be useful.
-    pair<Dart, Dart> EdgeSubdivision(Dart d) {
-        vector<Dart> boundary_darts = BoundaryDarts();
-        bool on_boundary = false;
-        bool on_boundary_rev = false;
-        for (const Dart& e: boundary_darts) {
-            on_boundary |= d == e;
-            on_boundary_rev |= Rev(d) == e;
-        }
-        
-        pair<Dart,Dart> pp = CombinatorialMap::EdgeSubdivision(d);
-        if (on_boundary)
-            boundary_dart = pp.first;
-        if (on_boundary_rev)
-            boundary_dart = Rev(pp.first);
-        
-        return pp;
-    }
-    
-    void SetBoundaryDart(Dart d) {
-        boundary_dart = d;
-    }
-    const Dart& GetBoundaryDart() const { return boundary_dart; }
-};
 
-ostream& operator<<(ostream& out, const PlanarMap& A) {
-    out << "(" << static_cast<const CombinatorialMap&>(A) << ", boundary = [";
-    for (Dart d: A.BoundaryDarts())
-        out << d << ", ";
-    out << "])";
-    return out;
+
+// Functions to determine whether two combinatorial maps are isomorphic.
+
+
+// Check whether the map iso between the darts of A and B induces
+// an isomorphism of the combinatorial map.
+// It is sufficient to check that it commutes with Rev and Next.
+bool CheckIsomorphism(const CombinatorialMap& A,
+                      const CombinatorialMap& B,
+                      const vector<int>& iso) {
+    int E = A.E();
+    assert(A.E() == E and B.E() == E and ssize(iso) == 2*E);
+    for (int i = 0; i < 2*E; i++) {
+        const Dart& a = A.dart(i);
+        const Dart& b = B.dart(iso[i]);
+        if (B.Rev(b).id != iso[A.Rev(a).id]) return false;
+        if (B.Next(b).id != iso[A.Next(a).id]) return false;
+    }
+    return true;
+}
+
+// Returns, if it exists, an isomorphism between A and B that maps dart_A
+// into dart_B.
+// The ids of the darts are used for a concise representation.
+vector<int> FindIsomorphism(const CombinatorialMap& A,
+                            const CombinatorialMap& B,
+                            Dart dart_A,
+                            Dart dart_B) {
+    int E = A.E();
+    
+    vector<int> ordA = A.OrderedVisit(dart_A);
+    vector<int> ordB = B.OrderedVisit(dart_B);
+    vector<int> iso(2*E);
+    for (int i = 0; i < 2*E; i++) iso[ordA[i]] = ordB[i];
+    
+    if (CheckIsomorphism(A, B, iso))
+        return iso;
+    return {};
+}
+
+
+// Returns, if it exists, a bijection between the darts that is an
+// isomorphism of the combinatorial maps.
+// The ids of the darts are used for a concise representation.
+vector<int> FindIsomorphism(const CombinatorialMap& A,
+                            const CombinatorialMap& B) {
+    if (A.V() != B.V() or A.E() != B.E() or A.F() != B.F())
+        return {};
+
+    for (Dart d: B.darts()) {
+        const vector<int>& iso = FindIsomorphism(A, B, A.dart(0), d);
+        if (!iso.empty())
+            return iso;
+    }
+    return {};
 }
 
 

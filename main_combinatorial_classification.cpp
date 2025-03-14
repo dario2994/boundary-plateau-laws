@@ -3,8 +3,9 @@
 using namespace std;
 typedef unsigned long long ULL;
 
+#include "utils.cpp"
 #include "combinatorial_maps.cpp"
-#include "isomorphisms.cpp"
+#include "planar_maps.cpp"
 
 
 // Checks whether A is a valid geodesic net.
@@ -174,7 +175,7 @@ vector<PlanarMap> Evolve(const PlanarMap& A) {
 }
 
 vector<PlanarMap> Evolve(const vector<PlanarMap>& V) {
-    MaintainUnique<PlanarMap> mu;
+    CollectionUpToIsomorphism<PlanarMap> mu;
     for (const PlanarMap& A: V) {
         const vector<PlanarMap>& vec = Evolve(A);
         for (const PlanarMap& B: vec) {
@@ -191,7 +192,7 @@ int main() {
     
     vector<PlanarMap> vec = {OneLoopConstructor()};
     
-    MaintainUnique<CombinatorialMap> nets;
+    CollectionUpToIsomorphism<CombinatorialMap> nets;
     
     cout << "Edges = k\tPlanar maps with k edges\tTwice-derived nets with <= k edges" << endl;
     

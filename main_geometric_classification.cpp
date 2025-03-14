@@ -4,101 +4,7 @@ using namespace std;
 typedef unsigned long long ULL;
 
 #include "combinatorial_maps.cpp"
-#include "isomorphisms.cpp"
-
-class DerivedOnceNet : public CombinatorialMap {
-  private:
-    // If i belongs to _obtuse_angles, then the angle between
-    // dart(i) and Phi(dart(i)) is 240 degrees.
-    set<int> _obtuse_angles;
-    
-  public:
-    DerivedOnceNet(const CombinatorialMap& A): CombinatorialMap(A) {}
-    
-    pair<Dart, Dart> AddEdge(Dart bef, Dart aft) = delete;
-    pair<Dart, Dart> AddVertex(Dart bef, Dart aft) = delete;
-    
-    pair<Dart, Dart> EdgeSubdivision(Dart d) {
-        bool d_obtuse = _obtuse_angles.count(d.id);
-        bool d_rev_obtuse = _obtuse_angles.count(Rev(d).id);
-        
-        _obtuse_angles.erase(d.id);
-        _obtuse_angles.erase(Rev(d).id);
-        
-        pair<Dart,Dart> pp = CombinatorialMap::EdgeSubdivision(d);
-        
-        // The newly created angle is obtuse.
-        _obtuse_angles.insert(pp.first.id);
-        
-        if (d_obtuse)
-            _obtuse_angles.insert(pp.second.id);
-        if (d_rev_obtuse)
-            _obtuse_angles.insert(Rev(pp.first).id);
-        
-        return pp;
-    }
-    
-    bool is_obtuse(const Dart& d) const { return _obtuse_angles.count(d.id); }
-    vector<Dart> obtuse_angles() const {
-        vector<Dart> res;
-        for (int i: _obtuse_angles)
-            res.push_back(dart(i));
-        return res;
-    }
-    
-    bool is_convex_face(const Dart& d) const {
-        vector<Dart> face = GetFace(d);
-        for (const Dart& e: face) {
-            if (is_obtuse(e))
-                return false;
-        }
-        return true;
-    }
-};
-
-// Returns, if it exists, a bijection between the darts that is an
-// isomorphism of the DerivedOnceNets.
-// The ids of the darts are used for a concise representation.
-vector<int> FindIsomorphism(const DerivedOnceNet& A,
-                            const DerivedOnceNet& B) {
-    if (A.V() != B.V() or A.E() != B.E() or A.F() != B.F())
-        return {};
-        
-    if (A.obtuse_angles().size() != B.obtuse_angles().size())
-        return {};
-
-    for (Dart d: B.darts()) {
-        const vector<int>& iso = FindIsomorphism(A, B, A.dart(0), d);
-        if (iso.empty())
-            continue;
-        
-        bool works = true;
-        for (Dart e: A.obtuse_angles())
-            works &= B.is_obtuse(B.dart(iso[e.id]));
-        
-        if (works) 
-            return iso;
-    }
-    return {};
-}
-
-ULL IsomorphismSignature(const DerivedOnceNet& A) {
-    const auto& mat = LargePower(MatrixSignature(A));
-    
-    ULL res = 0;
-    for (const Dart& d: A.darts()) {
-        res += mat[d.id][A.Next(d).id]^mat[d.id][A.Rev(d).id];
-    }
-    
-    vector<Dart> obtuse_angles = A.obtuse_angles();
-    for (Dart d: obtuse_angles) {
-        ULL tmp = 0;
-        for (Dart e: A.darts())
-            tmp ^= mat[d.id][e.id];
-        res += tmp;
-    }
-    return res;
-}
+#include "derived_once_nets.cpp"
 
 
 vector<CombinatorialMap> ParseDerivedTwiceNetCandidates() {
@@ -196,13 +102,33 @@ bool ValidateDerivedOnceNet(const DerivedOnceNet& A) {
     return true;
 }
 
+bool ContainsBiangle(const DerivedOnceNet& A) {
+    int cnt = 0;
+    for (const vector<Dart>& face: A.GetFaces()) {
+        if (!A.is_convex_face(face[0]))
+            continue;
+        cnt += ssize(face) == 2;
+    }
+    return cnt > 0;
+}
+
+bool ContainsTriangle(const DerivedOnceNet& A) {
+    int cnt = 0;
+    for (const vector<Dart>& face: A.GetFaces()) {
+        if (!A.is_convex_face(face[0]))
+            continue;
+        cnt += ssize(face) == 3;
+    }
+    return cnt > 0;
+}
+
 int main() {
     vector<CombinatorialMap> derived_twice = 
         ParseDerivedTwiceNetCandidates();
     cout << "There are " << derived_twice.size()
          << " derived-twice net candidates." << endl << endl;
     
-    MaintainUnique<DerivedOnceNet> derived_once;
+    CollectionUpToIsomorphism<DerivedOnceNet> derived_once;
     
     auto validate_and_add = [&](const DerivedOnceNet& A) {
         if (ValidateDerivedOnceNet(A))
@@ -211,6 +137,7 @@ int main() {
     
     int it = 1;
     for (const CombinatorialMap& A: derived_twice) {
+        //~ validate_and_add(A);
         vector<DerivedOnceNet> pin1 = AddPin(A);
         for (const DerivedOnceNet& A2: pin1) {
             vector<DerivedOnceNet> pin2 = AddPin(A2);
@@ -228,6 +155,15 @@ int main() {
     cout << endl;
     
     const vector<DerivedOnceNet> derived_once_vec = derived_once.GetList();
+    
+    int biangle = 0, triangle = 0;
+    for (const DerivedOnceNet& A: derived_once_vec) {
+        biangle += ContainsBiangle(A);
+        triangle += ContainsTriangle(A);
+    }
+    cout << biangle << " " << triangle << endl;
+    //~ return 0;
+    
     cout << "We found " << derived_once_vec.size() 
          << " derived-once nets candidates." << endl;
          
@@ -236,27 +172,13 @@ int main() {
     computer << derived_once_vec.size() << endl;
     for (int _ = 0; _ < ssize(derived_once_vec); _++) {
         const DerivedOnceNet& A = derived_once_vec[_];
+        A.Serialize(computer);
         
         human << "Candidate " << _+1 << endl;
         human << A << endl;
         
-        A.Serialize(computer);
-        
-        vector<Dart> obtuse_angles;
-        for (const Dart& d: A.darts()) {
-            if (A.is_obtuse(d))
-                obtuse_angles.push_back(d);
+        if (ContainsBiangle(A)) {
+            cout << _+1 << " ";
         }
-        
-        human << "Obtuse angles: " << endl;
-        for (const Dart& d: obtuse_angles) {
-            human << d << " " << A.Phi(d) << endl;
-        }
-        human << endl;
-        
-        computer << obtuse_angles.size() << endl;
-        for (const Dart& d: obtuse_angles)
-            computer << d.id << " ";
-        computer << endl;
     }
 }

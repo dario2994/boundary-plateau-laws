@@ -7,33 +7,33 @@ typedef unsigned long long ULL;
 #include "derived_once_nets.cpp"
 
 
-vector<DerivedOnceNet> ParseDerivedOnceNets() {
+vector<DerivedOnceNet> parseDerivedOnceNets() {
     ifstream in("data/derived_once_computer.txt");
     int cnt;
     in >> cnt;
     vector<DerivedOnceNet> res;
     for (int i = 0; i < cnt; i++) {
-        DerivedOnceNet A = ParseDerivedOnceNet(in);
-        A.CheckConsistency();
+        DerivedOnceNet A = parseDerivedOnceNet(in);
+        A.checkConsistency();
         res.push_back(A);
     }
     return res;
 }
 
-bool ContainsBiangle(const DerivedOnceNet& A) {
+bool containsBiangle(const DerivedOnceNet& A) {
     int cnt = 0;
-    for (const vector<Dart>& face: A.GetFaces()) {
-        if (!A.is_convex_face(face[0]))
+    for (const vector<Dart>& face: A.getFaces()) {
+        if (!A.isConvexFace(face[0]))
             continue;
         cnt += ssize(face) == 2;
     }
     return cnt > 0;
 }
 
-bool ContainsTriangle(const DerivedOnceNet& A) {
+bool containsTriangle(const DerivedOnceNet& A) {
     int cnt = 0;
-    for (const vector<Dart>& face: A.GetFaces()) {
-        if (!A.is_convex_face(face[0]))
+    for (const vector<Dart>& face: A.getFaces()) {
+        if (!A.isConvexFace(face[0]))
             continue;
         cnt += ssize(face) == 3;
     }
@@ -42,14 +42,14 @@ bool ContainsTriangle(const DerivedOnceNet& A) {
 
 int main() {
     vector<DerivedOnceNet> derived_once = 
-        ParseDerivedOnceNets();
+        parseDerivedOnceNets();
     cout << "There are " << derived_once.size()
          << " derived-once net candidates." << endl << endl;
         
     int biangle = 0, triangle = 0;
     for (const DerivedOnceNet& A: derived_once) {
-        biangle += ContainsBiangle(A);
-        triangle += ContainsTriangle(A);
+        biangle += containsBiangle(A);
+        triangle += containsTriangle(A);
     }
     cout << biangle << " " << triangle << endl;
 }

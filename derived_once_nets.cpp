@@ -16,19 +16,19 @@ class DerivedOnceNet : public CombinatorialMap {
     
   public:
     DerivedOnceNet(const CombinatorialMap& A): CombinatorialMap(A) {}
-    friend DerivedOnceNet ParseDerivedOnceNet(istream& in);
+    friend DerivedOnceNet parseDerivedOnceNet(istream& in);
     
-    pair<Dart, Dart> AddEdge(Dart bef, Dart aft) = delete;
-    pair<Dart, Dart> AddVertex(Dart bef, Dart aft) = delete;
+    pair<Dart, Dart> addEdge(Dart bef, Dart aft) = delete;
+    pair<Dart, Dart> addVertex(Dart bef, Dart aft) = delete;
     
-    pair<Dart, Dart> EdgeSubdivision(Dart d) {
+    pair<Dart, Dart> edgeSubdivision(Dart d) {
         bool d_obtuse = _obtuse_angles.count(d.id);
-        bool d_rev_obtuse = _obtuse_angles.count(Rev(d).id);
+        bool d_rev_obtuse = _obtuse_angles.count(rev(d).id);
         
         _obtuse_angles.erase(d.id);
-        _obtuse_angles.erase(Rev(d).id);
+        _obtuse_angles.erase(rev(d).id);
         
-        pair<Dart,Dart> pp = CombinatorialMap::EdgeSubdivision(d);
+        pair<Dart,Dart> pp = CombinatorialMap::edgeSubdivision(d);
         
         // The newly created angle is obtuse.
         _obtuse_angles.insert(pp.first.id);
@@ -36,38 +36,38 @@ class DerivedOnceNet : public CombinatorialMap {
         if (d_obtuse)
             _obtuse_angles.insert(pp.second.id);
         if (d_rev_obtuse)
-            _obtuse_angles.insert(Rev(pp.first).id);
+            _obtuse_angles.insert(rev(pp.first).id);
         
         return pp;
     }
     
-    bool is_obtuse(const Dart& d) const { return _obtuse_angles.count(d.id); }
+    bool isObtuse(const Dart& d) const { return _obtuse_angles.count(d.id); }
     
-    vector<Dart> obtuse_angles() const {
+    vector<Dart> obtuseAngles() const {
         vector<Dart> res;
         for (int i: _obtuse_angles)
             res.push_back(dart(i));
         return res;
     }
     
-    bool is_convex_face(const Dart& d) const {
-        vector<Dart> face = GetFace(d);
+    bool isConvexFace(const Dart& d) const {
+        vector<Dart> face = getFace(d);
         for (const Dart& e: face) {
-            if (is_obtuse(e))
+            if (isObtuse(e))
                 return false;
         }
         return true;
     }
         
-    ULL IsomorphismSignature() const {
-        const auto& mat = FastLargeMatrixPower(MatrixSignature());
+    ULL isomorphismSignature() const {
+        const auto& mat = FastLargeMatrixPower(matrixSignature());
         
         ULL res = 0;
         for (const Dart& d: darts()) {
-            res += mat[d.id][Next(d).id]^mat[d.id][Rev(d).id];
+            res += mat[d.id][next(d).id]^mat[d.id][rev(d).id];
         }
         
-        for (const Dart& d: obtuse_angles()) {
+        for (const Dart& d: obtuseAngles()) {
             ULL tmp = 0;
             for (Dart e: darts())
                 tmp ^= mat[d.id][e.id];
@@ -76,8 +76,8 @@ class DerivedOnceNet : public CombinatorialMap {
         return res;
     }
     
-    void Serialize(ostream& out) const {
-        CombinatorialMap::Serialize(out);
+    void serialize(ostream& out) const {
+        CombinatorialMap::serialize(out);
         
         out << _obtuse_angles.size() << "\n";
         for (int id: _obtuse_angles)
@@ -90,14 +90,8 @@ ostream& operator<<(ostream& out, const DerivedOnceNet& A) {
     out << static_cast<const CombinatorialMap&>(A) << "\n";
     out << "Obtuse angles: " << "\n";
     
-    vector<Dart> obtuse_angles;
-    for (const Dart& d: A.darts()) {
-        if (A.is_obtuse(d))
-            obtuse_angles.push_back(d);
-    }
-    
-    for (const Dart& d: obtuse_angles) {
-        out << d << " " << A.Phi(d) << "\n";
+    for (const Dart& d: A.obtuseAngles()) {
+        out << d << " " << A.phi(d) << "\n";
     }
     
     return out;
@@ -106,22 +100,22 @@ ostream& operator<<(ostream& out, const DerivedOnceNet& A) {
 // Returns, if it exists, a bijection between the darts that is an
 // isomorphism of the DerivedOnceNets.
 // The ids of the darts are used for a concise representation.
-vector<int> FindIsomorphism(const DerivedOnceNet& A,
+vector<int> findIsomorphism(const DerivedOnceNet& A,
                             const DerivedOnceNet& B) {
     if (A.V() != B.V() or A.E() != B.E() or A.F() != B.F())
         return {};
         
-    if (A.obtuse_angles().size() != B.obtuse_angles().size())
+    if (A.obtuseAngles().size() != B.obtuseAngles().size())
         return {};
 
     for (Dart d: B.darts()) {
-        const vector<int>& iso = FindIsomorphism(A, B, A.dart(0), d);
+        const vector<int>& iso = findIsomorphism(A, B, A.dart(0), d);
         if (iso.empty())
             continue;
         
         bool works = true;
-        for (Dart e: A.obtuse_angles())
-            works &= B.is_obtuse(B.dart(iso[e.id]));
+        for (Dart e: A.obtuseAngles())
+            works &= B.isObtuse(B.dart(iso[e.id]));
         
         if (works) 
             return iso;
@@ -129,8 +123,8 @@ vector<int> FindIsomorphism(const DerivedOnceNet& A,
     return {};
 }
 
-DerivedOnceNet ParseDerivedOnceNet(istream& in) {
-    DerivedOnceNet A(ParseCombinatorialMap(in));
+DerivedOnceNet parseDerivedOnceNet(istream& in) {
+    DerivedOnceNet A(parseCombinatorialMap(in));
     int obtuse_angles_num;
     in >> obtuse_angles_num;
     

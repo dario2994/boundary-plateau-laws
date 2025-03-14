@@ -9,7 +9,7 @@ typedef unsigned long long ULL;
 
 
 // Checks whether A is a valid geodesic net.
-bool ValidateNet(const CombinatorialMap& A) {    
+bool validateNet(const CombinatorialMap& A) {    
     // A must be embeddable on the sphere.
     if (A.V() - A.E() + A.F() != 2) return false;
 
@@ -19,7 +19,7 @@ bool ValidateNet(const CombinatorialMap& A) {
             return false;
     }
     
-    const auto& faces = A.GetFaces();
+    const auto& faces = A.getFaces();
     multiset<int> faces_sides;
     for (const auto& face: faces) faces_sides.insert(face.size());
         
@@ -35,7 +35,7 @@ bool ValidateNet(const CombinatorialMap& A) {
 }
 
 
-int ComputeExternalContribution(int big_faces, int darts) {
+int computeExternalContribution(int big_faces, int darts) {
     int res = -darts;
     while (darts > 0) {
         res += 6;
@@ -46,14 +46,14 @@ int ComputeExternalContribution(int big_faces, int darts) {
 }
 
 int memo_external_contribution[3][80];
-void PrecomputeExternalContribution() {
+void precomputeExternalContribution() {
     for (int big_faces = 0; big_faces <= 2; big_faces++) {
         for (int darts = 70; darts >= 0; darts--) {
             int& z = memo_external_contribution[big_faces][darts];
             z = 1000;
             if (darts <= 62)
                 z = memo_external_contribution[big_faces][darts+6];
-            z = min(z, ComputeExternalContribution(big_faces, darts));
+            z = min(z, computeExternalContribution(big_faces, darts));
         }
     }
 }
@@ -61,7 +61,7 @@ void PrecomputeExternalContribution() {
 // Checks whether A can eventually be transformed (by attaching edges
 // on the "outside") into a valid geodesic net.
 // It (often) gives false positives.
-bool ValidateSubgraph(const PlanarMap& A) {
+bool validateSubgraph(const PlanarMap& A) {
     if (A.E() > 30 or A.F() > 12)
         return false;
     
@@ -70,7 +70,7 @@ bool ValidateSubgraph(const PlanarMap& A) {
     assert(leaves_num <= 1);
     
     set<int> boundary_vertices;
-    const vector<Dart>& boundary = A.BoundaryDarts();
+    const vector<Dart>& boundary = A.boundaryDarts();
     for (const Dart& d: boundary)
         boundary_vertices.insert(d.from);
     
@@ -83,7 +83,7 @@ bool ValidateSubgraph(const PlanarMap& A) {
     }
     
     // Computing the number of sides of all internal faces.
-    const auto& faces = A.GetFaces();
+    const auto& faces = A.getFaces();
     multiset<int> faces_sides;
     for (const auto& face: faces) faces_sides.insert(face.size());
 
@@ -136,8 +136,8 @@ bool ValidateSubgraph(const PlanarMap& A) {
 }
 
 
-vector<PlanarMap> Evolve(const PlanarMap& A) {
-    const vector<Dart>& boundary = A.BoundaryDarts();
+vector<PlanarMap> evolve(const PlanarMap& A) {
+    const vector<Dart>& boundary = A.boundaryDarts();
     vector<PlanarMap> res;
     
     int leaf = -1;
@@ -156,17 +156,17 @@ vector<PlanarMap> Evolve(const PlanarMap& A) {
     
     for (Dart bef: boundary) {
         PlanarMap A2 = A;
-        const auto& new_edge = A2.AddVertex(bef);
+        const auto& new_edge = A2.addVertex(bef);
         add_to_res(A2, new_edge.first);
     }
         
     for (Dart bef: boundary) for (Dart aft: boundary) {
         PlanarMap A2 = A;
-        pair<Dart, Dart> new_edge = A2.AddEdge(bef, aft);
-        A2.SetBoundaryDart(new_edge.first);
+        pair<Dart, Dart> new_edge = A2.addEdge(bef, aft);
+        A2.setBoundaryDart(new_edge.first);
         add_to_res(A2, new_edge.first);
         if (bef.to == aft.from) {
-            A2.SetBoundaryDart(new_edge.second);
+            A2.setBoundaryDart(new_edge.second);
             add_to_res(A2, new_edge.second);
         }
     }
@@ -174,54 +174,54 @@ vector<PlanarMap> Evolve(const PlanarMap& A) {
     return res;
 }
 
-vector<PlanarMap> Evolve(const vector<PlanarMap>& V) {
+vector<PlanarMap> evolve(const vector<PlanarMap>& V) {
     CollectionUpToIsomorphism<PlanarMap> mu;
     for (const PlanarMap& A: V) {
-        const vector<PlanarMap>& vec = Evolve(A);
+        const vector<PlanarMap>& vec = evolve(A);
         for (const PlanarMap& B: vec) {
-            if (ValidateSubgraph(B))
-                mu.Add(B);
+            if (validateSubgraph(B))
+                mu.add(B);
         }
     }
-    return mu.GetList();
+    return mu.getList();
 }
 
 
 int main() {
-    PrecomputeExternalContribution();
+    precomputeExternalContribution();
     
-    vector<PlanarMap> vec = {OneLoopConstructor()};
+    vector<PlanarMap> vec = {constructOneLoop()};
     
     CollectionUpToIsomorphism<CombinatorialMap> nets;
     
     cout << "Edges = k\tPlanar maps with k edges\tTwice-derived nets with <= k edges" << endl;
     
     for (int E = 2; E <= 30; E++) {
-        vec = Evolve(vec);
+        vec = evolve(vec);
         
         // Adding a cycle of length E.
-        PlanarMap cycle = OneEdgeConstructor();
+        PlanarMap cycle = constructOneEdge();
         for (int k = 2; k < E; k++) {
-            cycle.AddVertex(cycle.dart(2*(k-2)));
+            cycle.addVertex(cycle.dart(2*(k-2)));
         }
-        cycle.AddEdge(cycle.dart(2*(E-2)), cycle.dart(0));
-        if (ValidateSubgraph(cycle)) 
+        cycle.addEdge(cycle.dart(2*(E-2)), cycle.dart(0));
+        if (validateSubgraph(cycle)) 
             vec.push_back(cycle);
         
         for (const auto& A: vec) {
-            if (ValidateNet(A)) {
-                A.CheckConsistency();
-                nets.Add(A);
+            if (validateNet(A)) {
+                A.checkConsistency();
+                nets.add(A);
             }
         }
         
-        cout << E << "\t\t" << vec.size() << "\t\t\t\t" << nets.GetList().size() << endl;
+        cout << E << "\t\t" << vec.size() << "\t\t\t\t" << nets.getList().size() << endl;
     }
     
     // We save the twice-derived nets into two files.
     // One of the files is optimized for being read by a human, the
     // other one is optimized for being parsed by a computer.
-    vector<CombinatorialMap> res = nets.GetList();
+    vector<CombinatorialMap> res = nets.getList();
     ofstream human("derived_twice_human.txt");
     ofstream computer("derived_twice_computer.txt");
     
@@ -232,7 +232,7 @@ int main() {
         human << "Candidate " << _+1 << endl;
         human << A << endl << endl;
         
-        A.Serialize(computer);
+        A.serialize(computer);
     }
 }
 

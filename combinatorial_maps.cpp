@@ -32,12 +32,12 @@ ostream& operator<<(ostream& out, const Dart& d) {
 struct CombinatorialMap {
   private:
     // The default constructor is private as any user should construct
-    // a CombinatorialMap via OneEdgeConstructor() or OneLoopConstructor()
+    // a CombinatorialMap via constructOneEdge() or constructOneLoop()
     CombinatorialMap() {}
   public:
-    friend CombinatorialMap OneEdgeConstructor();
-    friend CombinatorialMap OneLoopConstructor();
-    friend CombinatorialMap ParseCombinatorialMap(istream& in);
+    friend CombinatorialMap constructOneEdge();
+    friend CombinatorialMap constructOneLoop();
+    friend CombinatorialMap parseCombinatorialMap(istream& in);
     
   private:
     int _V, _E, _F; // Vertices, Edges, Faces
@@ -58,15 +58,15 @@ struct CombinatorialMap {
     const Dart& dart(int i) const { return _darts[i]; }
     const vector<Dart>& darts() const { return _darts; }
     
-    const Dart& Rev(const Dart& e) const { return _darts[_rev[e.id]]; }
-    // Next is counterclockwise
-    const Dart& Next(const Dart& e) const { return _darts[_next[e.id]]; }
-    const Dart& Prev(const Dart& e) const { return _darts[_prev[e.id]]; }
-    // Phi traverses the boundary of a (bounded) face clockwise.
-    const Dart& Phi(const Dart& e) const { return _darts[_phi(e.id)]; } 
+    const Dart& rev(const Dart& e) const { return _darts[_rev[e.id]]; }
+    // next is counterclockwise
+    const Dart& next(const Dart& e) const { return _darts[_next[e.id]]; }
+    const Dart& prev(const Dart& e) const { return _darts[_prev[e.id]]; }
+    // phi traverses the boundary of a (bounded) face clockwise.
+    const Dart& phi(const Dart& e) const { return _darts[_phi(e.id)]; } 
     
   private:
-    void CheckDart(const Dart& d) const {
+    void checkDart(const Dart& d) const {
         assert(0 <= d.id and d.id < 2*_E);
         assert(_darts[d.id].from == d.from);
         assert(_darts[d.id].to == d.to);
@@ -77,9 +77,9 @@ struct CombinatorialMap {
     // _next and _prev.
     // This changes only the graph-theoretic component of a CombinatorialMap.
     // The user is responsible for properly updating _next and _prev
-    // via _AssignNext.
+    // via _assignNext.
     // Returns the new dart u->v and its reverse v->u.
-    pair<Dart,Dart> CreateGraphEdge(int u, int v) {
+    pair<Dart,Dart> createGraphEdge(int u, int v) {
         assert(0 <= u and u < _V and 0 <= v and v < _V);
         _degrees[u]++, _degrees[v]++;
         _E++;
@@ -100,8 +100,8 @@ struct CombinatorialMap {
         return {d1, d2};
     }
     
-    // Assigns Next(a) = b. (updates also Prev appropriately).
-    void AssignNext(const Dart& a, const Dart& b) {
+    // Assigns next(a) = b. (updates also prev appropriately).
+    void assignNext(const Dart& a, const Dart& b) {
         assert(a.from == b.from);
         _next[a.id] = b.id;
         _prev[b.id] = a.id;
@@ -110,60 +110,60 @@ struct CombinatorialMap {
   public:
     // Create a new vertex and link it (with a new edge) to an existing one.
     // 
-    // The new edge is connected so that Phi(bef) = new edge.
-    pair<Dart,Dart> AddVertex(Dart bef) {
-        CheckDart(bef);
+    // The new edge is connected so that phi(bef) = new edge.
+    pair<Dart,Dart> addVertex(Dart bef) {
+        checkDart(bef);
         
         _V++;
         _degrees.push_back(0);
         
-        Dart bef_rev = Rev(bef);
-        Dart bef_phi = Phi(bef);
+        Dart bef_rev = rev(bef);
+        Dart bef_phi = phi(bef);
         
-        pair<Dart,Dart> new_edge = CreateGraphEdge(bef.to, V()-1);
-        AssignNext(new_edge.second, new_edge.second);
-        AssignNext(bef_rev, new_edge.first);
-        AssignNext(new_edge.first, bef_phi);
+        pair<Dart,Dart> new_edge = createGraphEdge(bef.to, V()-1);
+        assignNext(new_edge.second, new_edge.second);
+        assignNext(bef_rev, new_edge.first);
+        assignNext(new_edge.first, bef_phi);
         
         return new_edge;
     }
     
     // Link with an edge two existing vertices.
-    // Phi(bef) = new_edge 
-    // Phi(new_edge) = aft
+    // phi(bef) = new_edge 
+    // phi(new_edge) = aft
     // 
     // This works (i.e., maintains the property that the combinatorial
     // maps represent a spherical embedding) only if bef and aft
     // belong to the boundary of the same face.
     // It may be bef = aft.
-    pair<Dart,Dart> AddEdge(Dart bef, Dart aft) {
-        CheckDart(bef);
-        CheckDart(aft);
+    pair<Dart,Dart> addEdge(Dart bef, Dart aft) {
+        checkDart(bef);
+        checkDart(aft);
         
         // We check that aft = phi^k(bef) for some k >= 0, which is
         // equivalent to the fact that bef and aft belong to the
         // boundary of the same face.
         auto it = bef;
         while (it != aft) {
-            it = Phi(it);
+            it = phi(it);
             assert(it != bef);
         }
         
         // We Create the new edge
-        pair<Dart, Dart> new_edge = CreateGraphEdge(bef.to, aft.from);
+        pair<Dart, Dart> new_edge = createGraphEdge(bef.to, aft.from);
         
         // We update the next function
-        const Dart& bef_next = Next(Rev(bef));
-        const Dart& aft_prev = Prev(aft);
+        const Dart& bef_next = next(rev(bef));
+        const Dart& aft_prev = prev(aft);
         
-        AssignNext(Rev(bef), new_edge.first);
+        assignNext(rev(bef), new_edge.first);
         if (bef.to != aft.from) {
-            AssignNext(new_edge.first, bef_next);
-            AssignNext(aft_prev, new_edge.second);
+            assignNext(new_edge.first, bef_next);
+            assignNext(aft_prev, new_edge.second);
         } else {
-            AssignNext(new_edge.first, new_edge.second);
+            assignNext(new_edge.first, new_edge.second);
         }
-        AssignNext(new_edge.second, aft);
+        assignNext(new_edge.second, aft);
         
         // We have added a new face in the process.
         _F++;
@@ -178,15 +178,15 @@ struct CombinatorialMap {
     // 1. There are a few pesky cases (for example when one of the two
     //    endpoints of d is a leaf, or if d is a loop).
     // 2. The required operation invalidates references to darts.
-    pair<Dart, Dart> EdgeSubdivision(Dart d) {
-        CheckDart(d);
+    pair<Dart, Dart> edgeSubdivision(Dart d) {
+        checkDart(d);
         // We use id to refer to darts as references are going to be 
-        // invalidated once we call CreateGraphEdge
+        // invalidated once we call createGraphEdge
         int d_id = d.id;
-        int e_id = Rev(d).id;
+        int e_id = rev(d).id;
         
-        Dart prev_e = Prev(dart(e_id));
-        Dart next_e = Next(dart(e_id));
+        Dart prev_e = prev(dart(e_id));
+        Dart next_e = next(dart(e_id));
         
         // Creating a new vertex.
         _V++;
@@ -203,36 +203,36 @@ struct CombinatorialMap {
         _degrees[y]--;
         
         // We create an edge from x to y.
-        pair<Dart, Dart> pp = CreateGraphEdge(x, y);
+        pair<Dart, Dart> pp = createGraphEdge(x, y);
         
         // We fix prev/next in x and y.
-        AssignNext(dart(e_id), pp.first);
-        AssignNext(pp.first, dart(e_id));
+        assignNext(dart(e_id), pp.first);
+        assignNext(pp.first, dart(e_id));
         
         if (_degrees[y] > 1) {
-            AssignNext(prev_e, pp.second);
-            AssignNext(pp.second, next_e);
+            assignNext(prev_e, pp.second);
+            assignNext(pp.second, next_e);
         } else {
-            AssignNext(pp.second, pp.second);
+            assignNext(pp.second, pp.second);
         }
         
         
         return {dart(d_id), pp.first};
     }
     
-    vector<Dart> GetFace(Dart d) const {
-        CheckDart(d);
+    vector<Dart> getFace(Dart d) const {
+        checkDart(d);
         
         Dart curr = d;
         vector<Dart> face;
         do {
             face.push_back(curr);
-            curr = Phi(curr);
+            curr = phi(curr);
         } while (curr != d);
         return face;
     }
     
-    vector<vector<Dart>> GetFaces() const {
+    vector<vector<Dart>> getFaces() const {
         vector<vector<Dart>> faces;
         vector<bool> visited(2*E());
         for (int i = 0; i < 2*E(); i++) {
@@ -242,7 +242,7 @@ struct CombinatorialMap {
             while (!visited[curr.id]) {
                 visited[curr.id] = true;
                 face.push_back(curr);
-                curr = Phi(curr);
+                curr = phi(curr);
             }
             faces.push_back(face);
         }
@@ -253,10 +253,10 @@ struct CombinatorialMap {
     // the assumptions that should be satisfied by a well-structured
     // combinatorial map.
     // The functions available to the user to create and modify a
-    // combinatorial map (OneEdgeConstructor, OneLoopConstructor, 
-    // AddVertex, AddEdge, EdgeSubdivision) maintain the validity
+    // combinatorial map (constructOneEdge, constructOneLoop, 
+    // AddVertex, addEdge, edgeSubdivision) maintain the validity
     // of all the assumptions.
-    void CheckConsistency() const {
+    void checkConsistency() const {
         // First, we check the consistency of the graph structure.
         assert(_V > 0);
         assert(_E > 0);
@@ -303,33 +303,33 @@ struct CombinatorialMap {
             assert(0 <= _prev[i] and _prev[i] < 2*_E);
         }
         
-        // Checking that Rev is consistent.
+        // Checking that rev is consistent.
         for (const Dart& d: _darts) {
-            const Dart& e = Rev(d);
+            const Dart& e = rev(d);
             assert(d.from == e.to);
             assert(d.to == e.from);
-            assert(Rev(e) == d);
+            assert(rev(e) == d);
         }
         
         // Checking that prev(next) = id.
         for (const Dart& d: _darts) {
-            assert(Prev(Next(d)) == d);
+            assert(prev(next(d)) == d);
         }
         
-        // Checking that, for every vertex, Next is a cycle over
+        // Checking that, for every vertex, next is a cycle over
         // all darts stemming from that vertex.
         for (const Dart& d: _darts) {
             int q = _degrees[d.from];
-            Dart curr = Next(d);
+            Dart curr = next(d);
             for (int i = 0; i < q-1; i++) {
                 assert(curr != d);
-                curr = Next(curr);
+                curr = next(curr);
             }
             assert(curr == d);
         }
         
         // Checking that the number of faces is correct.
-        assert(ssize(GetFaces()) == _F);
+        assert(ssize(getFaces()) == _F);
     }
     
   private:
@@ -352,8 +352,8 @@ struct CombinatorialMap {
     // First, the visit traverses rev and then next.
     //
     // The ids of the darts are used for a concise representation.
-    vector<int> OrderedVisit(const Dart& d) const {
-        CheckDart(d);
+    vector<int> orderedVisit(const Dart& d) const {
+        checkDart(d);
         
         vector<bool> visited(2*E(), false);
         vector<int> ord;
@@ -370,15 +370,15 @@ struct CombinatorialMap {
     // If f is a bijection from the darts of A to the darts of B that
     // is a isomorphism of combinatorial maps, then M_B is obtained
     // permuting the rows/columns of M_A according to f.
-    vector<vector<ULL>> MatrixSignature() const {
+    vector<vector<ULL>> matrixSignature() const {
         static const ULL p_rev = 984'689'395;
         static const ULL p_next = 123'456'789;
         
         vector<vector<ULL>> mat(2*E(), vector<ULL>(2*E(), 0));
         for (Dart d: darts()) {
             int i = d.id;
-            mat[i][Rev(d).id] += p_rev;
-            mat[i][Next(d).id] += p_next;
+            mat[i][rev(d).id] += p_rev;
+            mat[i][next(d).id] += p_next;
         }
         return mat;
     }
@@ -389,24 +389,24 @@ struct CombinatorialMap {
     // and then applies a nonlinear hash function.
     //
     // One may think that even much simpler implementations of 
-    // IsomorphismSignature could have a similar ability to tell 
+    // isomorphismSignature could have a similar ability to tell 
     // whether two combinatorial maps are isomorphic. 
     // For example, why not simply returning the trace?
     // Well, because it does not work.
     // The current implementations are the simplest we could find that
     // don't have any collisions during the execution of the algorithm.
-    ULL IsomorphismSignature() const {
-        const auto& mat = FastLargeMatrixPower(MatrixSignature());
+    ULL isomorphismSignature() const {
+        const auto& mat = FastLargeMatrixPower(matrixSignature());
         
         ULL res = 0;
         for (const Dart& d: darts()) {
-            res += mat[d.id][Rev(d).id] ^ mat[d.id][Next(d).id];
+            res += mat[d.id][rev(d).id] ^ mat[d.id][next(d).id];
         }
         
         return res;
     }
     
-    void Serialize(ostream& out) const {
+    void serialize(ostream& out) const {
         out << V() << " " << E() << " " << F() << endl;
         for (int i = 0; i < 2*E(); i++) {
             Dart d = dart(i);
@@ -414,48 +414,48 @@ struct CombinatorialMap {
         }
         for (int i = 0; i < 2*E(); i++) {
             Dart d = dart(i);
-            out << Rev(d).id << " ";
+            out << rev(d).id << " ";
         }
         out << endl;
         
         for (int i = 0; i < 2*E(); i++) {
             Dart d = dart(i);
-            out << Next(d).id << " ";
+            out << next(d).id << " ";
         }
         out << endl; 
     }
 };
 
 // Starting from either an edge or a loop, one can generate any
-// valid combinatorial map using AddVertex or AddEdge.
+// valid combinatorial map using AddVertex or addEdge.
 
 // Two vertices connected by an edge.
-CombinatorialMap OneEdgeConstructor() {
+CombinatorialMap constructOneEdge() {
     CombinatorialMap A;
     A._V = 2;
     A._degrees.resize(A.V(), 0);
     A._E = 0;
     A._F = 1;
-    auto edge = A.CreateGraphEdge(0, 1);
-    A.AssignNext(edge.first, edge.first);
-    A.AssignNext(edge.second, edge.second);
+    auto edge = A.createGraphEdge(0, 1);
+    A.assignNext(edge.first, edge.first);
+    A.assignNext(edge.second, edge.second);
     return A;
 }
 
 // One vertex with a loop.
-CombinatorialMap OneLoopConstructor() {
+CombinatorialMap constructOneLoop() {
     CombinatorialMap A;
     A._V = 1;
     A._degrees.resize(A.V(), 0);
     A._E = 0;
     A._F = 2;
-    auto edge = A.CreateGraphEdge(0, 0);
-    A.AssignNext(edge.first, edge.second);
-    A.AssignNext(edge.second, edge.first);
+    auto edge = A.createGraphEdge(0, 0);
+    A.assignNext(edge.first, edge.second);
+    A.assignNext(edge.second, edge.first);
     return A;
 }
 
-CombinatorialMap ParseCombinatorialMap(istream& in) {
+CombinatorialMap parseCombinatorialMap(istream& in) {
     CombinatorialMap A;
     in >> A._V >> A._E >> A._F;
     int n = 2*A._E;
@@ -491,7 +491,7 @@ ostream& operator<<(ostream& out, const CombinatorialMap& A) {
         out << ", " << d;
     out << ", next = [";
     for (Dart d: A.darts())
-        out << A.Next(d).id << ", ";
+        out << A.next(d).id << ", ";
     out << "]}";
     return out;
 }
@@ -503,8 +503,8 @@ ostream& operator<<(ostream& out, const CombinatorialMap& A) {
 
 // Check whether the map iso between the darts of A and B induces
 // an isomorphism of the combinatorial map.
-// It is sufficient to check that it commutes with Rev and Next.
-bool CheckIsomorphism(const CombinatorialMap& A,
+// It is sufficient to check that it commutes with rev and next.
+bool checkIsomorphism(const CombinatorialMap& A,
                       const CombinatorialMap& B,
                       const vector<int>& iso) {
     int E = A.E();
@@ -512,8 +512,8 @@ bool CheckIsomorphism(const CombinatorialMap& A,
     for (int i = 0; i < 2*E; i++) {
         const Dart& a = A.dart(i);
         const Dart& b = B.dart(iso[i]);
-        if (B.Rev(b).id != iso[A.Rev(a).id]) return false;
-        if (B.Next(b).id != iso[A.Next(a).id]) return false;
+        if (B.rev(b).id != iso[A.rev(a).id]) return false;
+        if (B.next(b).id != iso[A.next(a).id]) return false;
     }
     return true;
 }
@@ -521,18 +521,18 @@ bool CheckIsomorphism(const CombinatorialMap& A,
 // Returns, if it exists, an isomorphism between A and B that maps dart_A
 // into dart_B.
 // The ids of the darts are used for a concise representation.
-vector<int> FindIsomorphism(const CombinatorialMap& A,
+vector<int> findIsomorphism(const CombinatorialMap& A,
                             const CombinatorialMap& B,
                             Dart dart_A,
                             Dart dart_B) {
     int E = A.E();
     
-    vector<int> ordA = A.OrderedVisit(dart_A);
-    vector<int> ordB = B.OrderedVisit(dart_B);
+    vector<int> ordA = A.orderedVisit(dart_A);
+    vector<int> ordB = B.orderedVisit(dart_B);
     vector<int> iso(2*E);
     for (int i = 0; i < 2*E; i++) iso[ordA[i]] = ordB[i];
     
-    if (CheckIsomorphism(A, B, iso))
+    if (checkIsomorphism(A, B, iso))
         return iso;
     return {};
 }
@@ -541,13 +541,13 @@ vector<int> FindIsomorphism(const CombinatorialMap& A,
 // Returns, if it exists, a bijection between the darts that is an
 // isomorphism of the combinatorial maps.
 // The ids of the darts are used for a concise representation.
-vector<int> FindIsomorphism(const CombinatorialMap& A,
+vector<int> findIsomorphism(const CombinatorialMap& A,
                             const CombinatorialMap& B) {
     if (A.V() != B.V() or A.E() != B.E() or A.F() != B.F())
         return {};
 
     for (Dart d: B.darts()) {
-        const vector<int>& iso = FindIsomorphism(A, B, A.dart(0), d);
+        const vector<int>& iso = findIsomorphism(A, B, A.dart(0), d);
         if (!iso.empty())
             return iso;
     }

@@ -37,7 +37,7 @@ struct CombinatorialMap {
   public:
     friend CombinatorialMap OneEdgeConstructor();
     friend CombinatorialMap OneLoopConstructor();
-    friend CombinatorialMap ParserConstructor(istream& in);
+    friend CombinatorialMap ParseCombinatorialMap(istream& in);
     
   private:
     int _V, _E, _F; // Vertices, Edges, Faces
@@ -455,7 +455,7 @@ CombinatorialMap OneLoopConstructor() {
     return A;
 }
 
-CombinatorialMap ParserConstructor(istream& in) {
+CombinatorialMap ParseCombinatorialMap(istream& in) {
     CombinatorialMap A;
     in >> A._V >> A._E >> A._F;
     int n = 2*A._E;

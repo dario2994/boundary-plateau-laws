@@ -16,6 +16,7 @@ class DerivedOnceNet : public CombinatorialMap {
     
   public:
     DerivedOnceNet(const CombinatorialMap& A): CombinatorialMap(A) {}
+    friend DerivedOnceNet ParseDerivedOnceNet(istream& in);
     
     pair<Dart, Dart> AddEdge(Dart bef, Dart aft) = delete;
     pair<Dart, Dart> AddVertex(Dart bef, Dart aft) = delete;
@@ -126,6 +127,19 @@ vector<int> FindIsomorphism(const DerivedOnceNet& A,
             return iso;
     }
     return {};
+}
+
+DerivedOnceNet ParseDerivedOnceNet(istream& in) {
+    DerivedOnceNet A(ParseCombinatorialMap(in));
+    int obtuse_angles_num;
+    in >> obtuse_angles_num;
+    
+    for (int i = 0; i < obtuse_angles_num; i++) {
+        int id;
+        in >> id;
+        A._obtuse_angles.insert(id);
+    }
+    return A;
 }
 
 

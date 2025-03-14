@@ -7,13 +7,13 @@ typedef unsigned long long ULL;
 #include "derived_once_nets.cpp"
 
 
-vector<CombinatorialMap> ParseDerivedTwiceNetCandidates() {
+vector<CombinatorialMap> ParseDerivedTwiceNets() {
     ifstream in("data/derived_twice_computer.txt");
     int cnt;
     in >> cnt;
     vector<CombinatorialMap> res;
     for (int i = 0; i < cnt; i++) {
-        CombinatorialMap A = ParserConstructor(in);
+        CombinatorialMap A = ParseCombinatorialMap(in);
         A.CheckConsistency();
         res.push_back(A);
     }
@@ -102,29 +102,9 @@ bool ValidateDerivedOnceNet(const DerivedOnceNet& A) {
     return true;
 }
 
-bool ContainsBiangle(const DerivedOnceNet& A) {
-    int cnt = 0;
-    for (const vector<Dart>& face: A.GetFaces()) {
-        if (!A.is_convex_face(face[0]))
-            continue;
-        cnt += ssize(face) == 2;
-    }
-    return cnt > 0;
-}
-
-bool ContainsTriangle(const DerivedOnceNet& A) {
-    int cnt = 0;
-    for (const vector<Dart>& face: A.GetFaces()) {
-        if (!A.is_convex_face(face[0]))
-            continue;
-        cnt += ssize(face) == 3;
-    }
-    return cnt > 0;
-}
-
 int main() {
     vector<CombinatorialMap> derived_twice = 
-        ParseDerivedTwiceNetCandidates();
+        ParseDerivedTwiceNets();
     cout << "There are " << derived_twice.size()
          << " derived-twice net candidates." << endl << endl;
     
@@ -137,7 +117,6 @@ int main() {
     
     int it = 1;
     for (const CombinatorialMap& A: derived_twice) {
-        //~ validate_and_add(A);
         vector<DerivedOnceNet> pin1 = AddPin(A);
         for (const DerivedOnceNet& A2: pin1) {
             vector<DerivedOnceNet> pin2 = AddPin(A2);
@@ -156,14 +135,6 @@ int main() {
     
     const vector<DerivedOnceNet> derived_once_vec = derived_once.GetList();
     
-    int biangle = 0, triangle = 0;
-    for (const DerivedOnceNet& A: derived_once_vec) {
-        biangle += ContainsBiangle(A);
-        triangle += ContainsTriangle(A);
-    }
-    cout << biangle << " " << triangle << endl;
-    //~ return 0;
-    
     cout << "We found " << derived_once_vec.size() 
          << " derived-once nets candidates." << endl;
          
@@ -176,9 +147,5 @@ int main() {
         
         human << "Candidate " << _+1 << endl;
         human << A << endl;
-        
-        if (ContainsBiangle(A)) {
-            cout << _+1 << " ";
-        }
     }
 }

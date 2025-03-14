@@ -11,8 +11,8 @@ using namespace std;
 class DerivedOnceNet : public CombinatorialMap {
   private:
     // If i belongs to _obtuse_angles, then the angle between
-    // dart(i) and Phi(dart(i)) is 240 degrees.
-    set<int> _obtuse_angles;
+    // dart(i) and phi(dart(i)) is 240 degrees.
+    vector<Dart> _obtuse_angles;
     
   public:
     DerivedOnceNet(const CombinatorialMap& A): CombinatorialMap(A) {}
@@ -21,33 +21,35 @@ class DerivedOnceNet : public CombinatorialMap {
     pair<Dart, Dart> addEdge(Dart bef, Dart aft) = delete;
     pair<Dart, Dart> addVertex(Dart bef, Dart aft) = delete;
     
+    bool isObtuse(const Dart& d) const {
+        return find(_obtuse_angles.begin(), _obtuse_angles.end(), d) 
+               != _obtuse_angles.end();
+    }
+    
     pair<Dart, Dart> edgeSubdivision(Dart d) {
-        bool d_obtuse = _obtuse_angles.count(d.id);
-        bool d_rev_obtuse = _obtuse_angles.count(rev(d).id);
+        bool d_obtuse = isObtuse(d);
+        bool d_rev_obtuse = isObtuse(rev(d));
         
-        _obtuse_angles.erase(d.id);
-        _obtuse_angles.erase(rev(d).id);
+        _obtuse_angles.erase(
+            remove(_obtuse_angles.begin(), _obtuse_angles.end(), d), _obtuse_angles.end());
+        _obtuse_angles.erase(
+            remove(_obtuse_angles.begin(), _obtuse_angles.end(), rev(d)), _obtuse_angles.end());
         
         pair<Dart,Dart> pp = CombinatorialMap::edgeSubdivision(d);
         
         // The newly created angle is obtuse.
-        _obtuse_angles.insert(pp.first.id);
+        _obtuse_angles.push_back(pp.first);
         
         if (d_obtuse)
-            _obtuse_angles.insert(pp.second.id);
+            _obtuse_angles.push_back(pp.second);
         if (d_rev_obtuse)
-            _obtuse_angles.insert(rev(pp.first).id);
+            _obtuse_angles.push_back(rev(pp.first));
         
         return pp;
     }
     
-    bool isObtuse(const Dart& d) const { return _obtuse_angles.count(d.id); }
-    
-    vector<Dart> obtuseAngles() const {
-        vector<Dart> res;
-        for (int i: _obtuse_angles)
-            res.push_back(dart(i));
-        return res;
+    const vector<Dart>& obtuseAngles() const {
+        return _obtuse_angles;
     }
     
     bool isConvexFace(const Dart& d) const {
@@ -79,9 +81,9 @@ class DerivedOnceNet : public CombinatorialMap {
     void serialize(ostream& out) const {
         CombinatorialMap::serialize(out);
         
-        out << _obtuse_angles.size() << "\n";
-        for (int id: _obtuse_angles)
-            out << id << " ";
+        out << obtuseAngles().size() << "\n";
+        for (const Dart& d: obtuseAngles())
+            out << d.id << " ";
         out << "\n";
     }
 };
@@ -131,7 +133,7 @@ DerivedOnceNet parseDerivedOnceNet(istream& in) {
     for (int i = 0; i < obtuse_angles_num; i++) {
         int id;
         in >> id;
-        A._obtuse_angles.insert(id);
+        A._obtuse_angles.push_back(A.dart(id));
     }
     return A;
 }

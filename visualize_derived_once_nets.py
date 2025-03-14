@@ -1,0 +1,120 @@
+import math
+import networkx as nx
+import matplotlib.pyplot as plt
+from matplotlib.patches import Arc
+import numpy as np
+
+
+# Reads the derived-once nets from a file.
+def parse_derived_once_nets():
+    lines = []
+    with open('data/derived_once_computer.txt') as in_file:
+        lines = in_file.readlines()
+    cnt = int(lines[0])
+    
+    derived_once_nets = []
+    it = 1
+    for z in range(cnt):
+        V, E, F = map(int, lines[it].split())
+        it += 1
+        darts = []
+        for i in range(2*E):
+            u, v = map(int, lines[it].split())
+            darts.append((u, v))
+            it += 1
+        
+        it += 1 # Skipping rev
+        
+        next_dart = list(map(int, lines[it].split()))
+        it += 1
+        
+        cnt_concave = int(lines[it])
+        it += 1
+        
+        concave_angles = list(map(int, lines[it].split()))
+        it += 1
+        
+        derived_once_nets.append((V, E, darts, next_dart, concave_angles))
+    return derived_once_nets
+    
+def draw_derived_once_net(num, V, E, darts, next_dart, concave_angles):
+    print('Drawing derived-once net ' + str(num) +'.')
+    
+    # Convert the combinatorial map in a rotation system.
+    rotation_system = [[] for _ in range(V)]
+    darts_set = {(-1, -1)}
+    
+    for i in range(len(darts)):
+        v = darts[i][0]
+        if darts[i] in darts_set:
+            print('The derived-once net ' + str(num) + 
+                  ' contains a repeated edge, which' +
+                  ' is not supported.')
+            return
+        darts_set.add(darts[i])
+        
+        if rotation_system[v]:
+            continue
+        rotation_system[v].append(i)
+        curr = next_dart[i]
+        while curr != i:
+            rotation_system[v].append(curr)
+            curr = next_dart[curr]
+    
+    # Use the rotation system to define a networkx planar embedding.
+    embedding = nx.PlanarEmbedding()
+    for v in range(V):
+        rs = rotation_system[v]
+        embedding.add_half_edge(v, darts[rs[0]][1])
+        
+        for i in range(1, len(rs)):
+            embedding.add_half_edge_ccw(v, darts[rs[i]][1], darts[rs[i-1]][1])
+    
+    # Convert the embedding into a NetworkX graph
+    G = nx.Graph()
+    for u in embedding.nodes():
+        for v in embedding.adj[u]:
+            G.add_edge(u, v)
+
+    # Compute a valid planar drawing based on the embedding
+    pos = nx.combinatorial_embedding_to_pos(embedding)
+
+    nx.draw(G, pos, with_labels=True, node_color='lightblue', edge_color='gray', node_size=2, font_size=12)
+    
+    
+    # Highlight the angle at node a, from a->b to b->c
+    def mark_angle(a, b, c):
+        node = b
+        # Positions of the three nodes.
+        p1 = np.array(pos[a])
+        p2 = np.array(pos[b])  
+        p3 = np.array(pos[c])  
+
+        
+        v1 = p1 - p2
+        v2 = p3 - p2
+        angle1 = np.degrees(np.arctan2(v1[1], v1[0]))  # Angle of 1->2
+        angle2 = np.degrees(np.arctan2(v2[1], v2[0]))  # Angle of 2->3
+        start_angle = angle1
+        angle_extent = angle2 - angle1
+        if angle_extent < 0:
+            angle_extent += 2*math.pi
+
+        # Draw an arc at node 2 to represent the angle
+        arc = Arc(p2, 1, 1, angle=0, theta1=start_angle, theta2=start_angle + angle_extent, color='red')
+        plt.gca().add_patch(arc)
+    
+    for i in concave_angles:
+        mark_angle(darts[i][0], darts[i][1], darts[next_dart[i^1]][1])
+    
+    plt.axis('equal')
+    # ~ plt.show()
+    plt.savefig('data/derived_once_images/' + str(num) + '.png', dpi=300, bbox_inches='tight')
+    plt.close()
+            
+
+derived_once_nets = parse_derived_once_nets()
+
+for k in range(50):
+    draw_derived_once_net(k, *(derived_once_nets[k]))
+

@@ -23,7 +23,7 @@ vector<vector<ULL>> multiplyMatrices(const vector<vector<ULL>>& A,
 }
 
 
-vector<vector<ULL>> FastLargeMatrixPower(vector<vector<ULL>> mat) {
+vector<vector<ULL>> largeMatrixPower(vector<vector<ULL>> mat) {
     for (int _ = 0; _ < 8; _++) mat = multiplyMatrices(mat, mat);
     return mat;
 }

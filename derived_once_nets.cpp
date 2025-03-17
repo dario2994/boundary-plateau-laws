@@ -8,6 +8,12 @@ using namespace std;
 #include "combinatorial_maps.cpp"
 #include "utils.cpp"
 
+// Class representing a derived-once net.
+// It is a combinatorial map such that all vertices have degree 
+// either 2 or 3. 
+// Moreover, for all vertices of degree 2, we know which side has
+// angle 120 and which side has angle 240.
+
 class DerivedOnceNet : public CombinatorialMap {
   private:
     // If i belongs to _obtuse_angles, then the angle between
@@ -62,7 +68,7 @@ class DerivedOnceNet : public CombinatorialMap {
     }
         
     ULL isomorphismSignature() const {
-        const auto& mat = FastLargeMatrixPower(matrixSignature());
+        const auto& mat = largeMatrixPower(matrixSignature());
         
         ULL res = 0;
         for (const Dart& d: darts()) {

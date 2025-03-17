@@ -109,6 +109,7 @@ def draw_derived_once_net(num, V, E, darts, next_dart, concave_angles):
     
     plt.axis('equal')
     # ~ plt.show()
+    plt.title("Derived-once net: " + str(num))
     plt.savefig('data/derived_once_images/' + str(num) + '.png', dpi=300, bbox_inches='tight')
     plt.close()
             

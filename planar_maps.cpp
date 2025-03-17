@@ -9,6 +9,8 @@ using namespace std;
 #include "utils.cpp"
 
 
+// A combinatorial map with a special face, representing the unbounded
+// face of a planar embedding.
 class PlanarMap: public CombinatorialMap {
   private:
     // An arbitrary dart on the boundary of the unbounded face.
@@ -53,7 +55,7 @@ class PlanarMap: public CombinatorialMap {
     const Dart& getBoundaryDart() const { return _boundary_dart; }
     
     ULL isomorphismSignature() const {
-        const auto& mat = FastLargeMatrixPower(matrixSignature());
+        const auto& mat = largeMatrixPower(matrixSignature());
         
         ULL res = 0;
         for (const Dart& d: darts()) {

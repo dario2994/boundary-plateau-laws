@@ -396,7 +396,7 @@ struct CombinatorialMap {
     // The current implementations are the simplest we could find that
     // don't have any collisions during the execution of the algorithm.
     ULL isomorphismSignature() const {
-        const auto& mat = FastLargeMatrixPower(matrixSignature());
+        const auto& mat = largeMatrixPower(matrixSignature());
         
         ULL res = 0;
         for (const Dart& d: darts()) {

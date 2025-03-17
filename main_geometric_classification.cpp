@@ -145,7 +145,7 @@ int main() {
         const DerivedOnceNet& A = derived_once_vec[_];
         A.serialize(computer);
         
-        human << "Candidate " << _+1 << endl;
+        human << "Candidate " << _ << endl;
         human << A << endl;
     }
 }

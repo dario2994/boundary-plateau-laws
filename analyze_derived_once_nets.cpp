@@ -20,6 +20,14 @@ vector<DerivedOnceNet> parseDerivedOnceNets() {
     return res;
 }
 
+bool onePin(const DerivedOnceNet& A) {
+    int cnt = 0;
+    for (const vector<Dart>& face: A.getFaces()) {
+        cnt += !A.isConvexFace(face[0]);
+    }
+    return cnt == 1;
+}
+
 bool containsBiangle(const DerivedOnceNet& A) {
     int cnt = 0;
     for (const vector<Dart>& face: A.getFaces()) {
@@ -123,6 +131,18 @@ bool criterion_concave_angles_far(int id, const DerivedOnceNet& A) {
     return true;
 }
 
+bool isPesceMagro(int id, const DerivedOnceNet& A) {
+    auto faces = A.getFaces();
+    vector<pair<int,bool>> types;
+    for (auto face: faces) {
+        types.push_back({ssize(face), A.isConvexFace(face[0])});
+    }
+    sort(types.begin(), types.end());
+    // 
+    vector<pair<int,bool>> hope = {{2, 1}, {4, 1}, {5, 0}, {5, 0}};
+    return types == hope;
+}
+
 
 int main() {
     vector<DerivedOnceNet> derived_once = 
@@ -143,13 +163,13 @@ int main() {
             non_s1++;
         else if (!criterion_concave_angles_far(i, A))
             bomba++;
+        else if (isPesceMagro(i, A)) {
+            cout << i << " ";
+        }
+        //~ if (onePin(A)) {
+            //~ cout << "One pin: " << i << endl;
+        //~ }
     }
+    cout << endl;
     cout << excluded << " " << non_s1 << " " << bomba << endl;
-    
-    //~ for (int i = 0; i < ssize(derived_once); i++) {
-        //~ const DerivedOnceNet& A = derived_once[i];
-        //~ if (!criterion_simple_boundary(i, A))
-            //~ non_s1++;
-    //~ }
-    //~ cout << non_s1 << endl;
 }

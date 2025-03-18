@@ -1,3 +1,4 @@
+import gc
 import math
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -5,10 +6,9 @@ from matplotlib.patches import Arc
 import numpy as np
 
 
-# Reads the derived-once nets from a file.
 def parse_derived_once_nets():
     lines = []
-    with open('data/derived_once_computer.txt') as in_file:
+    with open('data/derived_once_for_visualization.txt') as in_file:
         lines = in_file.readlines()
     cnt = int(lines[0])
     
@@ -34,10 +34,16 @@ def parse_derived_once_nets():
         concave_angles = list(map(int, lines[it].split()))
         it += 1
         
-        derived_once_nets.append((V, E, darts, next_dart, concave_angles))
+        cnt_fake = int(lines[it])
+        it += 1
+        fake_vertices = list(map(int, lines[it].split()))
+        it += 1
+        
+        derived_once_nets.append((V, E, darts, next_dart, concave_angles, fake_vertices))
     return derived_once_nets
     
-def draw_derived_once_net(num, V, E, darts, next_dart, concave_angles):
+    
+def draw_derived_once_net(fig, num, V, E, darts, next_dart, concave_angles, fake_vertices):
     print('Drawing derived-once net ' + str(num) +'.')
     
     # Convert the combinatorial map in a rotation system.
@@ -46,11 +52,11 @@ def draw_derived_once_net(num, V, E, darts, next_dart, concave_angles):
     
     for i in range(len(darts)):
         v = darts[i][0]
-        if darts[i] in darts_set:
-            print('The derived-once net ' + str(num) + 
-                  ' contains a repeated edge, which' +
-                  ' is not supported.')
-            return
+        
+        # Repeated edges are not supported (the nets with repeated 
+        # edges are slightly changed, by another program, to make them
+        # visualizable).
+        assert(darts[i] not in darts_set)
         darts_set.add(darts[i])
         
         if rotation_system[v]:
@@ -78,12 +84,19 @@ def draw_derived_once_net(num, V, E, darts, next_dart, concave_angles):
 
     # Compute a valid planar drawing based on the embedding
     pos = nx.combinatorial_embedding_to_pos(embedding)
+    
+    labels = {}
+    for v in range(V):
+        if v not in fake_vertices:
+            labels[v] = v
 
-    nx.draw(G, pos, with_labels=True, node_color='lightblue', edge_color='gray', node_size=2, font_size=12)
+    nx.draw(G, pos, with_labels=True, labels=labels, node_color='lightblue', edge_color='gray', node_size=0, font_size=12)
     
     
     # Highlight the angle at node a, from a->b to b->c
     def mark_angle(a, b, c):
+        if b in fake_vertices:
+            return
         node = b
         # Positions of the three nodes.
         p1 = np.array(pos[a])
@@ -102,20 +115,26 @@ def draw_derived_once_net(num, V, E, darts, next_dart, concave_angles):
 
         # Draw an arc at node 2 to represent the angle
         arc = Arc(p2, 1, 1, angle=0, theta1=start_angle, theta2=start_angle + angle_extent, color='red')
-        plt.gca().add_patch(arc)
+        fig.gca().add_patch(arc)
     
     for i in concave_angles:
         mark_angle(darts[i][0], darts[i][1], darts[next_dart[i^1]][1])
+
+    fig.gca().axis('equal')
+    fig.gca().set_title("Derived-once net: " + str(num))
     
-    plt.axis('equal')
     # ~ plt.show()
-    plt.title("Derived-once net: " + str(num))
-    plt.savefig('data/derived_once_images/' + str(num) + '.png', dpi=300, bbox_inches='tight')
-    plt.close()
+    fig.savefig('data/derived_once_images/' + str(num) + '.png', dpi=300, bbox_inches='tight')
+    fig.clf()
             
 
 derived_once_nets = parse_derived_once_nets()
+plt.ioff()
 
-for k in range(50):
-    draw_derived_once_net(k, *(derived_once_nets[k]))
+# We reuse the same figure as a workaround for a memory leak in 
+# matplotlib.
+fig = plt.figure()
+
+for k in range(len(derived_once_nets)):
+    draw_derived_once_net(fig, k, *(derived_once_nets[k]))
 

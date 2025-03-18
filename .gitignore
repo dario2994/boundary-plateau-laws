@@ -34,3 +34,5 @@
 main
 main_geometric_classification
 main_combinatorial_classification
+analyze_derived_once_nets
+__pycache__/

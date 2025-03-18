@@ -102,6 +102,29 @@ bool validateDerivedOnceNet(const DerivedOnceNet& A) {
     return true;
 }
 
+// Returns a copy of the original net, with some fake vertices added
+// so that there are no more repeated edges.
+// The list of integers returned represents the list of vertices that
+// were added.
+pair<DerivedOnceNet, vector<int>> removeRepeatedEdges(DerivedOnceNet A) {
+    vector<int> new_vertices;
+    while (1) {
+        bool changed = false;
+        set<pair<int,int>> edges;
+        for (const Dart& d: A.darts()) {
+            if (edges.count({d.from, d.to})) {
+                A.edgeSubdivision(d);
+                changed = true;
+                new_vertices.push_back(A.V()-1);
+                break;
+            }
+            edges.insert({d.from, d.to});
+        }
+        if (!changed) break;
+    }
+    return {A, new_vertices};
+}
+
 int main() {
     vector<CombinatorialMap> derived_twice = 
         parseDerivedTwiceNets();
@@ -138,14 +161,28 @@ int main() {
     cout << "We found " << derived_once_vec.size() 
          << " derived-once nets candidates." << endl;
          
-    ofstream computer("derived_once_computer.txt");
-    ofstream human("derived_once_human.txt");
+    ofstream computer("data/derived_once_computer.txt");
+    ofstream human("data/derived_once_human.txt");
+    ofstream for_visualization("data/derived_once_for_visualization.txt");
     computer << derived_once_vec.size() << endl;
+    for_visualization << derived_once_vec.size() << endl;
     for (int _ = 0; _ < ssize(derived_once_vec); _++) {
         const DerivedOnceNet& A = derived_once_vec[_];
-        A.serialize(computer);
         
         human << "Candidate " << _ << endl;
         human << A << endl;
+        
+        A.serialize(computer);
+        
+        // For visualization, we use the python library matplotlib.
+        // This library does not support combinatorial maps with
+        // repeated edges, so we create a version of the derived-once
+        // net that does not contain any repeat edge.
+        auto pp = removeRepeatedEdges(A);
+        pp.first.serialize(for_visualization);
+        for_visualization << pp.second.size() << "\n";
+        for (int v: pp.second)
+            for_visualization << v << " ";
+        for_visualization << "\n";
     }
 }

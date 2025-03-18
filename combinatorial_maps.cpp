@@ -484,15 +484,17 @@ CombinatorialMap parseCombinatorialMap(istream& in) {
 
 
 ostream& operator<<(ostream& out, const CombinatorialMap& A) {
-    out << "{V = " << A.V();
+    out << "V = " << A.V();
     out << ", E = " << A.E();
     out << ", F = " << A.F();
+    out << "\n";
+    out << "Darts: ";
     for (Dart d: A.darts()) 
         out << ", " << d;
-    out << ", next = [";
+    out << "\n";
+    out << "Next:\n";
     for (Dart d: A.darts())
-        out << A.next(d).id << ", ";
-    out << "]}";
+        out << d << " ----> " << A.next(d) << "\n";
     return out;
 }
 

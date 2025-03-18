@@ -207,6 +207,23 @@ bool CriterionFourPentagons(int id, const DerivedOnceNet& A) {
     return true;
 }
 
+bool CriterionThreeRectangles(int id, const DerivedOnceNet& A) {
+    for (const Dart& d: A.darts()) {
+        if (A.degree(d.from) != 3)
+            continue;
+        bool works = true;
+        Dart curr = d;
+        for (int i = 0; i < 3; i++) {
+            works &= ssize(A.getFace(curr)) == 4;
+            works &= A.isConvexFace(curr); 
+            curr = A.next(curr);
+        }
+        if (works)
+            return false;
+    }
+    return true;
+}
+
 
 
 int main() {
@@ -223,7 +240,8 @@ int main() {
         {"concave angles are far\t", criterionConcaveAnglesFar},
         {"two adjacent squares\t", criterionTwoAdjacentSquares},
         {"convex faces intersection", criterionConvexFacesIntersection},
-        {"four pentagons\t\t", CriterionFourPentagons}
+        {"four pentagons\t\t", CriterionFourPentagons},
+        {"three rectangles\t", CriterionThreeRectangles}
     };
     
     map<string, vector<int>> excluded_by; 

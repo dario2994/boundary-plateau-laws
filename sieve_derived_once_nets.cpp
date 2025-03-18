@@ -20,12 +20,20 @@ vector<DerivedOnceNet> parseDerivedOnceNets() {
     return res;
 }
 
-bool onePin(const DerivedOnceNet& A) {
+int countObtuseAngles(const DerivedOnceNet& A, Dart d) {
+    int res = 0;
+    for (Dart e: A.getFace(d)) {
+        res += A.isObtuse(e);
+    }
+    return res;
+}
+
+int countPins(const DerivedOnceNet& A) {
     int cnt = 0;
     for (const vector<Dart>& face: A.getFaces()) {
         cnt += !A.isConvexFace(face[0]);
     }
-    return cnt == 1;
+    return cnt;
 }
 
 bool containsBiangle(const DerivedOnceNet& A) {
@@ -85,7 +93,24 @@ bool criterionBiangle(int id, const DerivedOnceNet& A) {
             or A.isConvexFace(A.rev(face[1])))
             return false;
             
-        if (faceArea(A, A.rev(face[0])) + faceArea(A, A.rev(face[1])) < 3)
+        int area = faceArea(A, A.rev(face[0])) + faceArea(A, A.rev(face[1]));
+        for (Dart d: {A.rev(face[0]), A.rev(face[1])}) {
+            if (countObtuseAngles(A, d) == 1)
+                continue;
+            int dist = -1;
+            Dart curr = d;
+            while (1) {
+                if (A.isObtuse(curr)) {
+                    if (dist == -1) dist = 1;
+                    else break;
+                } else if (dist >= 0) dist++;
+                
+                curr = A.phi(curr);
+            }
+            int contribution = max(4-dist, 0);
+            area -= contribution;
+        }
+        if (area < 3)
             return false;
             
         for (const Dart& d: A.darts()) {
@@ -131,6 +156,57 @@ bool criterionConcaveAnglesFar(int id, const DerivedOnceNet& A) {
     return true;
 }
 
+bool criterionTwoAdjacentSquares(int id, const DerivedOnceNet& A) {
+    for (Dart d: A.darts()) {
+        Dart e = A.rev(d);
+        if (ssize(A.getFace(d)) != 4 or ssize(A.getFace(e)) != 4)
+            continue;
+        Dart d1 = A.rev(A.phi(A.phi(d)));
+        Dart e1 = A.rev(A.phi(A.phi(A.phi(e))));
+        
+        assert(d1 != e1);
+        if (A.isObtuse(d1) and A.isObtuse(e1)) 
+            return false;
+    }
+    return true;
+}
+
+bool criterionConvexFacesIntersection(int id, const DerivedOnceNet& A) {
+    for (Dart d: A.darts()) {
+        if (!A.isConvexFace(d) or !A.isConvexFace(A.rev(d)))
+            continue;
+        vector<Dart> face2 = A.getFace(A.rev(d));
+        int cnt = 0;
+        for (Dart e: face2)
+            cnt += sameFace(A, d, e);
+        if (cnt > 1)
+            return false;
+    }
+    return true;
+}
+
+bool CriterionFourPentagons(int id, const DerivedOnceNet& A) {
+    for (const vector<Dart>& face: A.getFaces()) {
+        if (ssize(face) != 4 or !A.isConvexFace(face[0]))
+            continue;
+        bool all_pentagons = true;
+        for (Dart d: face) {
+            auto pentagon = A.getFace(A.rev(d));
+            all_pentagons &= ssize(pentagon) == 5 and A.isConvexFace(pentagon[0]);
+        }
+        if (!all_pentagons)
+            continue;
+        
+        for (Dart d: face) {
+            Dart e = A.rev(A.phi(A.phi(A.rev(d))));
+            auto another_square = A.getFace(e);
+            if (ssize(another_square) == 4 and A.isConvexFace(another_square[0]))
+                return false;
+        }
+    }
+    return true;
+}
+
 
 
 int main() {
@@ -142,9 +218,12 @@ int main() {
     // The order of the criteria matters, as a criterion may implicitly
     // assume that all the previous ones pass.
     vector<pair<string, function<bool(int,const DerivedOnceNet&)>>> criteria = {  
-        {"biangle\t\t", criterionBiangle},
-        {"simple boundary\t", criterionSimpleBoundary},
-        {"concave angles are far", criterionConcaveAnglesFar}
+        {"biangle\t\t\t", criterionBiangle},
+        {"simple boundary\t\t", criterionSimpleBoundary},
+        {"concave angles are far\t", criterionConcaveAnglesFar},
+        {"two adjacent squares\t", criterionTwoAdjacentSquares},
+        {"convex faces intersection", criterionConvexFacesIntersection},
+        {"four pentagons\t\t", CriterionFourPentagons}
     };
     
     map<string, vector<int>> excluded_by; 
@@ -166,7 +245,7 @@ int main() {
             survivors.push_back(id);
     }
     
-    cout << "Criterion\t\t\t# Excluded" << endl;
+    cout << "Criterion\t\t\t\t# Excluded" << endl;
     for (auto pp: criteria) {
         string name = pp.first;
         cout << name << "\t\t" << excluded_by[name].size() << endl;
@@ -180,4 +259,8 @@ int main() {
     for (int x: survivors)
         out << x << " ";
     out << endl;
+    out.close();
 }
+
+// survivors: 2041
+// with biangle: 29

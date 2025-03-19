@@ -59,7 +59,7 @@ class DerivedOnceNet : public CombinatorialMap {
     }
     
     bool isConvexFace(const Dart& d) const {
-        vector<Dart> face = getFace(d);
+        vector<Dart> face = CombinatorialMap::face(d);
         for (const Dart& e: face) {
             if (isObtuse(e))
                 return false;

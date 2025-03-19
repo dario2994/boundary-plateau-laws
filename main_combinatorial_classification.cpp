@@ -19,7 +19,7 @@ bool validateNet(const CombinatorialMap& A) {
             return false;
     }
     
-    const auto& faces = A.getFaces();
+    const auto& faces = A.faces();
     multiset<int> faces_sides;
     for (const auto& face: faces) faces_sides.insert(face.size());
         
@@ -83,7 +83,7 @@ bool validateSubgraph(const PlanarMap& A) {
     }
     
     // Computing the number of sides of all internal faces.
-    const auto& faces = A.getFaces();
+    const auto& faces = A.faces();
     multiset<int> faces_sides;
     for (const auto& face: faces) faces_sides.insert(face.size());
 

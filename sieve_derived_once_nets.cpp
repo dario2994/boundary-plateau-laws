@@ -22,7 +22,7 @@ vector<DerivedOnceNet> parseDerivedOnceNets() {
 
 int countObtuseAngles(const DerivedOnceNet& A, Dart d) {
     int res = 0;
-    for (Dart e: A.getFace(d)) {
+    for (Dart e: A.face(d)) {
         res += A.isObtuse(e);
     }
     return res;
@@ -30,7 +30,7 @@ int countObtuseAngles(const DerivedOnceNet& A, Dart d) {
 
 int countPins(const DerivedOnceNet& A) {
     int cnt = 0;
-    for (const vector<Dart>& face: A.getFaces()) {
+    for (const vector<Dart>& face: A.faces()) {
         cnt += !A.isConvexFace(face[0]);
     }
     return cnt;
@@ -38,7 +38,7 @@ int countPins(const DerivedOnceNet& A) {
 
 bool containsBiangle(const DerivedOnceNet& A) {
     int cnt = 0;
-    for (const vector<Dart>& face: A.getFaces()) {
+    for (const vector<Dart>& face: A.faces()) {
         if (!A.isConvexFace(face[0]))
             continue;
         cnt += ssize(face) == 2;
@@ -48,7 +48,7 @@ bool containsBiangle(const DerivedOnceNet& A) {
 
 bool containsTriangle(const DerivedOnceNet& A) {
     int cnt = 0;
-    for (const vector<Dart>& face: A.getFaces()) {
+    for (const vector<Dart>& face: A.faces()) {
         if (!A.isConvexFace(face[0]))
             continue;
         cnt += ssize(face) == 3;
@@ -57,7 +57,7 @@ bool containsTriangle(const DerivedOnceNet& A) {
 }
 
 int faceArea(const DerivedOnceNet& A, Dart d) {
-    const vector<Dart>& face = A.getFace(d);
+    const vector<Dart>& face = A.face(d);
     int res = 6 - ssize(face);
     for (const Dart& d: face) {
         if (A.isObtuse(d))
@@ -67,7 +67,7 @@ int faceArea(const DerivedOnceNet& A, Dart d) {
 }
 
 bool sameFace(const DerivedOnceNet& A, Dart d, Dart e) {
-    const vector<Dart>& face = A.getFace(d);
+    const vector<Dart>& face = A.face(d);
     for (const Dart& e1: face) {
         if (e1 == e)
             return true;
@@ -95,7 +95,7 @@ int pinContribution(const DerivedOnceNet& A, Dart d) {
 
 int sumAreaConvexFaces(const DerivedOnceNet& A) {
     int res = 0;
-    for (auto face: A.getFaces()) {
+    for (auto face: A.faces()) {
         if (A.isConvexFace(face[0]))
             res += faceArea(A, face[0]);
     }
@@ -104,7 +104,7 @@ int sumAreaConvexFaces(const DerivedOnceNet& A) {
 
 
 bool criterionBiangle(int id, const DerivedOnceNet& A) {
-    vector<vector<Dart>> faces = A.getFaces();
+    vector<vector<Dart>> faces = A.faces();
     
     for (const vector<Dart>& face: faces) {
         if (ssize(face) != 2)
@@ -129,10 +129,10 @@ bool criterionBiangle(int id, const DerivedOnceNet& A) {
             
         for (const Dart& d: A.darts()) {
             if (A.isConvexFace(d) and A.isConvexFace(A.rev(d))
-                and ssize(A.getFace(d)) == 3
-                and ssize(A.getFace(A.rev(d))) == 4)
+                and ssize(A.face(d)) == 3
+                and ssize(A.face(A.rev(d))) == 4)
                 return false;
-            if (d != face[0] and d != face[1] and ssize(A.getFace(d)) == 2)
+            if (d != face[0] and d != face[1] and ssize(A.face(d)) == 2)
                 return false;
         }
     }
@@ -140,7 +140,7 @@ bool criterionBiangle(int id, const DerivedOnceNet& A) {
 }
 
 bool criterionSimpleBoundary(int id, const DerivedOnceNet& A) {
-    vector<vector<Dart>> faces = A.getFaces();
+    vector<vector<Dart>> faces = A.faces();
     
     for (const Dart& d: A.darts()) {
         if (sameFace(A, d, A.rev(d)))
@@ -150,7 +150,7 @@ bool criterionSimpleBoundary(int id, const DerivedOnceNet& A) {
 }
 
 bool criterionConcaveAnglesFar(int id, const DerivedOnceNet& A) {
-    for (const vector<Dart>& face: A.getFaces()) {
+    for (const vector<Dart>& face: A.faces()) {
         for (const Dart& d: face) {
             if (!A.isObtuse(d)) continue;
             
@@ -173,7 +173,7 @@ bool criterionConcaveAnglesFar(int id, const DerivedOnceNet& A) {
 bool criterionTwoAdjacentSquares(int id, const DerivedOnceNet& A) {
     for (Dart d: A.darts()) {
         Dart e = A.rev(d);
-        if (ssize(A.getFace(d)) != 4 or ssize(A.getFace(e)) != 4)
+        if (ssize(A.face(d)) != 4 or ssize(A.face(e)) != 4)
             continue;
         Dart d1 = A.rev(A.phi(A.phi(d)));
         Dart e1 = A.rev(A.phi(A.phi(A.phi(e))));
@@ -189,7 +189,7 @@ bool criterionConvexFacesIntersection(int id, const DerivedOnceNet& A) {
     for (Dart d: A.darts()) {
         if (!A.isConvexFace(d) or !A.isConvexFace(A.rev(d)))
             continue;
-        vector<Dart> face2 = A.getFace(A.rev(d));
+        vector<Dart> face2 = A.face(A.rev(d));
         int cnt = 0;
         for (Dart e: face2)
             cnt += sameFace(A, d, e);
@@ -200,12 +200,12 @@ bool criterionConvexFacesIntersection(int id, const DerivedOnceNet& A) {
 }
 
 bool criterionFourPentagons(int id, const DerivedOnceNet& A) {
-    for (const vector<Dart>& face: A.getFaces()) {
+    for (const vector<Dart>& face: A.faces()) {
         if (ssize(face) != 4 or !A.isConvexFace(face[0]))
             continue;
         bool all_pentagons = true;
         for (Dart d: face) {
-            auto pentagon = A.getFace(A.rev(d));
+            auto pentagon = A.face(A.rev(d));
             all_pentagons &= ssize(pentagon) == 5 and A.isConvexFace(pentagon[0]);
         }
         if (!all_pentagons)
@@ -213,7 +213,7 @@ bool criterionFourPentagons(int id, const DerivedOnceNet& A) {
         
         for (Dart d: face) {
             Dart e = A.rev(A.phi(A.phi(A.rev(d))));
-            auto another_square = A.getFace(e);
+            auto another_square = A.face(e);
             if (ssize(another_square) == 4 and A.isConvexFace(another_square[0]))
                 return false;
         }
@@ -228,7 +228,7 @@ bool criterionThreeRectangles(int id, const DerivedOnceNet& A) {
         bool works = true;
         Dart curr = d;
         for (int i = 0; i < 3; i++) {
-            works &= ssize(A.getFace(curr)) == 4;
+            works &= ssize(A.face(curr)) == 4;
             works &= A.isConvexFace(curr); 
             curr = A.next(curr);
         }
@@ -239,7 +239,7 @@ bool criterionThreeRectangles(int id, const DerivedOnceNet& A) {
 }
 
 bool criterionRectangleLongSide(int id, const DerivedOnceNet& A) {
-    for (auto face: A.getFaces()) {
+    for (auto face: A.faces()) {
         if (ssize(face) != 4 or countObtuseAngles(A, face[0]) != 1)
             continue;
         bool works = false;

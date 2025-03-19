@@ -220,7 +220,7 @@ struct CombinatorialMap {
         return {dart(d_id), pp.first};
     }
     
-    vector<Dart> getFace(Dart d) const {
+    vector<Dart> face(Dart d) const {
         checkDart(d);
         
         Dart curr = d;
@@ -232,7 +232,7 @@ struct CombinatorialMap {
         return face;
     }
     
-    vector<vector<Dart>> getFaces() const {
+    vector<vector<Dart>> faces() const {
         vector<vector<Dart>> faces;
         vector<bool> visited(2*E());
         for (int i = 0; i < 2*E(); i++) {
@@ -329,7 +329,7 @@ struct CombinatorialMap {
         }
         
         // Checking that the number of faces is correct.
-        assert(ssize(getFaces()) == _F);
+        assert(ssize(faces()) == _F);
     }
     
   private:

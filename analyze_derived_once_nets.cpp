@@ -22,7 +22,7 @@ vector<DerivedOnceNet> parseDerivedOnceNets() {
 
 bool onePin(const DerivedOnceNet& A) {
     int cnt = 0;
-    for (const vector<Dart>& face: A.getFaces()) {
+    for (const vector<Dart>& face: A.faces()) {
         cnt += !A.isConvexFace(face[0]);
     }
     return cnt == 1;
@@ -30,7 +30,7 @@ bool onePin(const DerivedOnceNet& A) {
 
 bool containsBiangle(const DerivedOnceNet& A) {
     int cnt = 0;
-    for (const vector<Dart>& face: A.getFaces()) {
+    for (const vector<Dart>& face: A.faces()) {
         if (!A.isConvexFace(face[0]))
             continue;
         cnt += ssize(face) == 2;
@@ -40,7 +40,7 @@ bool containsBiangle(const DerivedOnceNet& A) {
 
 bool containsTriangle(const DerivedOnceNet& A) {
     int cnt = 0;
-    for (const vector<Dart>& face: A.getFaces()) {
+    for (const vector<Dart>& face: A.faces()) {
         if (!A.isConvexFace(face[0]))
             continue;
         cnt += ssize(face) == 3;
@@ -49,7 +49,7 @@ bool containsTriangle(const DerivedOnceNet& A) {
 }
 
 int faceArea(const DerivedOnceNet& A, Dart d) {
-    const vector<Dart>& face = A.getFace(d);
+    const vector<Dart>& face = A.face(d);
     int res = 6 - ssize(face);
     for (const Dart& d: face) {
         if (A.isObtuse(d))
@@ -59,7 +59,7 @@ int faceArea(const DerivedOnceNet& A, Dart d) {
 }
 
 bool sameFace(const DerivedOnceNet& A, Dart d, Dart e) {
-    const vector<Dart>& face = A.getFace(d);
+    const vector<Dart>& face = A.face(d);
     for (const Dart& e1: face) {
         if (e1 == e)
             return true;
@@ -69,7 +69,7 @@ bool sameFace(const DerivedOnceNet& A, Dart d, Dart e) {
 
 
 bool isPesceMagro(int id, const DerivedOnceNet& A) {
-    auto faces = A.getFaces();
+    auto faces = A.faces();
     vector<pair<int,bool>> types;
     for (auto face: faces) {
         types.push_back({ssize(face), A.isConvexFace(face[0])});

@@ -68,69 +68,6 @@ bool sameFace(const DerivedOnceNet& A, Dart d, Dart e) {
 }
 
 
-bool criterion_biangle(int id, const DerivedOnceNet& A) {
-    vector<vector<Dart>> faces = A.getFaces();
-    
-    for (const vector<Dart>& face: faces) {
-        if (ssize(face) != 2)
-            continue;
-        
-        if (!A.isConvexFace(face[0]))
-            return false;
-            
-        if (sameFace(A, A.rev(face[0]), A.rev(face[1])))
-            return false;
-            
-        if (A.isConvexFace(A.rev(face[0])) 
-            or A.isConvexFace(A.rev(face[1])))
-            return false;
-            
-        if (faceArea(A, A.rev(face[0])) + faceArea(A, A.rev(face[1])) < 3)
-            return false;
-            
-        for (const Dart& d: A.darts()) {
-            if (A.isConvexFace(d) and A.isConvexFace(A.rev(d))
-                and ssize(A.getFace(d)) == 3
-                and ssize(A.getFace(A.rev(d))) == 4)
-                return false;
-            if (d != face[0] and d != face[1] and ssize(A.getFace(d)) == 2)
-                return false;
-        }
-    }
-    return true;
-}
-
-bool criterion_simple_boundary(int id, const DerivedOnceNet& A) {
-    vector<vector<Dart>> faces = A.getFaces();
-    
-    for (const Dart& d: A.darts()) {
-        if (sameFace(A, d, A.rev(d)))
-            return false;
-    }
-    return true;
-}
-
-bool criterion_concave_angles_far(int id, const DerivedOnceNet& A) {
-    for (const vector<Dart>& face: A.getFaces()) {
-        for (const Dart& d: face) {
-            if (!A.isObtuse(d)) continue;
-            
-            int dist = 1;
-            Dart curr = A.phi(d);
-            while (curr != d) {
-                if (A.isObtuse(curr)) {
-                    assert(dist != 1);
-                    if (5 < ssize(face) - dist)
-                        return false;
-                }
-                curr = A.phi(curr);
-                dist++;
-            }
-        }
-    }
-    return true;
-}
-
 bool isPesceMagro(int id, const DerivedOnceNet& A) {
     auto faces = A.getFaces();
     vector<pair<int,bool>> types;
@@ -138,10 +75,11 @@ bool isPesceMagro(int id, const DerivedOnceNet& A) {
         types.push_back({ssize(face), A.isConvexFace(face[0])});
     }
     sort(types.begin(), types.end());
-    // 
+    
     vector<pair<int,bool>> hope = {{2, 1}, {4, 1}, {5, 0}, {5, 0}};
     return types == hope;
 }
+
 
 
 int main() {
@@ -150,26 +88,15 @@ int main() {
     cout << "There are " << derived_once.size()
          << " derived-once net candidates." << endl << endl;
         
-    int biangle = 0;
-    int excluded = 0;
-    int non_s1 = 0;
-    int bomba = 0;
+    
+    int with_biangle = 0;
     for (int i = 0; i < ssize(derived_once); i++) {
         const DerivedOnceNet& A = derived_once[i];
-        biangle += containsBiangle(A);
-        if (!criterion_biangle(i, A))
-            excluded++;
-        else if (!criterion_simple_boundary(i, A))
-            non_s1++;
-        else if (!criterion_concave_angles_far(i, A))
-            bomba++;
-        else if (isPesceMagro(i, A)) {
+        with_biangle += containsBiangle(A);
+        if (isPesceMagro(i, A)) {
             cout << i << " ";
         }
-        //~ if (onePin(A)) {
-            //~ cout << "One pin: " << i << endl;
-        //~ }
     }
     cout << endl;
-    cout << excluded << " " << non_s1 << " " << bomba << endl;
+    cout << with_biangle << endl;
 }

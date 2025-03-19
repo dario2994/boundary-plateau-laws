@@ -75,6 +75,33 @@ bool sameFace(const DerivedOnceNet& A, Dart d, Dart e) {
     return false;
 }
 
+int pinContribution(const DerivedOnceNet& A, Dart d) {
+    if (countObtuseAngles(A, d) == 1)
+        return 0;
+    assert(A.degree(d.from) == 3 and A.degree(d.to) == 3);
+    int dist = -1;
+    Dart curr = d;
+    while (1) {
+        if (A.isObtuse(curr)) {
+            if (dist == -1) dist = 1;
+            else break;
+        } else if (dist >= 0) dist++;
+        
+        curr = A.phi(curr);
+    }
+    int contribution = max(4-dist, 0);
+    return contribution;
+}
+
+int sumAreaConvexFaces(const DerivedOnceNet& A) {
+    int res = 0;
+    for (auto face: A.getFaces()) {
+        if (A.isConvexFace(face[0]))
+            res += faceArea(A, face[0]);
+    }
+    return res;
+}
+
 
 bool criterionBiangle(int id, const DerivedOnceNet& A) {
     vector<vector<Dart>> faces = A.getFaces();
@@ -92,25 +119,12 @@ bool criterionBiangle(int id, const DerivedOnceNet& A) {
         if (A.isConvexFace(A.rev(face[0])) 
             or A.isConvexFace(A.rev(face[1])))
             return false;
-            
-        int area = faceArea(A, A.rev(face[0])) + faceArea(A, A.rev(face[1]));
-        for (Dart d: {A.rev(face[0]), A.rev(face[1])}) {
-            if (countObtuseAngles(A, d) == 1)
-                continue;
-            int dist = -1;
-            Dart curr = d;
-            while (1) {
-                if (A.isObtuse(curr)) {
-                    if (dist == -1) dist = 1;
-                    else break;
-                } else if (dist >= 0) dist++;
-                
-                curr = A.phi(curr);
-            }
-            int contribution = max(4-dist, 0);
-            area -= contribution;
-        }
-        if (area < 3)
+        
+        int strange_area = sumAreaConvexFaces(A) - 4;
+        strange_area += pinContribution(A, A.rev(face[0]));
+        strange_area += pinContribution(A, A.rev(face[1]));
+        
+        if (strange_area > 5)
             return false;
             
         for (const Dart& d: A.darts()) {
@@ -185,7 +199,7 @@ bool criterionConvexFacesIntersection(int id, const DerivedOnceNet& A) {
     return true;
 }
 
-bool CriterionFourPentagons(int id, const DerivedOnceNet& A) {
+bool criterionFourPentagons(int id, const DerivedOnceNet& A) {
     for (const vector<Dart>& face: A.getFaces()) {
         if (ssize(face) != 4 or !A.isConvexFace(face[0]))
             continue;
@@ -207,7 +221,7 @@ bool CriterionFourPentagons(int id, const DerivedOnceNet& A) {
     return true;
 }
 
-bool CriterionThreeRectangles(int id, const DerivedOnceNet& A) {
+bool criterionThreeRectangles(int id, const DerivedOnceNet& A) {
     for (const Dart& d: A.darts()) {
         if (A.degree(d.from) != 3)
             continue;
@@ -221,6 +235,29 @@ bool CriterionThreeRectangles(int id, const DerivedOnceNet& A) {
         if (works)
             return false;
     }
+    return true;
+}
+
+bool criterionRectangleLongSide(int id, const DerivedOnceNet& A) {
+    for (auto face: A.getFaces()) {
+        if (ssize(face) != 4 or countObtuseAngles(A, face[0]) != 1)
+            continue;
+        bool works = false;
+        for (Dart d: face) {
+            if (A.degree(d.from) < 3 or A.degree(d.to) < 3)
+                continue;
+            if (A.isConvexFace(A.rev(d)))
+                continue;
+            int weird_area = sumAreaConvexFaces(A);
+            weird_area += pinContribution(A, d);
+            weird_area += pinContribution(A, A.rev(d));
+            if (weird_area <= 5)
+                works = true;
+        }
+        if (!works)
+            return false;
+    }
+    
     return true;
 }
 
@@ -240,8 +277,9 @@ int main() {
         {"concave angles are far\t", criterionConcaveAnglesFar},
         {"two adjacent squares\t", criterionTwoAdjacentSquares},
         {"convex faces intersection", criterionConvexFacesIntersection},
-        {"four pentagons\t\t", CriterionFourPentagons},
-        {"three rectangles\t", CriterionThreeRectangles}
+        {"four pentagons\t\t", criterionFourPentagons},
+        {"three rectangles\t", criterionThreeRectangles},
+        {"rectangle long side\t", criterionRectangleLongSide}
     };
     
     map<string, vector<int>> excluded_by; 
@@ -279,6 +317,3 @@ int main() {
     out << endl;
     out.close();
 }
-
-// survivors: 2041
-// with biangle: 29

@@ -222,14 +222,14 @@ int main() {
     // One of the files is optimized for being read by a human, the
     // other one is optimized for being parsed by a computer.
     vector<CombinatorialMap> res = nets.getList();
-    ofstream human("derived_twice_human.txt");
-    ofstream computer("derived_twice_computer.txt");
+    ofstream human("data/derived_twice_human.txt");
+    ofstream computer("data/derived_twice_computer.txt");
     
     computer << ssize(res) << endl;
     
     for (int _ = 0; _ < ssize(res); _++) {
         const CombinatorialMap& A = res[_];
-        human << "Candidate " << _+1 << endl;
+        human << "Candidate " << _ << endl;
         human << A << endl << endl;
         
         A.serialize(computer);

@@ -37,11 +37,11 @@ pt& operator -=(pt& P, const pt& Q) {
 }
 
 pt operator *(const pt& P, double lambda) {
-    return {P.x*lambda, P.y*lambda, P.y*lambda};
+    return {P.x*lambda, P.y*lambda, P.z*lambda};
 }
 
 pt operator *(double lambda, const pt& P) {
-    return {P.x*lambda, P.y*lambda, P.y*lambda};
+    return {P.x*lambda, P.y*lambda, P.z*lambda};
 }
 
 pt operator /(const pt& P, double lambda) {
@@ -85,6 +85,8 @@ struct TangentVector {
         assert(areOrthogonal(P, v));
     }
     
+    TangentVector(): P(1, 0, 0), v(0, 1, 0) { check(); }
+    
     TangentVector(pt _P, pt _v): P(_P), v(_v) {
         check();
     }
@@ -95,11 +97,12 @@ struct TangentVector {
         check();
     }
     void exp(double theta) {
-        P = cos(theta)*P + sin(theta)*v;
+        pt P2 = cos(theta)*P + sin(theta)*v;
+        v = cos(theta)*v - sin(theta)*P;
+        P = P2;
+        
         check();
     }
 };
-
-
 
 #endif

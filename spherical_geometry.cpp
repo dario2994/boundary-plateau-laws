@@ -115,9 +115,23 @@ bool onEquator(pt p, TangentVector tv) {
     return abs(tv.equatorNormal() * p) < eps;
 }
 
+void normalizeAngle(double& theta) {
+    while (theta < 0) theta += 2*M_PI;
+    while (theta >= 2*M_PI) theta -= 2*M_PI;
+}
+
 double invertExp(TangentVector tv, pt q) {
     assert(onEquator(q, tv));
     double theta = atan2(q*tv.v, q*tv.P);
+    normalizeAngle(theta);
+    return theta;
+}
+
+double invertRotate(TangentVector s, TangentVector t) {
+    static const double eps = 1e-6;
+    assert(norm(s.P-t.P) < eps);
+    
+    double theta = atan2(s.equatorNormal()*t.v, s.v * t.v);
     if (theta < 0) theta += 2*M_PI;
     return theta;
 }
@@ -133,12 +147,15 @@ double intersectWithEquator(TangentVector tv, pt q) {
 
 struct GeodesicSegment:TangentVector {
     double len;
+    
+    GeodesicSegment(): TangentVector(), len(0) {}
+    
     GeodesicSegment(TangentVector tv, double _len): 
             TangentVector(tv), len(_len) {
         assert(0 < len and len < 2*M_PI);
     }
     GeodesicSegment(pt P, pt v, double _len): 
-            GeodesicSegment(TangentVector(P, v), len) {}
+            GeodesicSegment(TangentVector(P, v), _len) {}
     
     pt from() { return P; }
     pt to() { 
@@ -207,6 +224,10 @@ double sphericalCosineRule(double A, double B, double C) {
     return acos(cosa);
 }
 
+// We complete a polygon by finding the lengths of the last three
+// sides.
+// This function is painful.
+//
 // We start in vt1.
 // We run exp for len1
 // We turn by angle1.
@@ -217,29 +238,86 @@ double sphericalCosineRule(double A, double B, double C) {
 // We run exp for len3
 // We turn by angle3.
 // We are in vt4
-array<double, 3> completePolygon(TangentVector vt1, TangentVector vt4,
+array<GeodesicSegment, 3> completePolygon(
+        TangentVector vt1, TangentVector vt4,
         double angle1, double angle2, double angle3) {
+    static const double eps = 1e-6;        
+            
     vt4.rotate(-angle3);
+    vt4.v = -vt4.v;
     // The assumption is that they are not on (approximately) the
     // same equator.
     if (onEquator(vt4.P, vt1) and onEquator(vt4.v, vt1))
-        return {-1, -1, -1};
+        return {GeodesicSegment(), GeodesicSegment(), GeodesicSegment()};
         
     double X1 = intersectWithEquator(vt1, vt4.equatorNormal());
-    TangentVector vt1_bis = vt1;
-    vt1_bis.exp(X1);
+    TangentVector vt1_pole = vt1;
+    vt1_pole.exp(X1);
     
-    vt4.v = -vt4.v;
-    double X4 = invertExp(vt4, vt1_bis.P);
-    TangentVector vt4_bis = vt4;
-    vt4_bis.exp(X4);
-    vt4.v = -vt4.v;
-    vt4_bis.v = -vt4_bis.v;
+    double X4 = invertExp(vt4, vt1_pole.P);
+    TangentVector vt4_pole = vt4;
+    vt4_pole.exp(X4);
     
-    // Now, vt1_bis and vt4_bis are centered in the same point.
-    // We shall start from vt1_bis, go for len1, turn by angle1,
-    // go for len2, turn by angle2, go for len3, end at vt4_bis.
-    double angle0 = ?
+    // Now, vt1_pole and vt4_pole are centered in the same point.
+    // We shall start from vt1_pole, go for len1, turn by angle1,
+    // go for len2, turn by angle2, go for len3, end at the opposite of
+    // vt4_pole.
+    double angle0 = invertRotate(vt4_pole, vt1_pole);
+    
+    double len1 = sphericalCosineRule(angle2, angle0, angle1);
+    double len3 = sphericalCosineRule(angle1, angle2, angle0);
+    len1 -= X1;
+    len3 -= X4;
+    
+    function<array<GeodesicSegment, 3>()> conclusion = [&]() {
+        normalizeAngle(len1);
+        normalizeAngle(len3);
+        
+        TangentVector vt2 = vt1;
+        vt2.exp(len1);
+        vt2.rotate(angle1);
+        
+        TangentVector vt3 = vt4;
+        vt3.exp(len3);
+        vt3.v = -vt3.v;
+        
+        double len2 = invertExp(vt2, vt3.P);
+        
+        GeodesicSegment g1(vt1, len1);
+        GeodesicSegment g2(vt2, len2);
+        GeodesicSegment g3(vt3, len3);
+        
+        return array<GeodesicSegment, 3>{g1, g2, g3};
+    };
+    
+    auto check_answer = [&](array<GeodesicSegment, 3> res) {
+        bool check12 = res[0].len < M_PI or res[1].len < M_PI;
+        bool check23 = res[1].len < M_PI or res[2].len < M_PI;
+        bool check31 = true;
+        if (norm(vt1.P-vt4.P) < eps)
+            check31 = res[0].len < M_PI or res[2].len < M_PI;
+        else
+            check31 = !areIntersecting(res[0], res[2]);
+        
+        return check12 and check23 and check31;
+    };
+    
+    
+    array<GeodesicSegment, 3> res1 = conclusion();
+    len1 += M_PI;
+    len3 += M_PI;
+    array<GeodesicSegment, 3> res2 = conclusion();
+    
+    bool check1 = check_answer(res1);
+    bool check2 = check_answer(res2);
+    assert(!check1 or !check2);
+    
+    if (!check1 and !check2)
+        return {GeodesicSegment(), GeodesicSegment(), GeodesicSegment()};
+    
+    if (check1)
+        return res1;
+    return res2;
 }
 
 

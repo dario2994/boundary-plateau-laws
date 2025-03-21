@@ -208,15 +208,8 @@ bool criterionFourPentagons(int id, const DerivedOnceNet& A) {
             auto pentagon = A.face(A.rev(d));
             all_pentagons &= ssize(pentagon) == 5 and A.isConvexFace(pentagon[0]);
         }
-        if (!all_pentagons)
-            continue;
-        
-        for (Dart d: face) {
-            Dart e = A.rev(A.phi(A.phi(A.rev(d))));
-            auto another_square = A.face(e);
-            if (ssize(another_square) == 4 and A.isConvexFace(another_square[0]))
-                return false;
-        }
+        if (all_pentagons)
+            return false;
     }
     return true;
 }
@@ -225,13 +218,19 @@ bool criterionThreeRectangles(int id, const DerivedOnceNet& A) {
     for (const Dart& d: A.darts()) {
         if (A.degree(d.from) != 3)
             continue;
-        bool works = true;
-        Dart curr = d;
-        for (int i = 0; i < 3; i++) {
-            works &= ssize(A.face(curr)) == 4;
-            works &= A.isConvexFace(curr); 
-            curr = A.next(curr);
-        }
+        Dart a = d; 
+        Dart b = A.next(a); 
+        Dart c = A.next(b);
+        bool works = ssize(A.face(a)) == 4;
+        works &= ssize(A.face(b)) == 4;
+        works &= ssize(A.face(c)) == 4;
+        
+        works &= A.isConvexFace(a);
+        works &= A.isConvexFace(b);
+        
+        works &= A.isConvexFace(c) or
+            (A.isObtuse(c) and A.isObtuse(A.phi(A.phi(c))));
+        
         if (works)
             return false;
     }

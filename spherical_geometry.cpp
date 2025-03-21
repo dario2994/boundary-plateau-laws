@@ -148,11 +148,11 @@ double intersectWithEquator(TangentVector tv, pt q) {
 struct GeodesicSegment:TangentVector {
     double len;
     
-    GeodesicSegment(): TangentVector(), len(0) {}
+    GeodesicSegment(): TangentVector(), len(-1) {}
     
     GeodesicSegment(TangentVector tv, double _len): 
             TangentVector(tv), len(_len) {
-        assert(0 < len and len < 2*M_PI);
+        assert(0 <= len and len < 2*M_PI);
     }
     GeodesicSegment(pt P, pt v, double _len): 
             GeodesicSegment(TangentVector(P, v), _len) {}
@@ -230,20 +230,20 @@ double sphericalCosineRule(double A, double B, double C) {
 //
 // We start in vt1.
 // We run exp for len1
-// We turn by angle1.
+// We turn by angle1-pi.
 // We are in vt2.
 // We run exp for len2
-// We turn by angle2.
+// We turn by angle2-pi.
 // We are in vt3.
 // We run exp for len3
-// We turn by angle3.
+// We turn by angle3-pi.
 // We are in vt4
 array<GeodesicSegment, 3> completePolygon(
-        TangentVector vt1, TangentVector vt4,
+        const TangentVector& vt1, TangentVector vt4,
         double angle1, double angle2, double angle3) {
     static const double eps = 1e-6;        
             
-    vt4.rotate(-angle3);
+    vt4.rotate(M_PI-angle3);
     vt4.v = -vt4.v;
     // The assumption is that they are not on (approximately) the
     // same equator.
@@ -259,23 +259,28 @@ array<GeodesicSegment, 3> completePolygon(
     vt4_pole.exp(X4);
     
     // Now, vt1_pole and vt4_pole are centered in the same point.
-    // We shall start from vt1_pole, go for len1, turn by angle1,
-    // go for len2, turn by angle2, go for len3, end at the opposite of
+    // We shall start from vt1_pole, go for len1, turn by angle1-pi,
+    // go for len2, turn by angle2-pi, go for len3, end at the opposite of
     // vt4_pole.
     double angle0 = invertRotate(vt4_pole, vt1_pole);
     
-    double len1 = sphericalCosineRule(angle2, angle0, angle1);
-    double len3 = sphericalCosineRule(angle1, angle2, angle0);
-    len1 -= X1;
-    len3 -= X4;
+    double len1_short = sphericalCosineRule(angle2, angle0, angle1);
+    double len3_short = sphericalCosineRule(angle1, angle2, angle0);
     
-    function<array<GeodesicSegment, 3>()> conclusion = [&]() {
+    double len1_long = sphericalCosineRule(angle2, -angle0, angle1) + M_PI;
+    double len3_long = sphericalCosineRule(angle1, angle2, -angle0) + M_PI;
+    
+    
+    function<array<GeodesicSegment, 3>(double,double)> conclusion = 
+    [&](double len1, double len3) {
+        len1 -= X1;
+        len3 -= X4;
         normalizeAngle(len1);
         normalizeAngle(len3);
         
         TangentVector vt2 = vt1;
         vt2.exp(len1);
-        vt2.rotate(angle1);
+        vt2.rotate(angle1-M_PI);
         
         TangentVector vt3 = vt4;
         vt3.exp(len3);
@@ -303,10 +308,8 @@ array<GeodesicSegment, 3> completePolygon(
     };
     
     
-    array<GeodesicSegment, 3> res1 = conclusion();
-    len1 += M_PI;
-    len3 += M_PI;
-    array<GeodesicSegment, 3> res2 = conclusion();
+    array<GeodesicSegment, 3> res1 = conclusion(len1_short, len3_short);
+    array<GeodesicSegment, 3> res2 = conclusion(len1_long, len3_long);
     
     bool check1 = check_answer(res1);
     bool check2 = check_answer(res2);

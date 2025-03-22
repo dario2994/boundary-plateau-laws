@@ -68,8 +68,8 @@ int main() {
     TangentVector tv1;
     double a120 = M_PI*0.666666;
     double a240 = M_PI*1.333333;
-    vector<double> angles = {a120, a120, a120, a120};
-    vector<double> sides = {1.5};
+    vector<double> angles = {a120, a120, a120, a120, a120, a240};
+    vector<double> sides = {0.6, 0.7, 0.9};
     vector<GeodesicSegment> poly = constructPolygon(angles, sides);
     assert(!poly.empty());
     savePolygon(poly, "todel.txt");

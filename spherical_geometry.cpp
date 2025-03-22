@@ -273,8 +273,8 @@ array<GeodesicSegment, 3> completePolygon(
     
     function<array<GeodesicSegment, 3>(double,double)> conclusion = 
     [&](double len1, double len3) {
-        len1 -= X1;
-        len3 -= X4;
+        len1 += X1;
+        len3 += X4;
         normalizeAngle(len1);
         normalizeAngle(len3);
         

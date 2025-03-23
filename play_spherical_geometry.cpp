@@ -37,9 +37,6 @@ bool validatePolygon(const vector<GeodesicSegment>& vec) {
 
 vector<vector<GeodesicSegment>> completePolygon(vector<GeodesicSegment>& vec, 
                      double angle1, double angle2, double angle3) {
-    //~ cout << "vec[0]" << vec[0].V << endl;
-    //~ cout << "vt4.V" << vec[0].rotate(-0.3333333*M_PI).V << endl;
-    
     auto completion_candidates = 
         completePolygon(vec.back(), vec[0].rotate(-(angle3-M_PI)), 
                         angle1, angle2);
@@ -57,8 +54,10 @@ vector<vector<GeodesicSegment>> completePolygon(vector<GeodesicSegment>& vec,
     return res;
 }
 
+// Given n angles and and n-3 sides, it returns all (nonintersecting)
+// polygons with this data.
 vector<vector<GeodesicSegment>> constructPolygon(vector<double> angles, 
-                                         vector<double> sides) {
+                                                 vector<double> sides) {
     int n = angles.size();
     assert(ssize(sides) == n-3);
     vector<GeodesicSegment> vec = {GeodesicSegment()};
@@ -70,6 +69,70 @@ vector<vector<GeodesicSegment>> constructPolygon(vector<double> angles,
     }
     
     return completePolygon(vec, angles[n-3], angles[n-2], angles[n-1]);
+}
+
+// angles[i] \in \{120, 240\}
+vector<GeodesicSegment> constructFace(vector<int> angles,
+                                      vector<double> sides) {
+    static const double eps = 1e-6;
+    
+    int n = ssize(angles);
+    assert(n >= 3);
+    vector<double> angles_rad(n);
+    for (int i = 0; i < n; i++) {
+        assert(angles[i] == 120 or angles[i] == 240);
+        angles_rad[i] = angles[i] * (M_PI/180);
+    }
+    auto polys = constructPolygon(angles_rad, sides);
+    if (polys.empty())
+        return {};
+    assert(polys.size() == 1);
+    auto poly = polys[0];
+    
+    vector<int> big_vertices;
+    for (int i = 0; i < n; i++) {
+        if (angles[i] == 240)
+            big_vertices.push_back((i+1) % n);
+    }
+    
+    assert(ssize(big_vertices) <= 2);
+    
+    if (big_vertices.size() == 1) {
+        int u = big_vertices[0];
+        TangentVector tu = poly[u].rotate(-(2*M_PI)/3);
+        poly.push_back({tu, 0.1});
+    } else if (big_vertices.size() == 2) {
+        int u = big_vertices[0];
+        int v = big_vertices[1];
+        TangentVector tu = poly[u].rotate(-(2*M_PI)/3);
+        TangentVector tv = poly[v].rotate(-(2*M_PI)/3);
+        double len_u = intersectWithEquator(tu, tv.equatorNormal());
+        double len_v = intersectWithEquator(tv, tu.equatorNormal());
+        
+        GeodesicSegment gsu(tu, len_u);
+        GeodesicSegment gsv(tv, len_v);
+        
+        tu = tu.exp(len_u);
+        tv = tv.exp(len_v);
+        double theta = tu.inverseRotate(-tv.V);
+        if (min(theta, 2*M_PI-theta) > M_PI/3)
+            return {};
+        
+        poly.push_back(gsu);
+        poly.push_back(gsv);
+        
+        if (norm(gsu.to() - gsv.to()) > eps)
+            return {};
+        
+        for (int i = 0; i < n; i++) {
+            if ((i+1) % n != u and i != u and areIntersecting(poly[i], gsu))
+                return {};
+            if ((i+1) % n != v and i != v and areIntersecting(poly[i], gsv))
+                return {};
+        }
+    }
+    
+    return poly;
 }
 
 void unitTest() {
@@ -90,24 +153,54 @@ void unitTest() {
     }
 }
 
+void searchFaceRealization(vector<int> angles) {
+    static random_device rd;  // Non-deterministic random number generator
+    static mt19937 gen(rd()); // Mersenne Twister PRNG
+    static uniform_real_distribution<double> rnd_side(0.02, 2*M_PI-0.02);
+
+    
+    int n = angles.size();
+    assert(3 <= n and n <= 9);
+    for (int _ = 0; _ < 10'000'000; _++) {
+        vector<double> sides(n-3, -1);
+        for (int i = 0; i < n-3; i++)
+            sides[i] = rnd_side(gen);
+        auto poly = constructFace(angles, sides);
+        if (!poly.empty()) {
+            for (int i = 0; i < n; i++)
+                cout << poly[i].len << " ";
+            cout << endl;
+            savePolygon(poly, "todel.txt");
+            return;
+        }
+    }
+}
+
 int main() {
     srand(time(NULL));
     
     double a120 = M_PI*0.6666666666;
     double a240 = M_PI*1.3333333333;
     
-    cout << a240 << endl;
-    
-    vector<double> angles = {a120, a120, a120, 4.5};
-    vector<double> sides = {1.7};
-    //~ for (sides[0] = 0.01; sides[0] < 2*M_PI; sides[0] += 0.1) {
-        auto poly = constructPolygon(angles, sides);
-        assert(poly.size() <= 1);
-        //~ if (!poly.empty())
-            //~ cout << sides[0] << endl;
+    //~ vector<double> angles = {a120, a120, a120, a240, a240};
+    vector<int> angles = {120, 120, 120, 240, 120, 240};
+    searchFaceRealization(angles);
+    //~ vector<double> sides = {-1, -1, -1};
+    //~ for (sides[0] = 0.3; sides[0] < 2*M_PI-0.3; sides[0] += 0.01)
+    //~ for (sides[1] = 0.3; sides[1] < 2*M_PI-0.3; sides[1] += 0.01) 
+    //~ for (sides[2] = 0.3; sides[2] < 2*M_PI-0.3; sides[2] += 0.01) {
+        //~ auto poly = constructFace(angles, sides);
+        //~ if (!poly.empty()) {
+            //~ cout << sides[0] << " " << sides[1] << endl;
+            //~ for (int i = 0; i < ssize(poly); i++)
+                //~ cout << poly[i].len << " ";
+            //~ cout << endl;
+            //~ savePolygon(poly, "todel.txt");
+            //~ return 0;
+        //~ }
     //~ }
-    cout << poly.size() << endl;
-    savePolygon(poly[0], "todel.txt");
+    //~ cout << poly.size() << endl;
+    //~ savePolygon(poly[0], "todel.txt");
     
     //~ vector<double> angles = {a120, a120, a120, a120, a120, a240};
     //~ vector<double> sides = {0.1, 0.1, 0.1};

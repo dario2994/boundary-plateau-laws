@@ -183,7 +183,7 @@ int main() {
     double a240 = M_PI*1.3333333333;
     
     //~ vector<double> angles = {a120, a120, a120, a240, a240};
-    vector<int> angles = {120, 120, 120, 240, 120, 240};
+    vector<int> angles = {120, 120, 120, 240, 120, 120, 240};
     searchFaceRealization(angles);
     //~ vector<double> sides = {-1, -1, -1};
     //~ for (sides[0] = 0.3; sides[0] < 2*M_PI-0.3; sides[0] += 0.01)

@@ -252,7 +252,6 @@ vector<array<double,3>> computeTriangleSides(double A, double B, double C) {
 
 // We complete a polygon by finding the lengths of the last three
 // sides.
-// This function is painful.
 //
 // We start in vt1.
 // We run exp for len1
@@ -270,9 +269,6 @@ vector<array<GeodesicSegment, 3>> completePolygon(
     static const double eps = 1e-6;        
     vt4.V = -vt4.V;
     
-    //~ cout << "vt1: " << vt1.P << " " << vt1.V << endl;        
-    //~ cout << "vt4: " << vt4.P << " " << vt4.V << endl;
-    
     // The assumption is that they are not on (approximately) the
     // same equator.
     if (vt1.onEquator(vt4.P) and vt1.onEquator(vt4.V))
@@ -286,67 +282,22 @@ vector<array<GeodesicSegment, 3>> completePolygon(
     
     assert(norm(vt1_pole.P - vt4_pole.P) < eps);
     
-    //~ cout << "X.: " << X1 << " " << X3 << endl;
-    
     // Now, vt1_pole and vt4_pole are centered in the same point.
-    // We shall start from vt1_pole, go for len1, turn by angle1-pi,
-    // go for len2, turn by angle2-pi, go for len3, end at the opposite of
-    // vt4_pole.
+    // They form an angle = angle0.
     double angle0 = vt4_pole.inverseRotate(vt1_pole.V);
     vector<array<double, 3>> side_lengths = 
         computeTriangleSides(angle0, angle1, angle2);
-    //~ cout << "side lengths size: " << side_lengths.size() << endl;
-    
-    //~ double len1_short = sphericalCosineRule(angle2, angle0, angle1);
-    //~ double len3_short = sphericalCosineRule(angle1, angle2, angle0);
-    
-    // DEBUGGING
-    //~ cout << "DEBUG: " << vt1_pole.exp(len1_short).rotate(angle1).onEquator(vt4_pole.exp(len3_short).P) << endl; 
-    // DEBUGGING
-    
-        
-    //~ double len1_long = sphericalCosineRule(angle2, -angle0, angle1) + M_PI;
-    //~ double len3_long = sphericalCosineRule(angle1, angle2, -angle0) + M_PI;
-    
-    
-    
-    
-    function<array<GeodesicSegment, 3>(double,double)> conclusion = 
-    [&](double len1, double len3) {
-        len1 = normalizeAngle(len1 + X1);
-        len3 = normalizeAngle(len3 + X3);
-        
-        TangentVector vt2 = vt1.exp(len1).rotate(angle1-M_PI);
-        
-        TangentVector vt3 = vt4.exp(len3);
-        vt3.V = -vt3.V;
-        
-        double len2 = vt2.inverseExp(vt3.P);
-        //~ cout << "Real lengths:" << len1 << " " << len2 << " " << len3 << endl;
-        
-        GeodesicSegment g1(vt1, len1);
-        GeodesicSegment g2(vt2, len2);
-        GeodesicSegment g3(vt3, len3);
-        
-        return array<GeodesicSegment, 3>{g1, g2, g3};
-    };
-    
-    //~ cout << "vt1_pole: " << vt1_pole.P << " " << vt1_pole.V << endl;
-    //~ cout << "vt4_pole: " << vt4_pole.P << " " << vt4_pole.V << endl;
-    //~ cout << "angles: " << angle0 << " " << angle1 << " " << angle2 << endl;
-    
-    //~ cout << res1[0].len << " " << res1[1].len << " " << res1[2].len << endl;
-    //~ cout << res2[0].len << " " << res2[1].len << " " << res2[2].len << endl;
     
     vector<array<GeodesicSegment, 3>> res;
-    for (auto tri: side_lengths)
-        res.push_back(conclusion(tri[2], tri[1]));
-    //~ if (check_answer(res2))
-        //~ res.push_back(res2);
-    
-    //~ cout << res[0][2].from() << endl;
-    //~ cout << res[0][2].to() << endl;
-    
+    for (auto tri: side_lengths) {
+        double len1 = normalizeAngle(tri[2] + X1);
+        double len2 = tri[0];
+        double len3 = normalizeAngle(tri[1] + X3);
+        GeodesicSegment g1(vt1, len1);
+        GeodesicSegment g2(g1.exp(g1.len).rotate(angle1 - M_PI), len2);
+        GeodesicSegment g3(g2.exp(g2.len).rotate(angle2 - M_PI), len3);
+        res.push_back(array<GeodesicSegment, 3>{g1, g2, g3});
+    }
     return res;
 }
 

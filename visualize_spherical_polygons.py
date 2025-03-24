@@ -3,9 +3,6 @@ import plotly.graph_objects as go
 import sys
 import webbrowser
 
-def sph2cart(p):
-    """Convert a 3D point on the sphere from string format to Cartesian coordinates."""
-    return np.array([float(x) for x in p.strip().split()])
 
 def great_circle_path(p, v, length, num_points=50):
     """Generates points along the geodesic starting at p, in direction v, with given arc length."""
@@ -57,10 +54,11 @@ def main():
     n = int(lines[0].strip())
     data = []
     for i in range(1, n + 1):
-        parts = lines[i].split('|')
-        p = sph2cart(parts[0])
-        v = sph2cart(parts[1])
-        length = float(parts[2].strip())
+        values = list(map(float, lines[i].split()))
+        assert(len(values) == 7)
+        p = np.array(values[0:3])
+        v = np.array(values[3:6])
+        length = values[6]
         data.append((p, v, length))
     
     draw_spherical_polygon(data, output_file)

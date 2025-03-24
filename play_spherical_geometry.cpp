@@ -9,11 +9,8 @@ void savePolygon(vector<GeodesicSegment> poly, string out_file) {
     ofstream out(out_file);
     out << ssize(poly) << endl;
     for (const GeodesicSegment& side: poly) {
-        pt P = side.P;
-        pt V = side.V;
-        out << P.x << " " << P.y << " " << P.z << " | ";
-        out << V.x << " " << V.y << " " << V.z << " | ";
-        out << side.len << endl;
+        side.serialize(out);
+        out << endl;
     }
     out.close();
 }
@@ -112,6 +109,7 @@ vector<GeodesicSegment> constructFace(vector<int> angles,
         GeodesicSegment gsu(tu, len_u);
         GeodesicSegment gsv(tv, len_v);
         
+        // The angle in the pin belongs to [120,240].
         tu = tu.exp(len_u);
         tv = tv.exp(len_v);
         double theta = tu.inverseRotate(-tv.V);
@@ -124,6 +122,7 @@ vector<GeodesicSegment> constructFace(vector<int> angles,
         if (norm(gsu.to() - gsv.to()) > eps)
             return {};
         
+        // The links to the pin stay inside the face.
         for (int i = 0; i < n; i++) {
             if ((i+1) % n != u and i != u and areIntersecting(poly[i], gsu))
                 return {};
@@ -136,8 +135,6 @@ vector<GeodesicSegment> constructFace(vector<int> angles,
 }
 
 void unitTest() {
-    static const double eps = 1e-6;
-    
     for (double A = 0.1; A < 2*M_PI; A += 0.1) 
     for (double B = 0.1; B < 2*M_PI; B += 0.1)
     for (double C = 0.1; C < 2*M_PI; C += 0.1) {
@@ -177,87 +174,6 @@ void searchFaceRealization(vector<int> angles) {
 }
 
 int main() {
-    srand(time(NULL));
-    
-    double a120 = M_PI*0.6666666666;
-    double a240 = M_PI*1.3333333333;
-    
-    //~ vector<double> angles = {a120, a120, a120, a240, a240};
-    vector<int> angles = {120, 120, 120, 240, 120, 120, 240};
+    vector<int> angles = {120, 120, 120, 120, 240, 120, 120, 240};
     searchFaceRealization(angles);
-    //~ vector<double> sides = {-1, -1, -1};
-    //~ for (sides[0] = 0.3; sides[0] < 2*M_PI-0.3; sides[0] += 0.01)
-    //~ for (sides[1] = 0.3; sides[1] < 2*M_PI-0.3; sides[1] += 0.01) 
-    //~ for (sides[2] = 0.3; sides[2] < 2*M_PI-0.3; sides[2] += 0.01) {
-        //~ auto poly = constructFace(angles, sides);
-        //~ if (!poly.empty()) {
-            //~ cout << sides[0] << " " << sides[1] << endl;
-            //~ for (int i = 0; i < ssize(poly); i++)
-                //~ cout << poly[i].len << " ";
-            //~ cout << endl;
-            //~ savePolygon(poly, "todel.txt");
-            //~ return 0;
-        //~ }
-    //~ }
-    //~ cout << poly.size() << endl;
-    //~ savePolygon(poly[0], "todel.txt");
-    
-    //~ vector<double> angles = {a120, a120, a120, a120, a120, a240};
-    //~ vector<double> sides = {0.1, 0.1, 0.1};
-    
-    //~ vector<double> min_vals = {10, 10, 10};
-    //~ vector<double> max_vals = {0, 0, 0};
-    
-    
-    //~ for (sides[0] = 0.1; sides[0] < 6; sides[0] += 0.1)
-    //~ for (sides[1] = 0.1; sides[1] < 6; sides[1] += 0.1)
-    //~ for (sides[2] = 0.1; sides[2] < 6; sides[2] += 0.1) {
-        //~ cout << sides[0] << " " << sides[1] << " " << sides[2] << endl;
-        //~ vector<vector<GeodesicSegment>> poly = constructPolygon(angles, sides);
-        //~ assert(poly.size() <= 1);
-        //~ if (!poly.empty()) {
-            //~ cout << sides[0] << " " << sides[1] << " " << sides[2] << endl;
-            //~ for (int i = 0; i < 3; i++) {
-                //~ min_vals[i] = min(min_vals[i], sides[i]);
-                //~ max_vals[i] = max(max_vals[i], sides[i]);
-            //~ }
-            //~ if (rand() % 1000 == 0) {
-                //~ cout << "PRINT" << endl;
-                //~ savePolygon(poly[0], "todel.txt");
-                //~ exit(0);
-            //~ }
-        //~ }
-    //~ }
-    //~ cout << min_vals[0] << " " << min_vals[1] << " " << min_vals[2] << endl;
-    //~ cout << max_vals[0] << " " << max_vals[1] << " " << max_vals[2] << endl;
-    //~ vector<GeodesicSegment> poly = constructPolygon(angles, sides);
-    //~ assert(!poly.empty());
-    
-    //~ savePolygon(poly, "todel.txt");
-    
-    //~ vector<bool> big_angle = {0, 0, 0, 1, 0, 0};
-    //~ vector<double> len = {1.14, 1.7, 0.7, 0.2, 0.8, 0.93};
-    //~ assert(ssize(big_angle) == ssize(len));
-    //~ vector<TangentVector> poly = {TangentVector()};
-
-    //~ for (int i = 0; i < ssize(len)-1; i++) {
-        //~ TangentVector t = poly[i];
-        //~ t.exp(len[i]);
-        //~ if (big_angle[i])
-            //~ t.rotate(M_PI * 0.33333333333);
-        //~ else 
-            //~ t.rotate(M_PI * -0.3333333333);
-        //~ poly.push_back(t);
-    //~ }
-    
-    //~ ofstream out("todel.txt");
-    //~ out << ssize(poly) << endl;
-    //~ for (int i = 0; i < ssize(poly); i++) {
-        //~ pt P = poly[i].P;
-        //~ pt v = poly[i].v;
-        //~ out << P.x << " " << P.y << " " << P.z << " | ";
-        //~ out << v.x << " " << v.y << " " << v.z << " | ";
-        //~ out << len[i] << endl;
-    //~ }
-    //~ out.close();
 }

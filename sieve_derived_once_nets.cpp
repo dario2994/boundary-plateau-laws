@@ -208,8 +208,14 @@ bool criterionFourPentagons(int id, const DerivedOnceNet& A) {
             auto pentagon = A.face(A.rev(d));
             all_pentagons &= ssize(pentagon) == 5 and A.isConvexFace(pentagon[0]);
         }
-        if (all_pentagons)
-            return false;
+        if (!all_pentagons)
+            continue;
+            
+        for (Dart d: face) {
+            Dart e = A.rev(A.phi(A.phi(A.rev(d))));
+            if (A.isConvexFace(e))
+                return false;
+        }
     }
     return true;
 }
@@ -260,6 +266,27 @@ bool criterionRectangleLongSide(int id, const DerivedOnceNet& A) {
     return true;
 }
 
+bool criterionTriangleRectangle(int id, const DerivedOnceNet& A) {
+    for (Dart d: A.darts()) {
+        Dart e = A.rev(d);
+        if (!A.isConvexFace(d) or !A.isConvexFace(e))
+            continue;
+        if (ssize(A.face(d)) != 3 or ssize(A.face(e)) != 4)
+            continue;
+        if (A.degree(A.phi(d).to) == 2)
+            return false;
+    }
+    return true;
+}
+
+bool criterionQuadrilateralOnePin(int id, const DerivedOnceNet& A) {
+    for (auto face: A.faces()) {
+        if (ssize(face) == 4 and countObtuseAngles(A, face[0]) == 1)
+            return false;
+    }
+    return true;
+}
+
 
 
 int main() {
@@ -278,7 +305,9 @@ int main() {
         {"convex faces intersection", criterionConvexFacesIntersection},
         {"four pentagons\t\t", criterionFourPentagons},
         {"three rectangles\t", criterionThreeRectangles},
-        {"rectangle long side\t", criterionRectangleLongSide}
+        {"rectangle long side\t", criterionRectangleLongSide},
+        {"triangle rectangle\t", criterionTriangleRectangle},
+        {"quadrilateral one pin\t", criterionQuadrilateralOnePin}
     };
     
     map<string, vector<int>> excluded_by; 

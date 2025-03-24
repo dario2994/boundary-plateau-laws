@@ -113,8 +113,8 @@ vector<GeodesicSegment> constructFace(vector<int> angles,
         tu = tu.exp(len_u);
         tv = tv.exp(len_v);
         double theta = tu.inverseRotate(-tv.V);
-        if (min(theta, 2*M_PI-theta) > M_PI/3)
-            return {};
+        //~ if (min(theta, 2*M_PI-theta) > M_PI/3)
+            //~ return {};
         
         poly.push_back(gsu);
         poly.push_back(gsv);
@@ -174,6 +174,6 @@ void searchFaceRealization(vector<int> angles) {
 }
 
 int main() {
-    vector<int> angles = {120, 120, 120, 120, 240, 120, 120, 240};
+    vector<int> angles = {120, 120, 120, 120, 240, 240};
     searchFaceRealization(angles);
 }

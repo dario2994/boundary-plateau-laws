@@ -1,0 +1,9 @@
+The two convex triangles must be the two equilateral triangles in a regular tetrahedral net.
+The remaining nonconvex quadrilateral is precisely the region obtained by taking the union
+of the two other equilateral triangle in the regular net and removing their common edge E. The
+pin must therefore be contained on this removed edge. A necessary condition is that the antipode
+of the pin is supported in the net. This happens if and only if the pin is in the midpoint of
+E. Its antipode is however the midpoint of the "opposite" edge in the tetrahedron (the only edge 
+with no points in common with E). On the other hand if this were the original net, then we would
+need to remove both pins to get the derived net: the derived net would consist of a loop subdividing 
+the sphere in two faces, but this would then be an extinct net. 

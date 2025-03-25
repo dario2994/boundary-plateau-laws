@@ -37,4 +37,5 @@ main_combinatorial_classification
 analyze_derived_once_nets
 sieve_derived_once_nets
 play_spherical_geometry
+data/derived_once_images
 __pycache__/

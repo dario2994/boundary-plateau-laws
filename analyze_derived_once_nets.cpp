@@ -80,23 +80,57 @@ bool isPesceMagro(int id, const DerivedOnceNet& A) {
     return types == hope;
 }
 
+bool containsConcaveQuadrilateral(const DerivedOnceNet& A) {
+    for (auto face: A.faces()) {
+        if (ssize(face) == 4 and !A.isConvexFace(face[0]))
+            return true;
+    }
+    return false;
+}
 
+bool containsConcaveTriangle(const DerivedOnceNet& A) {
+    for (auto face: A.faces()) {
+        if (ssize(face) == 3 and !A.isConvexFace(face[0]))
+            return true;
+    }
+    return false;
+}
+
+bool containsConcavePentagon(const DerivedOnceNet& A) {
+    for (auto face: A.faces()) {
+        if (ssize(face) == 5 and !A.isConvexFace(face[0]))
+            return true;
+    }
+    return false;
+}
 
 int main() {
     vector<DerivedOnceNet> derived_once = 
         parseDerivedOnceNets();
+    ifstream in("data/derived_once_survivors.txt");
+    int cnt_survivors;
+    in >> cnt_survivors;
+    vector<int> survivors(cnt_survivors);
+    for (int i = 0; i < cnt_survivors; i++)
+        in >> survivors[i];
+    in.close();
+    
     cout << "There are " << derived_once.size()
-         << " derived-once net candidates." << endl << endl;
+         << " derived-once net candidates." << endl;
+    cout << "There are " << survivors.size()
+         << " survivors." << endl;
+         
         
     
-    int with_biangle = 0;
-    for (int i = 0; i < ssize(derived_once); i++) {
+    int cnt_interesting = 0;
+    for (int i: survivors) {
         const DerivedOnceNet& A = derived_once[i];
-        with_biangle += containsBiangle(A);
-        if (isPesceMagro(i, A)) {
-            cout << i << " ";
+        bool interesting = containsConcaveTriangle(A);
+        cnt_interesting += interesting;
+        if (interesting) {
+            cout << i << endl;
         }
     }
     cout << endl;
-    cout << with_biangle << endl;
+    cout << cnt_interesting << endl;
 }

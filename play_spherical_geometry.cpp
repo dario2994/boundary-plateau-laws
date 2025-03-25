@@ -174,6 +174,6 @@ void searchFaceRealization(vector<int> angles) {
 }
 
 int main() {
-    vector<int> angles = {120, 120, 120, 120, 240, 240};
+    vector<int> angles = {120, 120, 240};
     searchFaceRealization(angles);
 }

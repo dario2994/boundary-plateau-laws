@@ -1,0 +1,2 @@
+To apply the argument excluding the two consecutive concave angles we need to show that 12 and 23
+are no longer than \pi. They are both in common with convex faces.

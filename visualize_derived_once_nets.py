@@ -43,8 +43,8 @@ def parse_derived_once_nets():
     return derived_once_nets
     
     
-def draw_derived_once_net(fig, num, V, E, darts, next_dart, concave_angles, fake_vertices):
-    print('Drawing derived-once net ' + str(num) +'.')
+def draw_derived_once_net(fig, _id, V, E, darts, next_dart, concave_angles, fake_vertices):
+    print('Drawing derived-once net ' + str(_id) +'.')
     
     # Convert the combinatorial map in a rotation system.
     rotation_system = [[] for _ in range(V)]
@@ -121,20 +121,25 @@ def draw_derived_once_net(fig, num, V, E, darts, next_dart, concave_angles, fake
         mark_angle(darts[i][0], darts[i][1], darts[next_dart[i^1]][1])
 
     fig.gca().axis('equal')
-    fig.gca().set_title("Derived-once net: " + str(num))
+    fig.gca().set_title("Derived-once net: " + str(_id))
     
     # ~ plt.show()
-    fig.savefig('data/derived_once_images/' + str(num) + '.png', dpi=300, bbox_inches='tight')
+    fig.savefig('data/derived_once_images/' + str(_id) + '.png', dpi=300, bbox_inches='tight')
     fig.clf()
             
 
 derived_once_nets = parse_derived_once_nets()
-plt.ioff()
+survivors = []
+with open('data/derived_once_survivors.txt') as in_file:
+    survivors = list(map(int, in_file.readlines()[1].split()))
 
+plt.ioff()
 # We reuse the same figure as a workaround for a memory leak in 
 # matplotlib.
 fig = plt.figure()
 
-for k in range(len(derived_once_nets)):
+# ~ for A in derived_once_nets:
+for k in survivors:
+# ~ for k in [4, 392, 1580, 2050, 2256, 2706, 3394, 4715, 4888, 5650]:
     draw_derived_once_net(fig, k, *(derived_once_nets[k]))
 

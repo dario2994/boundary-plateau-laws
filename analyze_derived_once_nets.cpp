@@ -7,13 +7,13 @@ typedef unsigned long long ULL;
 #include "derived_once_nets.cpp"
 
 
-vector<DerivedOnceNet> parseDerivedOnceNets() {
-    ifstream in("data/derived_once_computer.txt");
+vector<DerivedOnceNet> parseDerivedOnceNets(string in_file) {
+    ifstream in(in_file);
     int cnt;
     in >> cnt;
     vector<DerivedOnceNet> res;
     for (int i = 0; i < cnt; i++) {
-        DerivedOnceNet A = parseDerivedOnceNet(in);
+        const DerivedOnceNet& A = parseDerivedOnceNet(in);
         A.checkConsistency();
         res.push_back(A);
     }
@@ -48,15 +48,6 @@ bool containsTriangle(const DerivedOnceNet& A) {
     return cnt > 0;
 }
 
-int faceArea(const DerivedOnceNet& A, Dart d) {
-    const vector<Dart>& face = A.face(d);
-    int res = 6 - ssize(face);
-    for (const Dart& d: face) {
-        if (A.isObtuse(d))
-            res += 2;
-    }
-    return res;
-}
 
 bool sameFace(const DerivedOnceNet& A, Dart d, Dart e) {
     const vector<Dart>& face = A.face(d);
@@ -104,9 +95,34 @@ bool containsConcavePentagon(const DerivedOnceNet& A) {
     return false;
 }
 
+bool containsAdjacentConcaveAngles(const DerivedOnceNet& A) {
+    for (const Dart& d: A.darts()) {
+        if (A.isConcaveAngle(d) and A.isConcaveAngle(A.phi(d)) 
+            and A.face(d).size() != 3)
+            return true;
+    }
+    return false;
+}
+
 int main() {
     vector<DerivedOnceNet> derived_once = 
-        parseDerivedOnceNets();
+        parseDerivedOnceNets("data/derived_once_computer.txt");
+    
+    //~ vector<DerivedOnceNet> derived_once_old = 
+        //~ parseDerivedOnceNets("data/derived_once_computer_old.txt");
+    
+    //~ cout << ssize(derived_once) << " " << ssize(derived_once_old) << endl;
+    
+    //~ for (int old_id: {0, 49, 2138}) {
+        //~ for (int new_id = 0; new_id < ssize(derived_once); new_id++) {
+            //~ if (areIsomorphic(derived_once[new_id], derived_once_old[old_id])) {
+                //~ cout << old_id << " -> " << new_id << endl;
+            //~ }
+        //~ }
+    //~ }
+    
+    //~ return 0;
+        
     ifstream in("data/derived_once_survivors.txt");
     int cnt_survivors;
     in >> cnt_survivors;
@@ -123,12 +139,12 @@ int main() {
         
     
     int cnt_interesting = 0;
-    for (int i: survivors) {
-        const DerivedOnceNet& A = derived_once[i];
-        bool interesting = containsConcaveTriangle(A);
+    for (int id: survivors) {
+        const DerivedOnceNet& A = derived_once[id];
+        bool interesting = containsAdjacentConcaveAngles(A);
         cnt_interesting += interesting;
         if (interesting) {
-            cout << i << endl;
+            cout << id << endl;
         }
     }
     cout << endl;

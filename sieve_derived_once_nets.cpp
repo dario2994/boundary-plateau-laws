@@ -23,7 +23,7 @@ vector<DerivedOnceNet> parseDerivedOnceNets() {
 int countObtuseAngles(const DerivedOnceNet& A, Dart d) {
     int res = 0;
     for (Dart e: A.face(d)) {
-        res += A.isObtuse(e);
+        res += A.isConcaveAngle(e);
     }
     return res;
 }
@@ -56,16 +56,6 @@ bool containsTriangle(const DerivedOnceNet& A) {
     return cnt > 0;
 }
 
-int faceArea(const DerivedOnceNet& A, Dart d) {
-    const vector<Dart>& face = A.face(d);
-    int res = 6 - ssize(face);
-    for (const Dart& d: face) {
-        if (A.isObtuse(d))
-            res += 2;
-    }
-    return res;
-}
-
 bool sameFace(const DerivedOnceNet& A, Dart d, Dart e) {
     const vector<Dart>& face = A.face(d);
     for (const Dart& e1: face) {
@@ -78,11 +68,11 @@ bool sameFace(const DerivedOnceNet& A, Dart d, Dart e) {
 int pinContribution(const DerivedOnceNet& A, Dart d) {
     if (countObtuseAngles(A, d) == 1)
         return 0;
-    assert(A.degree(d.from) == 3 and A.degree(d.to) == 3);
+    //~ assert(A.degree(d.from) == 3 and A.degree(d.to) == 3);
     int dist = -1;
     Dart curr = d;
     while (1) {
-        if (A.isObtuse(curr)) {
+        if (A.isConcaveAngle(curr)) {
             if (dist == -1) dist = 1;
             else break;
         } else if (dist >= 0) dist++;
@@ -93,17 +83,36 @@ int pinContribution(const DerivedOnceNet& A, Dart d) {
     return contribution;
 }
 
+// Whether the associated net may contain an edge strictly longer than pi.
+bool containsLongEdges(const DerivedOnceNet& A) {
+    if (containsBiangle(A))
+        return false;
+
+    for (Dart d: A.darts()) {
+        Dart e = A.rev(d);
+        if (A.isConvexFace(d) or A.isConvexFace(e))
+            continue;
+        //~ auto face_d = A.face(d);
+        //~ auto face_e = A.face(e);
+        if (A.faceArea(d) + A.faceArea(e) <= 6 + pinContribution(A, d) + pinContribution(A, e))
+            continue;
+        return true;
+        
+    }
+    return false;
+}
+
 int sumAreaConvexFaces(const DerivedOnceNet& A) {
     int res = 0;
     for (auto face: A.faces()) {
         if (A.isConvexFace(face[0]))
-            res += faceArea(A, face[0]);
+            res += A.faceArea(face[0]);
     }
     return res;
 }
 
 
-bool criterionBiangle(int id, const DerivedOnceNet& A) {
+bool criterionBiangle(const DerivedOnceNet& A) {
     vector<vector<Dart>> faces = A.faces();
     
     for (const vector<Dart>& face: faces) {
@@ -139,7 +148,7 @@ bool criterionBiangle(int id, const DerivedOnceNet& A) {
     return true;
 }
 
-bool criterionSimpleBoundary(int id, const DerivedOnceNet& A) {
+bool criterionSimpleBoundary(const DerivedOnceNet& A) {
     vector<vector<Dart>> faces = A.faces();
     
     for (const Dart& d: A.darts()) {
@@ -149,16 +158,26 @@ bool criterionSimpleBoundary(int id, const DerivedOnceNet& A) {
     return true;
 }
 
-bool criterionConcaveAnglesFar(int id, const DerivedOnceNet& A) {
+bool criterionAdjacentConcaveAngles(const DerivedOnceNet& A) {
+    if (containsLongEdges(A))
+        return true; // We cannot apply this criterion.
+    for (const Dart& d: A.darts()) {
+        if (A.isConcaveAngle(d) and A.isConcaveAngle(A.phi(d)) and A.face(d).size() != 3)
+            return false;
+    }
+    return true;
+}
+
+bool criterionConcaveAnglesFar(const DerivedOnceNet& A) {
     for (const vector<Dart>& face: A.faces()) {
         for (const Dart& d: face) {
-            if (!A.isObtuse(d)) continue;
+            if (!A.isConcaveAngle(d)) continue;
             
             int dist = 1;
             Dart curr = A.phi(d);
             while (curr != d) {
-                if (A.isObtuse(curr)) {
-                    assert(dist != 1);
+                if (A.isConcaveAngle(curr)) {
+                    //~ assert(dist != 1);
                     if (5 < ssize(face) - dist)
                         return false;
                 }
@@ -170,7 +189,7 @@ bool criterionConcaveAnglesFar(int id, const DerivedOnceNet& A) {
     return true;
 }
 
-bool criterionTwoAdjacentSquares(int id, const DerivedOnceNet& A) {
+bool criterionTwoAdjacentSquares(const DerivedOnceNet& A) {
     for (Dart d: A.darts()) {
         Dart e = A.rev(d);
         if (ssize(A.face(d)) != 4 or ssize(A.face(e)) != 4)
@@ -179,13 +198,13 @@ bool criterionTwoAdjacentSquares(int id, const DerivedOnceNet& A) {
         Dart e1 = A.rev(A.phi(A.phi(A.phi(e))));
         
         assert(d1 != e1);
-        if (A.isObtuse(d1) and A.isObtuse(e1)) 
+        if (A.isConcaveAngle(d1) and A.isConcaveAngle(e1)) 
             return false;
     }
     return true;
 }
 
-bool criterionConvexFacesIntersection(int id, const DerivedOnceNet& A) {
+bool criterionConvexFacesIntersection(const DerivedOnceNet& A) {
     for (Dart d: A.darts()) {
         if (!A.isConvexFace(d) or !A.isConvexFace(A.rev(d)))
             continue;
@@ -199,7 +218,7 @@ bool criterionConvexFacesIntersection(int id, const DerivedOnceNet& A) {
     return true;
 }
 
-bool criterionFourPentagons(int id, const DerivedOnceNet& A) {
+bool criterionFourPentagons(const DerivedOnceNet& A) {
     for (const vector<Dart>& face: A.faces()) {
         if (ssize(face) != 4 or !A.isConvexFace(face[0]))
             continue;
@@ -220,7 +239,7 @@ bool criterionFourPentagons(int id, const DerivedOnceNet& A) {
     return true;
 }
 
-bool criterionThreeRectangles(int id, const DerivedOnceNet& A) {
+bool criterionThreeRectangles(const DerivedOnceNet& A) {
     for (const Dart& d: A.darts()) {
         if (A.degree(d.from) != 3)
             continue;
@@ -235,7 +254,7 @@ bool criterionThreeRectangles(int id, const DerivedOnceNet& A) {
         works &= A.isConvexFace(b);
         
         works &= A.isConvexFace(c) or
-            (A.isObtuse(c) and A.isObtuse(A.phi(A.phi(c))));
+            (A.isConcaveAngle(c) and A.isConcaveAngle(A.phi(A.phi(c))));
         
         if (works)
             return false;
@@ -243,7 +262,7 @@ bool criterionThreeRectangles(int id, const DerivedOnceNet& A) {
     return true;
 }
 
-bool criterionRectangleLongSide(int id, const DerivedOnceNet& A) {
+bool criterionRectangleLongSide(const DerivedOnceNet& A) {
     for (auto face: A.faces()) {
         if (ssize(face) != 4 or countObtuseAngles(A, face[0]) != 1)
             continue;
@@ -266,7 +285,7 @@ bool criterionRectangleLongSide(int id, const DerivedOnceNet& A) {
     return true;
 }
 
-bool criterionTriangleRectangle(int id, const DerivedOnceNet& A) {
+bool criterionTriangleRectangle(const DerivedOnceNet& A) {
     for (Dart d: A.darts()) {
         Dart e = A.rev(d);
         if (!A.isConvexFace(d) or !A.isConvexFace(e))
@@ -279,7 +298,7 @@ bool criterionTriangleRectangle(int id, const DerivedOnceNet& A) {
     return true;
 }
 
-bool criterionQuadrilateralOnePin(int id, const DerivedOnceNet& A) {
+bool criterionQuadrilateralOnePin(const DerivedOnceNet& A) {
     for (auto face: A.faces()) {
         if (ssize(face) == 4 and countObtuseAngles(A, face[0]) == 1)
             return false;
@@ -297,9 +316,10 @@ int main() {
          
     // The order of the criteria matters, as a criterion may implicitly
     // assume that all the previous ones pass.
-    vector<pair<string, function<bool(int,const DerivedOnceNet&)>>> criteria = {  
+    vector<pair<string, function<bool(const DerivedOnceNet&)>>> criteria = {  
         {"biangle\t\t\t", criterionBiangle},
         {"simple boundary\t\t", criterionSimpleBoundary},
+        {"adjacent concave angles\t", criterionAdjacentConcaveAngles},
         {"concave angles are far\t", criterionConcaveAnglesFar},
         {"two adjacent squares\t", criterionTwoAdjacentSquares},
         {"convex faces intersection", criterionConvexFacesIntersection},
@@ -319,7 +339,7 @@ int main() {
         for (auto pp: criteria) {
             string name = pp.first;
             auto criterion = pp.second;
-            if (!criterion(id, A)) {
+            if (!criterion(A)) {
                 survives = false;
                 excluded_by[name].push_back(id);
                 break;
@@ -340,8 +360,8 @@ int main() {
     
     ofstream out("data/derived_once_survivors.txt");
     out << survivors.size() << endl;
-    for (int x: survivors)
-        out << x << " ";
+    for (int id: survivors)
+        out << id << " ";
     out << endl;
     out.close();
 }

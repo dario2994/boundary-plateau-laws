@@ -62,7 +62,7 @@ bool validateDerivedOnceNet(const DerivedOnceNet& A) {
     for (const vector<Dart>& face: A.faces()) {
         int cnt = 0;
         for (const Dart& d: face) {
-            if (A.isObtuse(d)) 
+            if (A.isConcaveAngle(d)) 
                 cnt++;
         }
         if (cnt > 2)
@@ -88,14 +88,6 @@ bool validateDerivedOnceNet(const DerivedOnceNet& A) {
         if (d_sides == 2 and e_sides != 2)
             return false;
         if (d_sides == 3 and e_sides == 5)
-            return false;
-    }
-    
-    // Two obtuse angles cannot be adjacent, unless they belong
-    // to a triangle.
-    for (const Dart& d: A.darts()) {
-        if (A.isObtuse(d) and A.isObtuse(A.phi(d))
-            and A.face(d).size() != 3)
             return false;
     }
     

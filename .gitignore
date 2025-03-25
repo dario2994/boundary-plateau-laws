@@ -35,4 +35,6 @@ main
 main_geometric_classification
 main_combinatorial_classification
 analyze_derived_once_nets
+sieve_derived_once_nets
+play_spherical_geometry
 __pycache__/

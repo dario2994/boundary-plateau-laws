@@ -1,0 +1,3 @@
+In order to apply the argument for the exclusion of the concave angles we need to show that 
+the edges 32 and 20 are both no longer than \pi. Note however that 32 and 20 are in common with
+a convex face. 

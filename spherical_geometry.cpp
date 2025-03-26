@@ -161,6 +161,15 @@ double intersectWithEquator(TangentVector tv, pt equator_normal) {
     return theta;
 }
 
+double distance(pt P, pt Q) {
+    if (norm2(P-Q) < eps) return norm(P-Q);
+    if (norm2(P+Q) < eps) return M_PI - norm(P+Q);
+    pt equator = normalize(P^Q);
+    TangentVector tv(P, P^equator);
+    double len = tv.inverseExp(Q);
+    return min(len, 2*M_PI - len);
+}
+
 // Class representing a spherical geodesic arc with length in (0, 2pi). 
 struct GeodesicSegment:TangentVector {
     double len;

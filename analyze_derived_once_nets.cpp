@@ -7,6 +7,14 @@ typedef unsigned long long ULL;
 #include "derived_once_nets.cpp"
 
 
+int countObtuseAngles(const DerivedOnceNet& A, Dart d) {
+    int res = 0;
+    for (Dart e: A.face(d)) {
+        res += A.isConcaveAngle(e);
+    }
+    return res;
+}
+
 vector<DerivedOnceNet> parseDerivedOnceNets(string in_file) {
     ifstream in(in_file);
     int cnt;
@@ -104,6 +112,14 @@ bool containsAdjacentConcaveAngles(const DerivedOnceNet& A) {
     return false;
 }
 
+bool containsHexagonsTwoObtuse(const DerivedOnceNet& A) {
+    for (auto face: A.faces()) {
+        if (ssize(face) == 6 and countObtuseAngles(A, face[0]) == 2)
+            return true;
+    }
+    return false;
+}
+
 int main() {
     vector<DerivedOnceNet> derived_once = 
         parseDerivedOnceNets("data/derived_once_computer.txt");
@@ -141,7 +157,7 @@ int main() {
     int cnt_interesting = 0;
     for (int id: survivors) {
         const DerivedOnceNet& A = derived_once[id];
-        bool interesting = containsAdjacentConcaveAngles(A);
+        bool interesting = containsHexagonsTwoObtuse(A);
         cnt_interesting += interesting;
         if (interesting) {
             cout << id << endl;

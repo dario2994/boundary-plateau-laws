@@ -20,40 +20,13 @@ vector<DerivedOnceNet> parseDerivedOnceNets() {
     return res;
 }
 
-int countObtuseAngles(const DerivedOnceNet& A, Dart d) {
-    int res = 0;
-    for (Dart e: A.face(d)) {
-        res += A.isConcaveAngle(e);
-    }
-    return res;
-}
-
-int countPins(const DerivedOnceNet& A) {
-    int cnt = 0;
-    for (const vector<Dart>& face: A.faces()) {
-        cnt += !A.isConvexFace(face[0]);
-    }
-    return cnt;
-}
 
 bool containsBiangle(const DerivedOnceNet& A) {
-    int cnt = 0;
-    for (const vector<Dart>& face: A.faces()) {
-        if (!A.isConvexFace(face[0]))
-            continue;
-        cnt += ssize(face) == 2;
+    for (const vector<Dart>& f: A.faces()) {
+        if (A.faceType(f) == pair<int,int>{2, 0})
+            return true;
     }
-    return cnt > 0;
-}
-
-bool containsTriangle(const DerivedOnceNet& A) {
-    int cnt = 0;
-    for (const vector<Dart>& face: A.faces()) {
-        if (!A.isConvexFace(face[0]))
-            continue;
-        cnt += ssize(face) == 3;
-    }
-    return cnt > 0;
+    return false;
 }
 
 bool sameFace(const DerivedOnceNet& A, Dart d, Dart e) {
@@ -66,7 +39,7 @@ bool sameFace(const DerivedOnceNet& A, Dart d, Dart e) {
 }
 
 int pinContribution(const DerivedOnceNet& A, Dart d) {
-    if (countObtuseAngles(A, d) == 1)
+    if (A.faceType(d).second != 2)
         return 0;
     //~ assert(A.degree(d.from) == 3 and A.degree(d.to) == 3);
     int dist = -1;
@@ -92,9 +65,9 @@ bool containsLongEdges(const DerivedOnceNet& A) {
         Dart e = A.rev(d);
         if (A.isConvexFace(d) or A.isConvexFace(e))
             continue;
-        //~ auto face_d = A.face(d);
-        //~ auto face_e = A.face(e);
-        if (A.faceArea(d) + A.faceArea(e) <= 6 + pinContribution(A, d) + pinContribution(A, e))
+        
+        if (A.faceArea(d) + A.faceArea(e) <= 
+                6 + pinContribution(A, d) + pinContribution(A, e))
             continue;
         return true;
         
@@ -105,8 +78,8 @@ bool containsLongEdges(const DerivedOnceNet& A) {
 int sumAreaConvexFaces(const DerivedOnceNet& A) {
     int res = 0;
     for (auto face: A.faces()) {
-        if (A.isConvexFace(face[0]))
-            res += A.faceArea(face[0]);
+        if (A.isConvexFace(face))
+            res += A.faceArea(face);
     }
     return res;
 }
@@ -119,7 +92,7 @@ bool criterionBiangle(const DerivedOnceNet& A) {
         if (ssize(face) != 2)
             continue;
         
-        if (!A.isConvexFace(face[0]))
+        if (!A.isConvexFace(face))
             return false;
             
         if (sameFace(A, A.rev(face[0]), A.rev(face[1])))
@@ -129,6 +102,7 @@ bool criterionBiangle(const DerivedOnceNet& A) {
             or A.isConvexFace(A.rev(face[1])))
             return false;
         
+        // TODO: Do it as in containsLongEdges.
         int strange_area = sumAreaConvexFaces(A) - 4;
         strange_area += pinContribution(A, A.rev(face[0]));
         strange_area += pinContribution(A, A.rev(face[1]));
@@ -137,9 +111,8 @@ bool criterionBiangle(const DerivedOnceNet& A) {
             return false;
             
         for (const Dart& d: A.darts()) {
-            if (A.isConvexFace(d) and A.isConvexFace(A.rev(d))
-                and ssize(A.face(d)) == 3
-                and ssize(A.face(A.rev(d))) == 4)
+            if (A.faceType(d) == pair<int,int>{3, 0} 
+                    and A.faceType(A.rev(d)) == pair<int,int>{4, 0})
                 return false;
             if (d != face[0] and d != face[1] and ssize(A.face(d)) == 2)
                 return false;
@@ -162,7 +135,8 @@ bool criterionAdjacentConcaveAngles(const DerivedOnceNet& A) {
     if (containsLongEdges(A))
         return true; // We cannot apply this criterion.
     for (const Dart& d: A.darts()) {
-        if (A.isConcaveAngle(d) and A.isConcaveAngle(A.phi(d)) and A.face(d).size() != 3)
+        if (A.isConcaveAngle(d) and A.isConcaveAngle(A.phi(d)) 
+                and ssize(A.face(d)) != 3)
             return false;
     }
     return true;
@@ -189,6 +163,7 @@ bool criterionConcaveAnglesFar(const DerivedOnceNet& A) {
     return true;
 }
 
+// TODO: What is this? Remove if we cannot understand what it is.
 bool criterionTwoAdjacentSquares(const DerivedOnceNet& A) {
     for (Dart d: A.darts()) {
         Dart e = A.rev(d);
@@ -220,12 +195,12 @@ bool criterionConvexFacesIntersection(const DerivedOnceNet& A) {
 
 bool criterionFourPentagons(const DerivedOnceNet& A) {
     for (const vector<Dart>& face: A.faces()) {
-        if (ssize(face) != 4 or !A.isConvexFace(face[0]))
+        if (A.faceType(face) != pair<int,int>{4, 0})
             continue;
         bool all_pentagons = true;
         for (Dart d: face) {
             auto pentagon = A.face(A.rev(d));
-            all_pentagons &= ssize(pentagon) == 5 and A.isConvexFace(pentagon[0]);
+            all_pentagons &= A.faceType(A.rev(d)) == pair<int,int>{5, 0};
         }
         if (all_pentagons)
             return false;
@@ -246,12 +221,9 @@ bool criterionThreeRectangles(const DerivedOnceNet& A) {
         Dart a = d; 
         Dart b = A.next(a); 
         Dart c = A.next(b);
-        bool works = ssize(A.face(a)) == 4;
-        works &= ssize(A.face(b)) == 4;
-        works &= ssize(A.face(c)) == 4;
-        
-        works &= A.isConvexFace(a);
-        works &= A.isConvexFace(b);
+        bool works = A.faceType(a) == pair<int,int>{4, 0}
+                     and A.faceType(b) == pair<int,int>{4, 0}
+                     and A.faceType(c).first == 4;
         
         works &= A.isConvexFace(c) or
             (A.isConcaveAngle(c) and A.isConcaveAngle(A.phi(A.phi(c))));
@@ -264,7 +236,7 @@ bool criterionThreeRectangles(const DerivedOnceNet& A) {
 
 bool criterionRectangleLongSide(const DerivedOnceNet& A) {
     for (auto face: A.faces()) {
-        if (ssize(face) != 4 or countObtuseAngles(A, face[0]) != 1)
+        if (A.faceType(face) != pair<int,int>{4, 1})
             continue;
         bool works = false;
         for (Dart d: face) {
@@ -288,9 +260,8 @@ bool criterionRectangleLongSide(const DerivedOnceNet& A) {
 bool criterionTriangleRectangle(const DerivedOnceNet& A) {
     for (Dart d: A.darts()) {
         Dart e = A.rev(d);
-        if (!A.isConvexFace(d) or !A.isConvexFace(e))
-            continue;
-        if (ssize(A.face(d)) != 3 or ssize(A.face(e)) != 4)
+        if (A.faceType(d) != pair<int,int>{3, 0} 
+            or A.faceType(e) != pair<int,int>{4, 0})
             continue;
         if (A.degree(A.phi(d).to) == 2)
             return false;
@@ -300,7 +271,7 @@ bool criterionTriangleRectangle(const DerivedOnceNet& A) {
 
 bool criterionQuadrilateralOnePin(const DerivedOnceNet& A) {
     for (auto face: A.faces()) {
-        if (ssize(face) == 4 and countObtuseAngles(A, face[0]) == 1)
+        if (A.faceType(face) == pair<int,int>{4, 1})
             return false;
     }
     return true;
@@ -308,14 +279,13 @@ bool criterionQuadrilateralOnePin(const DerivedOnceNet& A) {
 
 bool criterionPentagonThreeQuadrilaterals(const DerivedOnceNet& A) {
     for (Dart d: A.darts()) {
-        if (ssize(A.face(d)) != 5 or !A.isConvexFace(d))
+        if (A.faceType(d) != pair<int,int>{5, 0})
             continue;
         Dart e = A.phi(d);
         Dart f = A.phi(e);
         bool works = true;
         for (Dart z: {A.rev(d), A.rev(e), A.rev(f)}) {
-            works &= ssize(A.face(z)) == 4;
-            works &= A.isConvexFace(z);
+            works &= A.faceType(z) == pair<int,int>{4, 0};
         }
         if (works)
             return false;
@@ -326,9 +296,8 @@ bool criterionPentagonThreeQuadrilaterals(const DerivedOnceNet& A) {
 bool criterionTriangleRectangle2(const DerivedOnceNet& A) {
     for (Dart d: A.darts()) {
         Dart e = A.rev(d);
-        if (ssize(A.face(d)) != 3 or !A.isConvexFace(d))
-            continue;
-        if (ssize(A.face(e)) != 4 or !A.isConvexFace(e))
+        if (A.faceType(d) != pair<int,int>{3, 0}
+            or A.faceType(e) != pair<int,int>{4, 0})
             continue;
         
         for (Dart f: {A.phi(e), A.phi(A.phi(e)), A.phi(A.phi(A.phi(e)))}) {
@@ -347,9 +316,8 @@ bool criterionTriangleRectangle2(const DerivedOnceNet& A) {
 bool criterionTwoQuadrilateralsFourPentagons(const DerivedOnceNet& A) {
     for (Dart d: A.darts()) {
         Dart e = A.rev(d);
-        if (ssize(A.face(d)) != 4 or !A.isConvexFace(d))
-            continue;
-        if (ssize(A.face(e)) != 4 or !A.isConvexFace(e))
+        if (A.faceType(d) != pair<int,int>{4, 0}
+            or A.faceType(e) != pair<int,int>{4, 0})
             continue;
             
         bool works = true;
@@ -357,8 +325,7 @@ bool criterionTwoQuadrilateralsFourPentagons(const DerivedOnceNet& A) {
             Dart z = _;
             for (int i = 0; i < 3; i++) {
                 Dart f = A.rev(z);
-                works &= ssize(A.face(f)) == 5;
-                works &= A.isConvexFace(f);
+                works &= A.faceType(f) == pair<int,int>{5, 0};
                 z = A.phi(z);
             }
         }
@@ -431,3 +398,5 @@ int main() {
     out << endl;
     out.close();
 }
+
+// 1725

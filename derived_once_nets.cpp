@@ -70,11 +70,32 @@ class DerivedOnceNet : public CombinatorialMap {
     int faceArea(const Dart& d) const {
         const vector<Dart>& f = face(d);
         int res = 6 - ssize(f);
-        for (const Dart& d: f) {
-            if (isConcaveAngle(d))
+        for (const Dart& e: f) {
+            if (isConcaveAngle(e))
                 res += 2;
         }
         return res;
+    }
+    
+    // Returns {# sides, # concave angles} of the face of d.
+    pair<int,int> faceType(const Dart& d) const {
+        const vector<Dart>& f = face(d);
+        int concave_num = 0;
+        for (const Dart& e: f) concave_num += isConcaveAngle(e);
+        
+        return {ssize(f), concave_num};
+    }
+    
+    bool isConvexFace(const vector<Dart>& f) const {
+        return isConvexFace(f[0]);
+    }
+    
+    int faceArea(const vector<Dart>& f) const {
+        return faceArea(f[0]);
+    }
+    
+    pair<int,int> faceType(const vector<Dart>& f) const {
+        return faceType(f[0]);
     }
         
     ULL isomorphismSignature() const {

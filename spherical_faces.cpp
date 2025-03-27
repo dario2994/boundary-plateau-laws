@@ -92,7 +92,7 @@ vector<vector<GeodesicSegment>> constructFace(
     }
     
     assert(ssize(big_vertices) <= 2);
-    
+
     for (auto poly: candidates) {
         bool works = true;
         if (big_vertices.size() == 1) {

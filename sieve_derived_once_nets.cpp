@@ -163,22 +163,6 @@ bool criterionConcaveAnglesFar(const DerivedOnceNet& A) {
     return true;
 }
 
-// TODO: What is this? Remove if we cannot understand what it is.
-bool criterionTwoAdjacentSquares(const DerivedOnceNet& A) {
-    for (Dart d: A.darts()) {
-        Dart e = A.rev(d);
-        if (ssize(A.face(d)) != 4 or ssize(A.face(e)) != 4)
-            continue;
-        Dart d1 = A.rev(A.phi(A.phi(d)));
-        Dart e1 = A.rev(A.phi(A.phi(A.phi(e))));
-        
-        assert(d1 != e1);
-        if (A.isConcaveAngle(d1) and A.isConcaveAngle(e1)) 
-            return false;
-    }
-    return true;
-}
-
 bool criterionConvexFacesIntersection(const DerivedOnceNet& A) {
     for (Dart d: A.darts()) {
         if (!A.isConvexFace(d) or !A.isConvexFace(A.rev(d)))
@@ -204,74 +188,41 @@ bool criterionFourPentagons(const DerivedOnceNet& A) {
         }
         if (all_pentagons)
             return false;
-            
-        //~ for (Dart d: face) {
-            //~ Dart e = A.rev(A.phi(A.phi(A.rev(d))));
-            //~ if (A.isConvexFace(e))
-                //~ return false;
-        //~ }
     }
     return true;
 }
 
-bool criterionThreeRectangles(const DerivedOnceNet& A) {
+bool criterionThreeQuadrilaterals(const DerivedOnceNet& A) {
     for (const Dart& d: A.darts()) {
         if (A.degree(d.from) != 3)
             continue;
         Dart a = d; 
         Dart b = A.next(a); 
         Dart c = A.next(b);
-        bool works = A.faceType(a) == pair<int,int>{4, 0}
-                     and A.faceType(b) == pair<int,int>{4, 0}
-                     and A.faceType(c).first == 4;
-        
-        works &= A.isConvexFace(c) or
-            (A.isConcaveAngle(c) and A.isConcaveAngle(A.phi(A.phi(c))));
-        
-        if (works)
+        if (A.faceType(a) == pair<int,int>{4, 0}
+                and A.faceType(b) == pair<int,int>{4, 0}
+                and A.faceType(c) == pair<int,int>{4, 0})
             return false;
     }
     return true;
 }
 
-bool criterionRectangleLongSide(const DerivedOnceNet& A) {
+bool criterionQuadrilateralsAreConvex(const DerivedOnceNet& A) {
     for (auto face: A.faces()) {
-        if (A.faceType(face) != pair<int,int>{4, 1})
-            continue;
-        bool works = false;
-        for (Dart d: face) {
-            if (A.degree(d.from) < 3 or A.degree(d.to) < 3)
-                continue;
-            if (A.isConvexFace(A.rev(d)))
-                continue;
-            int weird_area = sumAreaConvexFaces(A);
-            weird_area += pinContribution(A, d);
-            weird_area += pinContribution(A, A.rev(d));
-            if (weird_area <= 5)
-                works = true;
-        }
-        if (!works)
+        if (A.faceType(face).first == 4 and !A.isConvexFace(face))
             return false;
     }
     
     return true;
 }
 
-bool criterionTriangleRectangle(const DerivedOnceNet& A) {
+bool criterionTriangleQuadrilateral(const DerivedOnceNet& A) {
     for (Dart d: A.darts()) {
         Dart e = A.rev(d);
         if (A.faceType(d) != pair<int,int>{3, 0} 
             or A.faceType(e) != pair<int,int>{4, 0})
             continue;
         if (A.degree(A.phi(d).to) == 2)
-            return false;
-    }
-    return true;
-}
-
-bool criterionQuadrilateralOnePin(const DerivedOnceNet& A) {
-    for (auto face: A.faces()) {
-        if (A.faceType(face) == pair<int,int>{4, 1})
             return false;
     }
     return true;
@@ -293,7 +244,7 @@ bool criterionPentagonThreeQuadrilaterals(const DerivedOnceNet& A) {
     return true;
 }
 
-bool criterionTriangleRectangle2(const DerivedOnceNet& A) {
+bool criterionTriangleQuadrilateral2(const DerivedOnceNet& A) {
     for (Dart d: A.darts()) {
         Dart e = A.rev(d);
         if (A.faceType(d) != pair<int,int>{3, 0}
@@ -351,15 +302,13 @@ int main() {
         {"simple boundary\t\t", criterionSimpleBoundary},
         {"adjacent concave angles\t", criterionAdjacentConcaveAngles},
         {"concave angles are far\t", criterionConcaveAnglesFar},
-        {"two adjacent squares\t", criterionTwoAdjacentSquares},
         {"convex faces intersection", criterionConvexFacesIntersection},
         {"four pentagons\t\t", criterionFourPentagons},
-        {"three rectangles\t", criterionThreeRectangles},
-        {"rectangle long side\t", criterionRectangleLongSide},
-        {"triangle rectangle\t", criterionTriangleRectangle},
-        {"quadrilateral one pin\t", criterionQuadrilateralOnePin},
+        {"quadrilaterals are convex", criterionQuadrilateralsAreConvex},
+        {"three quadrilaterals\t", criterionThreeQuadrilaterals},
+        {"triangle quadrilateral\t", criterionTriangleQuadrilateral},
         {"pentagon 3 quadrilaterals", criterionPentagonThreeQuadrilaterals},
-        {"triangle rectangle 2\t", criterionTriangleRectangle2},
+        {"triangle quadrilateral 2", criterionTriangleQuadrilateral2},
         {"2 quadrilaterals 4 pentagons", criterionTwoQuadrilateralsFourPentagons}
     };
     

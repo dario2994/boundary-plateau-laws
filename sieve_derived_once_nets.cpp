@@ -227,14 +227,14 @@ bool criterionFourPentagons(const DerivedOnceNet& A) {
             auto pentagon = A.face(A.rev(d));
             all_pentagons &= ssize(pentagon) == 5 and A.isConvexFace(pentagon[0]);
         }
-        if (!all_pentagons)
-            continue;
+        if (all_pentagons)
+            return false;
             
-        for (Dart d: face) {
-            Dart e = A.rev(A.phi(A.phi(A.rev(d))));
-            if (A.isConvexFace(e))
-                return false;
-        }
+        //~ for (Dart d: face) {
+            //~ Dart e = A.rev(A.phi(A.phi(A.rev(d))));
+            //~ if (A.isConvexFace(e))
+                //~ return false;
+        //~ }
     }
     return true;
 }
@@ -306,6 +306,69 @@ bool criterionQuadrilateralOnePin(const DerivedOnceNet& A) {
     return true;
 }
 
+bool criterionPentagonThreeQuadrilaterals(const DerivedOnceNet& A) {
+    for (Dart d: A.darts()) {
+        if (ssize(A.face(d)) != 5 or !A.isConvexFace(d))
+            continue;
+        Dart e = A.phi(d);
+        Dart f = A.phi(e);
+        bool works = true;
+        for (Dart z: {A.rev(d), A.rev(e), A.rev(f)}) {
+            works &= ssize(A.face(z)) == 4;
+            works &= A.isConvexFace(z);
+        }
+        if (works)
+            return false;
+    }
+    return true;
+}
+
+bool criterionTriangleRectangle2(const DerivedOnceNet& A) {
+    for (Dart d: A.darts()) {
+        Dart e = A.rev(d);
+        if (ssize(A.face(d)) != 3 or !A.isConvexFace(d))
+            continue;
+        if (ssize(A.face(e)) != 4 or !A.isConvexFace(e))
+            continue;
+        
+        for (Dart f: {A.phi(e), A.phi(A.phi(e)), A.phi(A.phi(A.phi(e)))}) {
+            Dart g = A.rev(f);
+            if (!A.isConvexFace(g))
+                continue;
+            if (ssize(A.face(g)) != 4)
+                return false;
+            if (f != A.phi(A.phi(e)))
+                return false;
+        }
+    }
+    return true;
+}
+
+bool criterionTwoQuadrilateralsFourPentagons(const DerivedOnceNet& A) {
+    for (Dart d: A.darts()) {
+        Dart e = A.rev(d);
+        if (ssize(A.face(d)) != 4 or !A.isConvexFace(d))
+            continue;
+        if (ssize(A.face(e)) != 4 or !A.isConvexFace(e))
+            continue;
+            
+        bool works = true;
+        for (Dart _: {A.phi(d), A.phi(e)}) {
+            Dart z = _;
+            for (int i = 0; i < 3; i++) {
+                Dart f = A.rev(z);
+                works &= ssize(A.face(f)) == 5;
+                works &= A.isConvexFace(f);
+                z = A.phi(z);
+            }
+        }
+        
+        if (works)
+            return false;
+    }
+    return true;
+}
+
 
 
 int main() {
@@ -327,7 +390,10 @@ int main() {
         {"three rectangles\t", criterionThreeRectangles},
         {"rectangle long side\t", criterionRectangleLongSide},
         {"triangle rectangle\t", criterionTriangleRectangle},
-        {"quadrilateral one pin\t", criterionQuadrilateralOnePin}
+        {"quadrilateral one pin\t", criterionQuadrilateralOnePin},
+        {"pentagon 3 quadrilaterals", criterionPentagonThreeQuadrilaterals},
+        {"triangle rectangle 2\t", criterionTriangleRectangle2},
+        {"2 quadrilaterals 4 pentagons", criterionTwoQuadrilateralsFourPentagons}
     };
     
     map<string, vector<int>> excluded_by; 

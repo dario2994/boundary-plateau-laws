@@ -117,7 +117,7 @@ struct TangentVector {
     }
     
     // Rotate the direction of V by theta.
-    TangentVector rotate(double theta) const {
+    TangentVector rot(double theta) const {
         return {P, cos(theta)*V + sin(theta)*equatorNormal()};
     }
     
@@ -136,9 +136,9 @@ struct TangentVector {
         return normalizeAngle(theta);
     }
     
-    // Find theta such that rotate(theta).V = U
+    // Find theta such that rot(theta).V = U
     // Assumption: |U|=1, areOrthogonal(U, P)
-    double inverseRotate(pt U) const {
+    double inverseRot(pt U) const {
         double theta = atan2(U * equatorNormal(), U * V);
         return normalizeAngle(theta);
     }
@@ -156,6 +156,9 @@ struct TangentVector {
 //     |equator_normal|=1
 //     tv.equatorNormal() is independent from equator_normal.
 double intersectWithEquator(TangentVector tv, pt equator_normal) {
+    // This is a "bad" way to take care of the instability.
+    if (norm2(equator_normal^tv.equatorNormal()) < eps)
+        return 0;
     double theta = tv.inverseExp(normalize(equator_normal^tv.equatorNormal()));
     if (theta > M_PI) theta -= M_PI;
     return theta;
@@ -280,6 +283,40 @@ vector<array<double,3>> computeTriangleSides(double A, double B, double C) {
     return res;
 }
 
+// Any transformation of the unit tangent of S^2 that commutes with
+// SO(R^3).
+struct SimpleMap {
+    double t1, alpha, t2;
+    SimpleMap(): t1(0), alpha(0), t2(0) {}
+    SimpleMap(double _t1, double _alpha, double _t2):
+        t1(_t1), alpha(_alpha), t2(_t2) {}
+        
+    TangentVector operator()(const TangentVector& tv) const {
+        return tv.exp(t1).rot(alpha).exp(t2);
+    }
+    
+    SimpleMap exp(double t) const {
+        return {t1, alpha, t2+t};
+    }
+    
+    SimpleMap rot(double beta) const {
+        TangentVector v0;
+        TangentVector v3 = (*this)(v0).rot(beta);
+        pt goal_equator = v3.equatorNormal();
+        
+        // This one is the only unstable operation.
+        double new_t1 = intersectWithEquator(v0, v3.equatorNormal());
+        TangentVector v1 = v0.exp(new_t1);
+        assert(v1.onEquator(goal_equator));
+        pt half_dir = goal_equator^v1.P;
+        double new_alpha = v1.inverseRot(half_dir);
+        TangentVector v2 = v1.rot(new_alpha);
+        double new_t2 = v2.inverseExp(v3.P);
+        
+        return {new_t1, new_alpha, new_t2};
+    }
+};
+
 // We complete a polygon by finding the lengths of the last three
 // sides.
 //
@@ -313,7 +350,7 @@ vector<array<GeodesicSegment, 3>> completePolygon(
     
     // Now, vt1_pole and vt4_pole are centered in the same point.
     // They form an angle = angle0.
-    double angle0 = vt4_pole.inverseRotate(vt1_pole.V);
+    double angle0 = vt4_pole.inverseRot(vt1_pole.V);
     vector<array<double, 3>> side_lengths = 
         computeTriangleSides(angle0, angle1, angle2);
     
@@ -323,8 +360,8 @@ vector<array<GeodesicSegment, 3>> completePolygon(
         double len2 = tri[0];
         double len3 = normalizeAngle(tri[1] + X3);
         GeodesicSegment g1(vt1, len1);
-        GeodesicSegment g2(g1.exp(g1.len).rotate(angle1 - M_PI), len2);
-        GeodesicSegment g3(g2.exp(g2.len).rotate(angle2 - M_PI), len3);
+        GeodesicSegment g2(g1.exp(g1.len).rot(angle1 - M_PI), len2);
+        GeodesicSegment g3(g2.exp(g2.len).rot(angle2 - M_PI), len3);
         res.push_back(array<GeodesicSegment, 3>{g1, g2, g3});
     }
     return res;

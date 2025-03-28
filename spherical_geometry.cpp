@@ -204,6 +204,8 @@ double sphericalCosineRule(double A, double B, double C) {
 vector<array<double,3>> computeTriangleSides(double A, double B, double C) {
     A = normalizeAngle(A), B = normalizeAngle(B), C = normalizeAngle(C);
     
+    //~ cout << A << " " << B << " " << C << endl;
+    
     int cnt = (A < M_PI) + (B < M_PI) + (C < M_PI);
     
     if (cnt % 2 == 0)
@@ -286,7 +288,7 @@ vector<vector<double>> completeGeneralizedPolygon(
     for (int i = 0; i < 3; i++) {
         SimpleMap sm = SimpleMap().rot(angles[missing_sides[i]]-M_PI);
         for (int j = (missing_sides[i]+1)%n; 
-                j != missing_sides[i+1]; 
+                j != missing_sides[(i+1) % 3]; 
                 j = (j+1) % n) {
             sm = sm.exp(sides[j]).rot(angles[j]-M_PI);
         }
@@ -301,8 +303,8 @@ vector<vector<double>> completeGeneralizedPolygon(
     vector<vector<double>> res;
     for (auto tri: tri_lengths) {
         for (int i = 0; i < 3; i++) {
-            sides[missing_sides[i]] = 
-                tri[i] - strange_angles[i].t1 - strange_angles[i].t2;
+            sides[missing_sides[i]] = normalizeAngle(
+                tri[(i+1)%3] - strange_angles[i].t1 - strange_angles[(i+2)%3].t2);
         }
         res.push_back(sides);
     }

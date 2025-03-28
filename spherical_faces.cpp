@@ -42,6 +42,10 @@ vector<vector<GeodesicSegment>> constructPolygon(
     assert(ssize(missing_sides) == 3);
     
     auto candidates = completeGeneralizedPolygon(angles, sides, missing_sides);
+    //~ cout << "Lengths: ";
+    //~ for (int i = 0; i < 4; i++)
+        //~ cout << candidates[0][i] << " ";
+    //~ cout << endl;
     
     vector<vector<GeodesicSegment>> res;
     for (auto ss: candidates) {

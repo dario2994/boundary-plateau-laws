@@ -46,7 +46,6 @@ void searchFaceRealization(vector<int> angles, vector<double> sides) {
     int n = angles.size();
     assert(3 <= n and n <= 9);
     for (int _ = 0; _ < 10'000'000; _++) {
-
         vector<double> sides2 = sides;
         vector<int> missing_sides;
         for (int i = 0; i < n; i++) {
@@ -57,6 +56,10 @@ void searchFaceRealization(vector<int> angles, vector<double> sides) {
             }
         }
         assert(ssize(missing_sides) == 3);
+        
+        for (int i = 0; i < n; i++) 
+            cout << sides2[i] << " ";
+        cout << endl;
         
         auto polys = constructFace(angles, sides2, missing_sides);
         if (!polys.empty()) {
@@ -120,7 +123,15 @@ void searchFaceBounds(vector<int> angles) {
 }
 
 int main() {
-    searchFaceRealization({120, 120, 120, 120}, {-1, -1, -1, -1});
+    searchFaceRealization({120, 120, 240, 120, 120, 240}, {-1, 1, -1, -1, -1, -1});
+    //~ double a120 = 120*M_PI/180;
+    
+    //~ SimpleMap sm = SimpleMap().rot(a120-M_PI).exp(1).rot(a120-M_PI);
+    //~ cout << sm.alpha - M_PI << endl;
+    //~ return 0;
+    //~ auto res = completeGeneralizedPolygon({a120, a120, a120, a120}, {1, 1, 1, 1}, {1, 2, 3});
+    //~ constructPolygon({120, 120, 120, 120}, {1, 1, 1, 1}, {1, 2, 3});
+    //~ for (int i = 0; i < 4; i++) cout << res[0][i] << endl;
     
     //~ for (vector<int> angles: {120, 120, 120, 120, 240})
         //~ searchFaceBounds({120, 120, 120, 120, 240});

@@ -287,6 +287,29 @@ bool criterionTwoQuadrilateralsFourPentagons(const DerivedOnceNet& A) {
     return true;
 }
 
+bool criterionTwoQuadrilateralsThreePentagons(const DerivedOnceNet& A) {
+    for (Dart d: A.darts()) {
+        Dart e = A.rev(d);
+        if (A.faceType(d) != pair<int,int>{4, 0}
+            or A.faceType(e) != pair<int,int>{4, 0})
+            continue;
+            
+        int count=0;
+        Dart z = A.phi(d);
+        for (int i = 0; i < 3; i++) {
+            Dart f = A.rev(z);
+            if (A.faceType(f) == pair<int,int>{5, 0}) count=count+1;
+            z = A.phi(z);
+        }
+        
+        z = A.phi(A.phi(A.rev(d)));
+        if (A.faceType(A.rev(z))== pair<int,int>{5, 0}) count=count+1;
+
+        if (count>=3)
+            return false;
+    }
+    return true;
+}
 
 
 int main() {
@@ -309,7 +332,7 @@ int main() {
         {"triangle quadrilateral\t", criterionTriangleQuadrilateral},
         {"pentagon 3 quadrilaterals", criterionPentagonThreeQuadrilaterals},
         {"triangle quadrilateral 2", criterionTriangleQuadrilateral2},
-        {"2 quadrilaterals 4 pentagons", criterionTwoQuadrilateralsFourPentagons}
+        {"2 quadrilaterals 3 pentagons", criterionTwoQuadrilateralsThreePentagons}
     };
     
     map<string, vector<int>> excluded_by; 

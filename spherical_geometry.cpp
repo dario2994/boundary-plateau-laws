@@ -317,6 +317,51 @@ struct SimpleMap {
     }
 };
 
+// Finds all the possible side lengths that coincide with the given one
+// apart from the three indexes missing_sides, and which create a 
+// generalized spherical polygon when coupled with angles.
+// 
+// sides[0], angles0, sides[1], angles[1], ..., sides[n-1], angles[n-1].
+vector<vector<double>> completePolygon(
+        const vector<double>& angles, vector<double> sides,
+        vector<int> missing_sides) {
+    int n = ssize(angles);
+    assert(n >= 3);
+    assert(ssize(sides) == n);
+    assert(ssize(missing_sides) == 3);
+    
+    sort(missing_sides.begin(), missing_sides.end());
+    assert(0 <= missing_sides[0]
+           and missing_sides[0] < missing_sides[1]
+           and missing_sides[1] < missing_sides[2]
+           and missing_sides[2] < n);
+        
+    vector<SimpleMap> strange_angles(3);
+    for (int i = 0; i < 3; i++) {
+        SimpleMap sm = SimpleMap().rot(angles[missing_sides[i]]);
+        for (int j = missing_sides[i]+1; 
+                j != missing_sides[i+1]; 
+                j = (j+1) % n) {
+            sm = sm.exp(sides[j]).rot(angles[j]);
+        }
+        strange_angles[i] = sm;
+    }
+    vector<array<double, 3>> tri_lengths = computeTriangleSides(
+        strange_angles[0].alpha,
+        strange_angles[1].alpha,
+        strange_angles[2].alpha);
+    
+    vector<vector<double>> res;
+    for (auto tri: tri_lengths) {
+        for (int i = 0; i < 3; i++) {
+            sides[missing_sides[i]] = 
+                tri[i] - strange_angles[i].t1 - strange_angles[i].t2;
+        }
+        res.push_back(sides);
+    }
+    return res;
+}
+
 // We complete a polygon by finding the lengths of the last three
 // sides.
 //

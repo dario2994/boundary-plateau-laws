@@ -27,9 +27,9 @@ void unitTest() {
         auto sides = computeTriangleSides(A, B, C);
         for (auto tri: sides) {
             TangentVector tv;
-            tv = tv.exp(tri[2]).rotate(B-M_PI);
-            tv = tv.exp(tri[0]).rotate(C-M_PI);
-            tv = tv.exp(tri[1]).rotate(A-M_PI);
+            tv = tv.exp(tri[2]).rot(B-M_PI);
+            tv = tv.exp(tri[0]).rot(C-M_PI);
+            tv = tv.exp(tri[1]).rot(A-M_PI);
             assert(norm(tv.P-TangentVector().P) < eps);
             assert(norm(tv.V-TangentVector().V) < eps);
         }
@@ -46,12 +46,19 @@ void searchFaceRealization(vector<int> angles, vector<double> sides) {
     int n = angles.size();
     assert(3 <= n and n <= 9);
     for (int _ = 0; _ < 10'000'000; _++) {
+
         vector<double> sides2 = sides;
-        for (int i = 0; i < n-3; i++) {
-            if (sides2[i] < 0)
+        vector<int> missing_sides;
+        for (int i = 0; i < n; i++) {
+            if (sides2[i] < 0) {
+                if (ssize(missing_sides) < 3)
+                    missing_sides.push_back(i);
                 sides2[i] = rnd_side(gen);
+            }
         }
-        auto polys = constructFace(angles, sides2);
+        assert(ssize(missing_sides) == 3);
+        
+        auto polys = constructFace(angles, sides2, missing_sides);
         if (!polys.empty()) {
             auto poly = polys[0];
             for (int i = 0; i < n; i++)
@@ -81,10 +88,10 @@ void searchFaceBounds(vector<int> angles) {
             break;
         if (_ >= 1e7 and cnt >= 1e4)
             break;
-        vector<double> sides(n-3, -1);
-        for (int i = 0; i < n-3; i++)
+        vector<double> sides(n, -1);
+        for (int i = 0; i < n; i++)
             sides[i] = rnd_side(gen);
-        auto polys = constructFace(angles, sides);
+        auto polys = constructFace(angles, sides, {0, 1, 2});
         //~ if (polys.size() >= 2) {
             //~ vector<GeodesicSegment> vec = polys[0];
             //~ for (auto gs: polys[1])
@@ -113,60 +120,24 @@ void searchFaceBounds(vector<int> angles) {
 }
 
 int main() {
+    searchFaceRealization({120, 120, 120, 120}, {-1, -1, -1, -1});
+    
     //~ for (vector<int> angles: {120, 120, 120, 120, 240})
         //~ searchFaceBounds({120, 120, 120, 120, 240});
     
-    function<vector<GeodesicSegment>(double)> f = [&](double len) {
-        double a = M_PI/3;
-        auto polys = constructPolygon({2*a, a, 2*a, 4*a}, {len});
-        if (polys.empty())
-            return vector<GeodesicSegment>();
-        for (auto poly: polys) {
+    //~ function<vector<GeodesicSegment>(double)> f = [&](double len) {
+        //~ double a = M_PI/3;
+        //~ auto polys = 
+            //~ constructPolygon({2*a, a, 2*a, 4*a}, {len, 0, 0, 0}, {1, 2, 3});
+        //~ if (polys.empty())
+            //~ return vector<GeodesicSegment>();
+        //~ for (auto poly: polys) {
             //~ if (validatePolygon(poly))
-                return poly;
-        }
-        return vector<GeodesicSegment>();
-    };
+                //~ return poly;
+        //~ }
+        //~ return vector<GeodesicSegment>();
+    //~ };
     
-    for (double len = 0.1; len < M_PI; len += 0.1)
-        cout << len << ": " << f(len).size() << endl;
-    
-    
-    
-    //~ for (vector<int> angles: vector<vector<int>>{
-            //~ {120,120,120}, 
-            //~ {120,120,120,120}, 
-            //~ {120,120,120,120,120},
-            //~ {120,120,240},
-            //~ {120,240,240},
-            //~ {120,120,120,240},
-            //~ {120,120,240,240},
-            //~ {120,240,120,240}
-    //~ })
-        //~ searchFaceBounds(angles);
-    
-    //~ for (vector<int> angles: vector<vector<int>>{
-            //~ {120,120,120,120,120},
-            //~ {120,120,120,120,240},
-            //~ {120,120,120,240,240},
-            //~ {120,120,240,120,240},
-            //~ {120,120,120,120,120,240},
-            //~ {120,120,120,120,240,240},
-            //~ {120,120,120,240,120,240},
-            //~ {120,120,240,120,120,240}
-    //~ })
-        //~ searchFaceBounds(angles);
-        
-    //~ for (vector<int> angles: vector<vector<int>>{
-            //~ {120,120,120,120,120,120,240},
-            //~ {120,120,120,120,120,240,240},
-            //~ {120,120,120,120,240,120,240},
-            //~ {120,120,120,240,120,120,240},
-            //~ {120,120,120,120,120,240,120,240},
-            //~ {120,120,120,120,240,120,120,240},
-            //~ {120,120,120,240,120,120,120,240},
-            //~ {120,120,120,120,120,240,120,120,240},
-            //~ {120,120,120,120,240,120,120,120,240}
-    //~ })
-        //~ searchFaceBounds(angles);
+    //~ for (double len = 0.1; len < M_PI; len += 0.1)
+        //~ cout << len << ": " << f(len).size() << endl;
 }

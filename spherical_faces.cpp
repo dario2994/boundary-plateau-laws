@@ -34,31 +34,29 @@ bool validatePolygon(const vector<GeodesicSegment>& vec) {
 // the first point can be given.
 vector<vector<GeodesicSegment>> constructPolygon(
         vector<double> angles, vector<double> sides,
+        vector<int> missing_sides,
         TangentVector initial_dir=TangentVector()) {
     int n = angles.size();
-    assert(ssize(sides) == n-3);
-    vector<GeodesicSegment> vec = {{initial_dir, 0}};
-    for (int i = 0; i < n-3; i++) {
-        vec.back().len = sides[i];
-        TangentVector tv = vec.back().exp(sides[i])
-                                     .rotate(angles[i]-M_PI);
-        vec.push_back(GeodesicSegment(tv, 0));
-    }
+    assert(ssize(sides) == n);
+    assert(n >= 3);
+    assert(ssize(missing_sides) == 3);
     
-    auto completion_candidates = 
-        completePolygon(vec.back(), vec[0].rotate(-(angles[n-1]-M_PI)), 
-                        angles[n-3], angles[n-2]);
+    auto candidates = completeGeneralizedPolygon(angles, sides, missing_sides);
     
     vector<vector<GeodesicSegment>> res;
-    for (array<GeodesicSegment, 3> three_sides: completion_candidates) {
-        auto vec2 = vec;
-        vec2.pop_back();
-        for (int i = 0; i < 3; i++) 
-            vec2.push_back(three_sides[i]);
-        if (validatePolygon(vec2))
-            res.push_back(vec2);
+    for (auto ss: candidates) {
+        vector<GeodesicSegment> vec = {{initial_dir, 0}};
+        for (int i = 0; i < n; i++) {
+            vec.back().len = ss[i];
+            TangentVector tv = vec.back().exp(ss[i])
+                                         .rot(angles[i]-M_PI);
+            vec.push_back(GeodesicSegment(tv, 0));
+        }
+        assert(norm(vec[0].P-vec[n].P) < eps and norm(vec[0].V-vec[n].V) < eps);
+        vec.pop_back();
+        if (validatePolygon(vec))
+            res.push_back(vec);
     }
-    
     return res;
 }
 
@@ -71,16 +69,19 @@ vector<vector<GeodesicSegment>> constructPolygon(
 // angles[i] \in \{120, 240\}
 // ssize(angles) == ssize(sides) + 3
 vector<vector<GeodesicSegment>> constructFace(
-        vector<int> angles, vector<double> sides,
+        vector<int> angles, vector<double> sides, 
+        vector<int> missing_sides,
         TangentVector initial_dir=TangentVector()) {
     int n = ssize(angles);
     assert(n >= 3);
+    
     vector<double> angles_rad(n);
     for (int i = 0; i < n; i++) {
         assert(angles[i] == 120 or angles[i] == 240);
         angles_rad[i] = angles[i] * (M_PI/180);
     }
-    auto candidates = constructPolygon(angles_rad, sides, initial_dir);
+    auto candidates = 
+        constructPolygon(angles_rad, sides, missing_sides, initial_dir);
     assert(candidates.size() <= 2);
     
     vector<vector<GeodesicSegment>> polys;
@@ -97,13 +98,13 @@ vector<vector<GeodesicSegment>> constructFace(
         bool works = true;
         if (big_vertices.size() == 1) {
             int u = big_vertices[0];
-            TangentVector tu = poly[u].rotate(-(2*M_PI)/3);
+            TangentVector tu = poly[u].rot(-(2*M_PI)/3);
             poly.push_back({tu, 0.1});
         } else if (big_vertices.size() == 2) {
             int u = big_vertices[0];
             int v = big_vertices[1];
-            TangentVector tu = poly[u].rotate(-(2*M_PI)/3);
-            TangentVector tv = poly[v].rotate(-(2*M_PI)/3);
+            TangentVector tu = poly[u].rot(-(2*M_PI)/3);
+            TangentVector tv = poly[v].rot(-(2*M_PI)/3);
             double len_u = intersectWithEquator(tu, tv.equatorNormal());
             double len_v = intersectWithEquator(tv, tu.equatorNormal());
             
@@ -113,7 +114,7 @@ vector<vector<GeodesicSegment>> constructFace(
             // The angle in the pin belongs to [120,240].
             tu = tu.exp(len_u);
             tv = tv.exp(len_v);
-            double theta = tu.inverseRotate(-tv.V);
+            double theta = tu.inverseRot(-tv.V);
             if (min(theta, 2*M_PI-theta) > M_PI/3)
                 works = false;
             

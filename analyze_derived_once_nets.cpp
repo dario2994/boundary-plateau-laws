@@ -123,21 +123,6 @@ bool containsHexagonsTwoObtuse(const DerivedOnceNet& A) {
 int main() {
     vector<DerivedOnceNet> derived_once = 
         parseDerivedOnceNets("data/derived_once_computer.txt");
-    
-    //~ vector<DerivedOnceNet> derived_once_old = 
-        //~ parseDerivedOnceNets("data/derived_once_computer_old.txt");
-    
-    //~ cout << ssize(derived_once) << " " << ssize(derived_once_old) << endl;
-    
-    //~ for (int old_id: {0, 49, 2138}) {
-        //~ for (int new_id = 0; new_id < ssize(derived_once); new_id++) {
-            //~ if (areIsomorphic(derived_once[new_id], derived_once_old[old_id])) {
-                //~ cout << old_id << " -> " << new_id << endl;
-            //~ }
-        //~ }
-    //~ }
-    
-    //~ return 0;
         
     ifstream in("data/derived_once_survivors.txt");
     int cnt_survivors;

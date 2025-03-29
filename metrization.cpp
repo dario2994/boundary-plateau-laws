@@ -10,9 +10,12 @@ typedef unsigned long long ULL;
 #include "spherical_geometry.cpp"
 
 
+int DEBUGGING;
+
 // Returns a vector label, so that label[d.id] == label[e.id]
 // implies that the lengths of darts d and e must be the same.
 vector<int> identifyEqualSides(const DerivedOnceNet& A) {
+    DEBUGGING = -A.E();
     vector<int> labels;
     
     // Init labels.
@@ -29,7 +32,10 @@ vector<int> identifyEqualSides(const DerivedOnceNet& A) {
     
     function<void(Dart,Dart)> set_equal = [&](Dart d, Dart e) {
         int x = ancestor(d.id), y = ancestor(e.id);
-        labels[x] = y;
+        if (x != y) {
+            labels[x] = y;
+            DEBUGGING++;
+        }
     };
     
     function<bool(Dart,Dart)> are_equal = [&](Dart d, Dart e) {
@@ -38,6 +44,10 @@ vector<int> identifyEqualSides(const DerivedOnceNet& A) {
     };
     
     // Identification rules
+    auto reverse_dart = [&](Dart d) {
+        set_equal(d, A.rev(d));
+    };
+    
     auto convex_biangle = [&](Dart d) {
         if (A.faceType(d) != pair<int,int>{2, 0})
             return;
@@ -75,11 +85,61 @@ vector<int> identifyEqualSides(const DerivedOnceNet& A) {
             set_equal(A.phi(d), A.phi(d, 4));
     };
     
+    while (1) {
+        vector<int> bef = labels;
+        for (Dart d: A.darts()) {
+            reverse_dart(d);
+            convex_biangle(d);
+            convex_triangle(d);
+            convex_quadrilateral(d);
+            pentagon(d);
+        }
+        // Nothing changed during this iteration.
+        if (bef == labels)
+            break;
+    }
+    
     // Finalize labels.
     for (Dart d: A.darts())
         ancestor(d.id);
     
     return labels;
+}
+
+
+vector<DerivedOnceNet> parseDerivedOnceNets(string in_file) {
+    ifstream in(in_file);
+    int cnt;
+    in >> cnt;
+    vector<DerivedOnceNet> res;
+    for (int i = 0; i < cnt; i++) {
+        const DerivedOnceNet& A = parseDerivedOnceNet(in);
+        A.checkConsistency();
+        res.push_back(A);
+    }
+    return res;
+}
+
+int main() {
+    vector<DerivedOnceNet> derived_once = 
+        parseDerivedOnceNets("data/derived_once_computer.txt");
+    
+    ifstream in("data/derived_once_survivors.txt");
+    int cnt_survivors;
+    in >> cnt_survivors;
+    vector<int> survivors(cnt_survivors);
+    for (int i = 0; i < cnt_survivors; i++)
+        in >> survivors[i];
+    in.close();
+    
+    map<int,int> measure_effectiveness;
+    for (int id: survivors) {
+        const DerivedOnceNet& A = derived_once[id];
+        vector<int> labels = identifyEqualSides(A);
+        measure_effectiveness[DEBUGGING]++;
+    }
+    for (auto pp: measure_effectiveness)
+        cout << pp.first << " " << pp.second << endl;
 }
 
 

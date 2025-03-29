@@ -203,9 +203,6 @@ double sphericalCosineRule(double A, double B, double C) {
 // Assumption: A, B, C \in (0, 2\pi)\setminus\{\pi\}.
 vector<array<double,3>> computeTriangleSides(double A, double B, double C) {
     A = normalizeAngle(A), B = normalizeAngle(B), C = normalizeAngle(C);
-    
-    //~ cout << A << " " << B << " " << C << endl;
-    
     int cnt = (A < M_PI) + (B < M_PI) + (C < M_PI);
     
     if (cnt % 2 == 0)
@@ -265,7 +262,7 @@ struct SimpleMap {
     }
 };
 
-// Finds all the possible side lengths that coincide with the given one
+// Finds all the possible side lengths that coincide with the given ones
 // apart from the three indexes missing_sides, and which create a 
 // generalized spherical polygon when coupled with angles.
 // 

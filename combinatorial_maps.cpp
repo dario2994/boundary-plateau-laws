@@ -64,6 +64,11 @@ struct CombinatorialMap {
     const Dart& prev(const Dart& e) const { return _darts[_prev[e.id]]; }
     // phi traverses the boundary of a (bounded) face clockwise.
     const Dart& phi(const Dart& e) const { return _darts[_phi(e.id)]; } 
+    const Dart& phi(const Dart& e, int k) const { 
+        if (k == 1)
+            return phi(e);
+        return phi(phi(e), k-1);
+    }
     
   private:
     void checkDart(const Dart& d) const {

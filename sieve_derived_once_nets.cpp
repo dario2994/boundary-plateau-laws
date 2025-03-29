@@ -264,29 +264,6 @@ bool criterionTriangleQuadrilateral2(const DerivedOnceNet& A) {
     return true;
 }
 
-bool criterionTwoQuadrilateralsFourPentagons(const DerivedOnceNet& A) {
-    for (Dart d: A.darts()) {
-        Dart e = A.rev(d);
-        if (A.faceType(d) != pair<int,int>{4, 0}
-            or A.faceType(e) != pair<int,int>{4, 0})
-            continue;
-            
-        bool works = true;
-        for (Dart _: {A.phi(d), A.phi(e)}) {
-            Dart z = _;
-            for (int i = 0; i < 3; i++) {
-                Dart f = A.rev(z);
-                works &= A.faceType(f) == pair<int,int>{5, 0};
-                z = A.phi(z);
-            }
-        }
-        
-        if (works)
-            return false;
-    }
-    return true;
-}
-
 bool criterionTwoQuadrilateralsThreePentagons(const DerivedOnceNet& A) {
     for (Dart d: A.darts()) {
         Dart e = A.rev(d);
@@ -294,18 +271,18 @@ bool criterionTwoQuadrilateralsThreePentagons(const DerivedOnceNet& A) {
             or A.faceType(e) != pair<int,int>{4, 0})
             continue;
             
-        int count=0;
+        int cnt = 0;
         Dart z = A.phi(d);
         for (int i = 0; i < 3; i++) {
             Dart f = A.rev(z);
-            if (A.faceType(f) == pair<int,int>{5, 0}) count=count+1;
+            if (A.faceType(f) == pair<int,int>{5, 0}) cnt++;
             z = A.phi(z);
         }
         
-        z = A.phi(A.phi(A.rev(d)));
-        if (A.faceType(A.rev(z))== pair<int,int>{5, 0}) count=count+1;
+        z = A.phi(A.phi(e));
+        if (A.faceType(A.rev(z))== pair<int,int>{5, 0}) cnt++;
 
-        if (count>=3)
+        if (cnt >= 3)
             return false;
     }
     return true;

@@ -106,6 +106,44 @@ vector<int> identifyEqualSides(const DerivedOnceNet& A) {
     return labels;
 }
 
+struct DartMetricData {
+    bool known;
+    double len;
+    DartMetricData(): known(false) {}
+    DartMetricData(double _len): known(true), len(_len) {}
+    bool set(double _len, double eps = 1e-4) { 
+        if (known) {
+            return abs(len-_len) < eps;
+        }
+        known = true;
+        len = _len; 
+        return true;
+    }
+    
+    double get() const {
+        return known ? len : -1;
+    }
+};
+
+vector<DartMetricData> determineSideLengths(const DerivedOnceNet& A) {
+    vector<int> label = identifyEqualSides(A);
+    vector<DartMetricData> lengths;
+    
+    auto get_length = [&](Dart d) {
+        return lengths[label[d.id]].get();
+    };
+    
+    auto set_length = [&](Dart d, double len) {
+        return lengths[label[d.id]].set(len);
+    };
+    
+    auto is_face_determined = [&](Dart d) {
+        
+    }
+    
+}
+
+
 
 vector<DerivedOnceNet> parseDerivedOnceNets(string in_file) {
     ifstream in(in_file);

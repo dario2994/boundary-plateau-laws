@@ -57,16 +57,14 @@ void searchFaceRealization(vector<int> angles, vector<double> sides) {
         }
         assert(ssize(missing_sides) == 3);
         
-        for (int i = 0; i < n; i++) 
-            cout << sides2[i] << " ";
-        cout << endl;
-        
         auto polys = constructFace(angles, sides2, missing_sides);
         if (!polys.empty()) {
             auto poly = polys[0];
             for (int i = 0; i < n; i++)
                 cout << poly[i].len << " ";
             cout << endl;
+            
+            cout << poly[1].len - poly[2].len << endl;
             
             savePicture(poly, "todel.txt");
             return;
@@ -123,7 +121,17 @@ void searchFaceBounds(vector<int> angles) {
 }
 
 int main() {
-    searchFaceRealization({120, 120, 240, 120, 120, 240}, {-1, 1, -1, -1, -1, -1});
+    searchFaceRealization({120, 120, 120}, {-1, -1, -1});
+    searchFaceRealization({120, 120, 120, 120}, {2*atan(sqrt(0.5)), -1, -1, -1});
+    searchFaceRealization({120, 120, 120, 120, 240}, {0.9153972, 0.9153972, -1, -1, -1});
+    searchFaceRealization({120, 120, 120, 120, 120}, {0.72972766, 0.72972766, -1, -1, -1});
+    
+    cout.precision(10);
+    for (double l = 0.72972766; l < 0.7297277; l += 1e-8) {
+        searchFaceRealization({120, 120, 120, 120, 120}, {0.72972766, 0.72972766, -1, -1, -1});
+    }
+    
+    //~ searchFaceRealization({120, 120, 240, 120, 120, 240}, {-1, 1, -1, -1, -1, -1});
     //~ double a120 = 120*M_PI/180;
     
     //~ SimpleMap sm = SimpleMap().rot(a120-M_PI).exp(1).rot(a120-M_PI);

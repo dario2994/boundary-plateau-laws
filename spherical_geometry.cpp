@@ -372,7 +372,7 @@ bool areIntersecting(GeodesicSegment a, GeodesicSegment b) {
 
 // Check that all edges have a minimum length (to avoid precision issues)
 // and that they are non-intersecting.
-bool isSimplePolygon(const vector<GeodesicSegment>& vec) {
+bool isValidPolygon(const vector<GeodesicSegment>& vec) {
     int n = ssize(vec);
     assert(n >= 2);
     for (int i = 0; i < n; i++) {
@@ -394,7 +394,7 @@ bool isSimplePolygon(const vector<GeodesicSegment>& vec) {
 // Given angles and sides, it constructs a polygon with this data, 
 // starting from the given initial directio (identifying the direction 
 // of the first edge from the first point).
-vector<vector<GeodesicSegment>> constructPolygon(
+vector<GeodesicSegment> constructPolygon(
         vector<double> angles, vector<double> sides,
         TangentVector initial_dir=TangentVector()) {
     int n = angles.size();
@@ -408,13 +408,61 @@ vector<vector<GeodesicSegment>> constructPolygon(
                                      .rot(angles[i]-M_PI);
         res.push_back(GeodesicSegment(tv, 0));
     }
-    if (norm(res[0].P-vec[n].P) > eps or norm(res[0].V-vec[n].V) > eps);
+    if (norm(res[0].P-res[n].P) > eps or norm(res[0].V-res[n].V) > eps);
         return {};
     
-    if (!isSimplePolygon(res))
+    if (!isValidPolygon(res))
         return {};
          
     return res;
+}
+
+bool checkPinProperties(const vector<int>& angles, // 120, 240
+                        const vector<GeodesicSegment>& poly) {
+    int n = ssize(poly);
+    assert(n >= 2);
+    assert(ssize(angles) == n);
+    
+    vector<int> concave_vertices;
+    for (int i = 0; i < n; i++) {
+        if (angles[i] == 240)
+            concave_vertices.push_back((i+1) % n);
+    }
+    
+    if (ssize(concave_vertices) < 2)
+        return true;
+        
+    assert(ssize(concave_vertices) == 2);
+
+    int u = concave_vertices[0];
+    int v = concave_vertices[1];
+    TangentVector tu = poly[u].rot(-(2*M_PI)/3);
+    TangentVector tv = poly[v].rot(-(2*M_PI)/3);
+    double len_u = intersectWithEquator(tu, tv.equatorNormal());
+    double len_v = intersectWithEquator(tv, tu.equatorNormal());
+        
+    GeodesicSegment gsu(tu, len_u);
+    GeodesicSegment gsv(tv, len_v);
+    
+    if (norm(gsu.to() - gsv.to()) > eps)
+        return false;
+        
+    // The angle in the pin belongs to [120,240].
+    tu = tu.exp(len_u);
+    tv = tv.exp(len_v);
+    double theta = tu.inverseRot(-tv.V);
+    if (min(theta, 2*M_PI-theta) > M_PI/3)
+        return false;
+        
+    // The links to the pin stay inside the face.
+    for (int i = 0; i < n; i++) {
+        if ((i+1) % n != u and i != u and areIntersecting(poly[i], gsu))
+            return false;
+        if ((i+1) % n != v and i != v and areIntersecting(poly[i], gsv))
+            return false;
+    }
+    
+    return true;
 }
 
 

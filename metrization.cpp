@@ -137,9 +137,31 @@ vector<DartMetricData> determineSideLengths(const DerivedOnceNet& A) {
         return lengths[label[d.id]].set(len);
     };
     
-    auto is_face_determined = [&](Dart d) {
+    auto complete_face = [&](Dart d) {
+        vector<double> sides;
+        vector<int> missing_sides;
+        vector<int> angles;
         
-    }
+        int n = A.faceType(d).first;
+        for (int i = 0; i < n; i++) {
+            Dart e = A.phi(d, i);
+            sides.push_back(get_length(e));
+            if (get_length(e) < 0)
+                missing_sides.push_back(i);
+            if (A.isConcaveAngle(e))
+                angles.push_back(240);
+            else
+                angles.push_back(120);
+        } 
+        
+        assert(ssize(sides) == n);
+        assert(ssize(angles) == n);
+        
+        if (ssize(missing_sides) > 3) // Cannot be determined.
+            return;
+        
+        // TODO
+    };
     
 }
 

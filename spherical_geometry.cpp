@@ -417,15 +417,19 @@ vector<GeodesicSegment> constructPolygon(
     return res;
 }
 
-bool checkPinProperties(const vector<int>& angles, // 120, 240
-                        const vector<GeodesicSegment>& poly) {
+bool checkPinProperties(const vector<GeodesicSegment>& poly) {
     int n = ssize(poly);
     assert(n >= 2);
-    assert(ssize(angles) == n);
     
     vector<int> concave_vertices;
     for (int i = 0; i < n; i++) {
-        if (angles[i] == 240)
+        TangentVector bef = poly[i].exp(poly[i].len);
+        int j = (i+1) % n;
+        TangentVector aft = poly[j].exp(poly[j].len);
+        double angle = normalizeAngle(bef.inverseRot(aft.V) + M_PI);
+        int degrees = std::round(angle * (180/M_PI));
+        assert(degrees == 120 or degrees == 240);
+        if (degrees == 240)
             concave_vertices.push_back((i+1) % n);
     }
     

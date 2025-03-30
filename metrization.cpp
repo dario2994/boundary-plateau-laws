@@ -133,7 +133,7 @@ vector<DartMetricData> determineSideLengths(const DerivedOnceNet& A) {
         acos(sqrt(5)/3)}; // pentagon
     
     vector<int> label = identifyEqualSides(A);
-    vector<DartMetricData> lengths;
+    vector<DartMetricData> lengths(2*A.E());
     
     auto get_length = [&](Dart d) {
         return lengths[label[d.id]].get();
@@ -143,9 +143,12 @@ vector<DartMetricData> determineSideLengths(const DerivedOnceNet& A) {
         return lengths[label[d.id]].set(len);
     };
     
+    // TODO:
+    // We should be able to mix the "equal sides" info with the "some
+    // sides are determined info". Currently we don't do it.
     auto handle_regular_faces = [&](Dart d) {
         if (!A.isConvexFace(d))
-            return;
+            return true;
         int n = ssize(A.face(d));
         assert(2 <= n and n <= 5);
         double len = regular_convex_polygons[n];
@@ -153,15 +156,21 @@ vector<DartMetricData> determineSideLengths(const DerivedOnceNet& A) {
         for (int i = 0; i < n; i++) 
             is_regular &= label[d.id] == label[A.phi(d, i).id];
         if (!is_regular)
-            return;
+            return true;
         for (int i = 0; i < n; i++)
-            set_length(A.phi(d, i), len);
+            if (!set_length(A.phi(d, i), len))
+                return false;
+        return true;
     };
+    
+    for (Dart d: A.darts())
+        if (!handle_regular_faces(d))
+            return {};
     
     auto complete_face = [&](Dart d) {
         vector<double> sides;
         vector<int> missing_sides;
-        vector<int> angles;
+        vector<double> angles;
         
         int n = A.faceType(d).first;
         for (int i = 0; i < n; i++) {
@@ -170,16 +179,16 @@ vector<DartMetricData> determineSideLengths(const DerivedOnceNet& A) {
             if (get_length(e) < 0)
                 missing_sides.push_back(i);
             if (A.isConcaveAngle(e))
-                angles.push_back(240);
+                angles.push_back(240 * (M_PI/180));
             else
-                angles.push_back(120);
+                angles.push_back(120 * (M_PI / 180));
         } 
         
         assert(ssize(sides) == n);
         assert(ssize(angles) == n);
         
         if (n <= 3)
-            return;
+            return true;
         
         if (ssize(missing_sides) > 3) // Cannot be determined.
             return true;
@@ -191,8 +200,36 @@ vector<DartMetricData> determineSideLengths(const DerivedOnceNet& A) {
             missing_sides.push_back(it);
             sort(missing_sides.begin(), missing_sides.end());
         }
+        
+        vector<vector<double>> candidates = 
+            completeGeneralizedPolygon(angles, sides, missing_sides);
+        
+        vector<vector<double>> valid_faces;
+        for (const auto& one_candidate: candidates) {
+            auto poly = constructPolygon(angles, one_candidate);
+            if (isValidPolygon(poly) and checkPinProperties(poly))
+                valid_faces.push_back(one_candidate);
+        }
+        assert(ssize(valid_faces) <= 1);
+        if (valid_faces.empty())
+            return false;
+        
+        sides = valid_faces[0];
+        for (int i = 0; i < n; i++)
+            if (!set_length(A.phi(d, i), sides[i]))
+                return false;
+        return true;
     };
     
+    for (int i = 0; i < 10; i++) 
+        for (Dart d: A.darts())
+            if (!complete_face(d))
+                return {};
+    
+    vector<DartMetricData> res(2*A.E());
+    for (Dart d: A.darts())
+        res[d.id] = lengths[label[d.id]];
+    return res;
 }
 
 

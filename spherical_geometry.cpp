@@ -370,5 +370,52 @@ bool areIntersecting(GeodesicSegment a, GeodesicSegment b) {
     return false;
 }
 
+// Check that all edges have a minimum length (to avoid precision issues)
+// and that they are non-intersecting.
+bool isSimplePolygon(const vector<GeodesicSegment>& vec) {
+    int n = ssize(vec);
+    assert(n >= 2);
+    for (int i = 0; i < n; i++) {
+        if (vec[i].len < 0.01 or vec[i].len > 2*M_PI-0.01)
+            return false;
+        int j = (i + 1) % n;
+        if (vec[i].len >= M_PI and vec[j].len >= M_PI and n != 2)
+            return false;
+        for (int k = i+2; k < n; k++) {
+            if (i == 0 and k == n-1)
+                continue;
+            if (areIntersecting(vec[i], vec[k]))
+                return false;
+        }
+    }
+    return true;
+}
+
+// Given angles and sides, it constructs a polygon with this data, 
+// starting from the given initial directio (identifying the direction 
+// of the first edge from the first point).
+vector<vector<GeodesicSegment>> constructPolygon(
+        vector<double> angles, vector<double> sides,
+        TangentVector initial_dir=TangentVector()) {
+    int n = angles.size();
+    assert(ssize(sides) == n);
+    assert(n >= 2);
+    
+    vector<GeodesicSegment> res = {{initial_dir, 0}};
+    for (int i = 0; i < n; i++) {
+        res.back().len = sides[i];
+        TangentVector tv = res.back().exp(sides[i])
+                                     .rot(angles[i]-M_PI);
+        res.push_back(GeodesicSegment(tv, 0));
+    }
+    if (norm(res[0].P-vec[n].P) > eps or norm(res[0].V-vec[n].V) > eps);
+        return {};
+    
+    if (!isSimplePolygon(res))
+        return {};
+         
+    return res;
+}
+
 
 #endif

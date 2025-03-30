@@ -124,12 +124,13 @@ int main() {
     searchFaceRealization({120, 120, 120}, {-1, -1, -1});
     searchFaceRealization({120, 120, 120, 120}, {2*atan(sqrt(0.5)), -1, -1, -1});
     searchFaceRealization({120, 120, 120, 120, 240}, {0.9153972, 0.9153972, -1, -1, -1});
-    searchFaceRealization({120, 120, 120, 120, 120}, {0.72972766, 0.72972766, -1, -1, -1});
-    
     cout.precision(10);
-    for (double l = 0.72972766; l < 0.7297277; l += 1e-8) {
-        searchFaceRealization({120, 120, 120, 120, 120}, {0.72972766, 0.72972766, -1, -1, -1});
-    }
+    searchFaceRealization({120, 120, 120, 120, 120}, {acos(sqrt(5)/3), acos(sqrt(5)/3), -1, -1, -1});
+    
+    //~ cout.precision(10);
+    //~ for (double l = 0.72972766; l < 0.7297277; l += 1e-8) {
+        //~ searchFaceRealization({120, 120, 120, 120, 120}, {0.72972766, 0.72972766, -1, -1, -1});
+    //~ }
     
     //~ searchFaceRealization({120, 120, 240, 120, 120, 240}, {-1, 1, -1, -1, -1, -1});
     //~ double a120 = 120*M_PI/180;

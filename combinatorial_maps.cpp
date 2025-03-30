@@ -65,8 +65,8 @@ struct CombinatorialMap {
     // phi traverses the boundary of a (bounded) face clockwise.
     const Dart& phi(const Dart& e) const { return _darts[_phi(e.id)]; } 
     const Dart& phi(const Dart& e, int k) const { 
-        if (k == 1)
-            return phi(e);
+        if (k == 0)
+            return e;
         return phi(phi(e), k-1);
     }
     

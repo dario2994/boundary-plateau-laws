@@ -126,6 +126,12 @@ struct DartMetricData {
 };
 
 vector<DartMetricData> determineSideLengths(const DerivedOnceNet& A) {
+    static const vector<double> regular_convex_polygons = {-1, -1, 
+        M_PI, // biangle
+        acos(-1.0/3), // triangle
+        2*atan(sqrt(0.5)), // quadrilateral
+        acos(sqrt(5)/3)}; // pentagon
+    
     vector<int> label = identifyEqualSides(A);
     vector<DartMetricData> lengths;
     
@@ -135,6 +141,21 @@ vector<DartMetricData> determineSideLengths(const DerivedOnceNet& A) {
     
     auto set_length = [&](Dart d, double len) {
         return lengths[label[d.id]].set(len);
+    };
+    
+    auto handle_regular_faces = [&](Dart d) {
+        if (!A.isConvexFace(d))
+            return;
+        int n = ssize(A.face(d));
+        assert(2 <= n and n <= 5);
+        double len = regular_convex_polygons[n];
+        bool is_regular = true;
+        for (int i = 0; i < n; i++) 
+            is_regular &= label[d.id] == label[A.phi(d, i).id];
+        if (!is_regular)
+            return;
+        for (int i = 0; i < n; i++)
+            set_length(A.phi(d, i), len);
     };
     
     auto complete_face = [&](Dart d) {
@@ -157,10 +178,19 @@ vector<DartMetricData> determineSideLengths(const DerivedOnceNet& A) {
         assert(ssize(sides) == n);
         assert(ssize(angles) == n);
         
-        if (ssize(missing_sides) > 3) // Cannot be determined.
+        if (n <= 3)
             return;
         
-        // TODO
+        if (ssize(missing_sides) > 3) // Cannot be determined.
+            return true;
+        
+        while (ssize(missing_sides) < 3) {
+            int it = 0;
+            while (it < ssize(missing_sides) and missing_sides[it] == it)
+                it++;
+            missing_sides.push_back(it);
+            sort(missing_sides.begin(), missing_sides.end());
+        }
     };
     
 }

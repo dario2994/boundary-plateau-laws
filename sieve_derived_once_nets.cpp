@@ -307,6 +307,23 @@ bool criterionTwoQuadrilateralsThreePentagons(const DerivedOnceNet& A) {
     return true;
 }
 
+bool criterionConsectiveVerticesDegree2(const DerivedOnceNet& A) {
+    int max=0;
+    for (Dart d: A.darts()) {
+        if (A.degree(d.to)==3) continue;
+        if (A.degree(A.phi(d).to)==3) continue;
+        if (A.degree(A.phi(A.phi(d)).to)==3) continue;
+            else max=3;
+        if (A.degree(A.phi(A.phi(A.phi(d))).to)==2) {
+            max=4;
+            break;
+        }
+    }
+    if ((max==3) and (sumAreaConvexFaces(A)>7)) return false;
+    if ((max==4) and (sumAreaConvexFaces(A)>5)) return false;
+    if ((max==4) and (containsBiangle(A)==true)) return false;
+    return true; 
+}
 
 int main() {
     vector<DerivedOnceNet> derived_once = 
@@ -329,7 +346,8 @@ int main() {
         {"triangle quadrilateral\t", criterionTriangleQuadrilateral},
         {"pentagon 3 quadrilaterals", criterionPentagonThreeQuadrilaterals},
         {"triangle quadrilateral 2", criterionTriangleQuadrilateral2},
-        {"2 quadrilaterals 3 pentagons", criterionTwoQuadrilateralsThreePentagons}
+        {"2 quadrilaterals 3 pentagons", criterionTwoQuadrilateralsThreePentagons},
+        {"consecutive degree 2 vertices", criterionConsectiveVerticesDegree2}
     };
     
     map<string, vector<int>> excluded_by; 

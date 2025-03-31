@@ -66,17 +66,15 @@ bool sameFace(const DerivedOnceNet& A, Dart d, Dart e) {
     return false;
 }
 
-
-bool isPesceMagro(int id, const DerivedOnceNet& A) {
+bool isPesceMagro(const DerivedOnceNet& A) {
     auto faces = A.faces();
-    vector<pair<int,bool>> types;
+    if (ssize(faces)!= 3) return false;
+        vector<pair<int,bool>> types;
     for (auto face: faces) {
-        types.push_back({ssize(face), A.isConvexFace(face[0])});
+        if ((A.isConvexFace(face[0])==true) and (ssize(face)!=4)) return false;
+        if ((A.isConvexFace(face[0])==false) and (ssize(face)!=3)) return false;
     }
-    sort(types.begin(), types.end());
-    
-    vector<pair<int,bool>> hope = {{2, 1}, {4, 1}, {5, 0}, {5, 0}};
-    return types == hope;
+    return true;
 }
 
 bool containsConcaveQuadrilateral(const DerivedOnceNet& A) {
@@ -123,46 +121,9 @@ bool containsHexagonsTwoObtuse(const DerivedOnceNet& A) {
 int main() {
     vector<DerivedOnceNet> derived_once = 
         parseDerivedOnceNets("data/derived_once_computer.txt");
-    
-    //~ vector<DerivedOnceNet> derived_once_old = 
-        //~ parseDerivedOnceNets("data/derived_once_computer_old.txt");
-    
-    //~ cout << ssize(derived_once) << " " << ssize(derived_once_old) << endl;
-    
-    //~ for (int old_id: {0, 49, 2138}) {
-        //~ for (int new_id = 0; new_id < ssize(derived_once); new_id++) {
-            //~ if (areIsomorphic(derived_once[new_id], derived_once_old[old_id])) {
-                //~ cout << old_id << " -> " << new_id << endl;
-            //~ }
-        //~ }
-    //~ }
-    
-    //~ return 0;
-        
-    ifstream in("data/derived_once_survivors.txt");
-    int cnt_survivors;
-    in >> cnt_survivors;
-    vector<int> survivors(cnt_survivors);
-    for (int i = 0; i < cnt_survivors; i++)
-        in >> survivors[i];
-    in.close();
-    
-    cout << "There are " << derived_once.size()
-         << " derived-once net candidates." << endl;
-    cout << "There are " << survivors.size()
-         << " survivors." << endl;
-         
-        
-    
-    int cnt_interesting = 0;
-    for (int id: survivors) {
-        const DerivedOnceNet& A = derived_once[id];
-        bool interesting = containsHexagonsTwoObtuse(A);
-        cnt_interesting += interesting;
-        if (interesting) {
-            cout << id << endl;
-        }
+    int count=0;
+    for (auto A: derived_once) {
+        if (isPesceMagro(A)==true) cout << count;
+        count++; 
     }
-    cout << endl;
-    cout << cnt_interesting << endl;
 }

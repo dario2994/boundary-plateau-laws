@@ -216,6 +216,25 @@ bool criterionQuadrilateralsAreConvex(const DerivedOnceNet& A) {
     return true;
 }
 
+bool isPesceMagro(const DerivedOnceNet& A) {
+    auto faces = A.faces();
+    if (ssize(faces)!= 3) return false;
+    for (auto face: faces) {
+        if ((A.isConvexFace(face[0])==true) and (ssize(face)!=4)) return false;
+        if ((A.isConvexFace(face[0])==false) and (ssize(face)!=3)) return false;
+    }
+    return true;
+}
+
+bool criterionTrianglesAreConvex(const DerivedOnceNet& A) {
+    if (isPesceMagro(A)==true) return true;
+    for (Dart d: A.darts()) {
+        if (A.faceType(d)== pair<int,int>{3,1}) return false;
+    }
+    return true;        
+}
+
+
 bool criterionTriangleQuadrilateral(const DerivedOnceNet& A) {
     for (Dart d: A.darts()) {
         Dart e = A.rev(d);
@@ -250,16 +269,16 @@ bool criterionTriangleQuadrilateral2(const DerivedOnceNet& A) {
         if (A.faceType(d) != pair<int,int>{3, 0}
             or A.faceType(e) != pair<int,int>{4, 0})
             continue;
-        
-        for (Dart f: {A.phi(e), A.phi(A.phi(e)), A.phi(A.phi(A.phi(e)))}) {
-            Dart g = A.rev(f);
-            if (!A.isConvexFace(g))
-                continue;
-            if (ssize(A.face(g)) != 4)
-                return false;
-            if (f != A.phi(A.phi(e)))
-                return false;
-        }
+        Dart opposite = A.phi(A.phi(e));
+        if (A.isConvexFace(A.rev(A.phi (e)))==true) return false;
+        if (A.isConvexFace(A.rev(A.phi(opposite)))==true) return false;
+        if (A.isConvexFace(A.rev(opposite))==false) continue;
+        if (ssize(A.face(A.rev(opposite)))!=4) return false;
+        opposite = A.phi(A.phi(A.rev(opposite)));
+        if (A.isConvexFace(A.rev(opposite))==false) continue;
+        if (ssize(A.face(A.rev(opposite)))!=4) return false;
+        opposite = A.phi(A.phi(A.rev(opposite)));
+        if (A.isConvexFace(A.rev(opposite))==true) return false;
     }
     return true;
 }
@@ -305,6 +324,7 @@ int main() {
         {"convex faces intersection", criterionConvexFacesIntersection},
         {"four pentagons\t\t", criterionFourPentagons},
         {"quadrilaterals are convex", criterionQuadrilateralsAreConvex},
+        {"triangles are convex\t", criterionTrianglesAreConvex},
         {"three quadrilaterals\t", criterionThreeQuadrilaterals},
         {"triangle quadrilateral\t", criterionTriangleQuadrilateral},
         {"pentagon 3 quadrilaterals", criterionPentagonThreeQuadrilaterals},

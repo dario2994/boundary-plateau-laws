@@ -352,7 +352,32 @@ int main() {
     
     map<string, vector<int>> excluded_by; 
     vector<int> survivors;
-    
+
+    string directory_path = "adhoc-blacklist/"; 
+    std::vector<int> blacklisted;
+
+    for (const auto& entry : std::filesystem::directory_iterator(directory_path)) {
+        if (entry.is_directory()) {
+            string filename = entry.path().filename().string();
+            int num = stoi(filename);
+            blacklisted.push_back(num);
+        } 
+    }
+
+    directory_path = "adhoc-whitelist/"; 
+    std::vector<int> whitelisted;
+
+    for (const auto& entry : std::filesystem::directory_iterator(directory_path)) {
+        if (entry.is_directory()) {
+            string filename = entry.path().filename().string();
+            int num = stoi(filename);
+            whitelisted.push_back(num);
+        } 
+    }
+
+    vector<int> excluded_white;
+    vector<int> excluded_black;
+
     for (int id = 0; id < ssize(derived_once); id++) {
         const DerivedOnceNet& A = derived_once[id];
         bool survives = true;
@@ -365,6 +390,18 @@ int main() {
                 break;
             }
         }
+        if (survives==true)
+            for (int i=0; i<ssize(blacklisted); i++) 
+                if (blacklisted[i]==id) {
+                survives=false;
+                excluded_black.push_back(id);
+            }
+        if (survives==true)
+            for (int i=0; i<ssize(whitelisted); i++) 
+                if (whitelisted[i]==id) {
+                survives=false;
+                excluded_white.push_back(id);
+            }        
         if (survives) 
             survivors.push_back(id);
     }
@@ -374,7 +411,10 @@ int main() {
         string name = pp.first;
         cout << name << "\t\t" << excluded_by[name].size() << endl;
     }
-    cout << endl;
+    
+    cout << "Blacklisted ad hoc\t\t\t" << excluded_black.size() << endl;
+    cout << "Whitelisted\t\t\t\t" << excluded_white.size() << endl;
+    cout << endl;    
     
     cout << "# survivors = " << survivors.size() << endl;
     

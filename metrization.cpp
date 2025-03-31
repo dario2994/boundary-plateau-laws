@@ -203,6 +203,9 @@ vector<DartMetricData> determineSideLengths(const DerivedOnceNet& A) {
         
         vector<vector<double>> candidates = 
             completeGeneralizedPolygon(angles, sides, missing_sides);
+            
+        if (ssize(candidates) == 3)
+            return true; // Cannot be determined.
         
         vector<vector<double>> valid_faces;
         for (const auto& one_candidate: candidates) {

@@ -207,54 +207,40 @@ bool equalAngles(double x, double y) {
 
 // Returns the possible side lengths of a generalized spherical triangle
 // with angles A, B, C.
+//
+// If it returns a vector of size three, it means that there are 
+// infinitely many solutions.
+//
 // Assumption: A, B, C \in (0, 2\pi)\setminus\{\pi\}.
 vector<array<double,3>> computeTriangleSides(double A, double B, double C) {
     A = normalizeAngle(A), B = normalizeAngle(B), C = normalizeAngle(C);
     
+    bool special_case = false;
+    for (double x: {A, B, C}) for (double y: {0.0, M_PI})
+        special_case |= equalAngles(x, y);
     
-    // TODO: These special cases shall be handled better!
-    
-    // One angle is 0.
-    if (equalAngles(A, 0)) {
-        if (!equalAngles(B, C))
+    if (special_case) { // Either 0 or infinitely many solutions.
+        bool possible = false;
+        vector<double> _tmp = {A, B, C};
+        for (int bb = 0; bb < 8; bb++) {
+            double sum_angles = 0;
+            for (int i = 0; i < 3; i++) {
+                if (bb&(1<<i))
+                    sum_angles += _tmp[i];
+                else
+                    sum_angles -= _tmp[i];
+            }
+            possible |= equalAngles(sum_angles, M_PI);
+        }
+        if (!possible)
             return {};
-        assert(0);
+        // Size 3 = Infinitely many solutions.
+        return {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
     }
     
-    if (equalAngles(B, 0)) {
-        if (!equalAngles(C, A))
-            return {};
-        assert(0);
-    }
-    
-    if (equalAngles(C, 0)) {
-        if (!equalAngles(A, B))
-            return {};
-        assert(0);
-    }
-    
-    // One angle is pi.
-    if (equalAngles(A, M_PI)) {
-        if (!equalAngles(B-C, M_PI))
-            return {};
-        assert(0);
-    }
-    
-    if (equalAngles(B, M_PI)) {
-        if (!equalAngles(C-A, M_PI))
-            return {};
-        assert(0);
-    }
-    
-    if (equalAngles(C, M_PI)) {
-        if (!equalAngles(A-B, M_PI))
-            return {};
-        assert(0);
-    }
-    
-    assert(A != 0 and A != M_PI);
-    assert(B != 0 and B != M_PI);
-    assert(C != 0 and C != M_PI);
+    assert(!equalAngles(A, 0) and !equalAngles(A, M_PI));
+    assert(!equalAngles(B, 0) and !equalAngles(B, M_PI));
+    assert(!equalAngles(C, 0) and !equalAngles(C, M_PI));
     
     int cnt = (A < M_PI) + (B < M_PI) + (C < M_PI);
     
@@ -302,7 +288,6 @@ struct SimpleMap {
         TangentVector v3 = (*this)(v0).rot(beta);
         pt goal_equator = v3.equatorNormal();
         
-        // This one is the only unstable operation.
         double new_t1 = intersectWithEquator(v0, goal_equator);
         TangentVector v1 = v0.exp(new_t1);
         assert(areOrthogonal(v1.P, goal_equator));
@@ -318,6 +303,9 @@ struct SimpleMap {
 // Finds all the possible side lengths that coincide with the given ones
 // apart from the three indexes missing_sides, and which create a 
 // generalized spherical polygon when coupled with angles.
+//
+// If it returns a vector of size three, it means that there are 
+// infinitely many solutions.
 // 
 // sides[0], angles0, sides[1], angles[1], ..., sides[n-1], angles[n-1].
 vector<vector<double>> completeGeneralizedPolygon(
@@ -349,6 +337,9 @@ vector<vector<double>> completeGeneralizedPolygon(
         strange_angles[0].alpha + M_PI,
         strange_angles[1].alpha + M_PI,
         strange_angles[2].alpha + M_PI);
+        
+    if (ssize(tri_lengths) == 3) // Infinitely many solutions
+        return {{}, {}, {}};
     
     vector<vector<double>> res;
     for (auto tri: tri_lengths) {

@@ -198,11 +198,64 @@ double sphericalCosineRule(double A, double B, double C) {
     return acos(cosa);
 }
 
+bool equalAngles(double x, double y) {
+    double z = abs(x-y);
+    while (z > M_PI) z -= 2*M_PI;
+    z = abs(z);
+    return z < eps;
+}
+
 // Returns the possible side lengths of a generalized spherical triangle
 // with angles A, B, C.
 // Assumption: A, B, C \in (0, 2\pi)\setminus\{\pi\}.
 vector<array<double,3>> computeTriangleSides(double A, double B, double C) {
     A = normalizeAngle(A), B = normalizeAngle(B), C = normalizeAngle(C);
+    
+    
+    // TODO: These special cases shall be handled better!
+    
+    // One angle is 0.
+    if (equalAngles(A, 0)) {
+        if (!equalAngles(B, C))
+            return {};
+        assert(0);
+    }
+    
+    if (equalAngles(B, 0)) {
+        if (!equalAngles(C, A))
+            return {};
+        assert(0);
+    }
+    
+    if (equalAngles(C, 0)) {
+        if (!equalAngles(A, B))
+            return {};
+        assert(0);
+    }
+    
+    // One angle is pi.
+    if (equalAngles(A, M_PI)) {
+        if (!equalAngles(B-C, M_PI))
+            return {};
+        assert(0);
+    }
+    
+    if (equalAngles(B, M_PI)) {
+        if (!equalAngles(C-A, M_PI))
+            return {};
+        assert(0);
+    }
+    
+    if (equalAngles(C, M_PI)) {
+        if (!equalAngles(A-B, M_PI))
+            return {};
+        assert(0);
+    }
+    
+    assert(A != 0 and A != M_PI);
+    assert(B != 0 and B != M_PI);
+    assert(C != 0 and C != M_PI);
+    
     int cnt = (A < M_PI) + (B < M_PI) + (C < M_PI);
     
     if (cnt % 2 == 0)
@@ -408,7 +461,7 @@ vector<GeodesicSegment> constructPolygon(
                                      .rot(angles[i]-M_PI);
         res.push_back(GeodesicSegment(tv, 0));
     }
-    if (norm(res[0].P-res[n].P) > eps or norm(res[0].V-res[n].V) > eps);
+    if (norm(res[0].P-res[n].P) > eps or norm(res[0].V-res[n].V) > eps)
         return {};
     
     if (!isValidPolygon(res))

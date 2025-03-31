@@ -20,7 +20,7 @@ vector<int> identifyEqualSides(const DerivedOnceNet& A) {
     
     // Init labels.
     for (Dart d: A.darts()) {
-        assert(d.id == labels.size());
+        assert(d.id == ssize(labels));
         labels.push_back(d.id);
     }
     
@@ -207,6 +207,9 @@ vector<DartMetricData> determineSideLengths(const DerivedOnceNet& A) {
         vector<vector<double>> valid_faces;
         for (const auto& one_candidate: candidates) {
             auto poly = constructPolygon(angles, one_candidate);
+            if (poly.empty())
+                return false;
+            assert(ssize(poly) == n);
             if (isValidPolygon(poly) and checkPinProperties(poly))
                 valid_faces.push_back(one_candidate);
         }
@@ -259,12 +262,24 @@ int main() {
         in >> survivors[i];
     in.close();
     
+    int great = 0;
     map<int,int> measure_effectiveness;
     for (int id: survivors) {
         const DerivedOnceNet& A = derived_once[id];
-        vector<int> labels = identifyEqualSides(A);
-        measure_effectiveness[DEBUGGING]++;
+        vector<DartMetricData> labels = determineSideLengths(A);
+        if (labels.empty())
+            great++;
+        int cnt = 0;
+        for (auto z: labels)
+            cnt += z.known;
+        measure_effectiveness[cnt]++;
+        
+        if (!labels.empty() and cnt == 0)
+            cout << id << " ";
     }
+    cout << endl;
+    
+    cout << great << endl;
     for (auto pp: measure_effectiveness)
         cout << pp.first << " " << pp.second << endl;
 }

@@ -311,6 +311,77 @@ bool criterionTwoQuadrilateralsThreePentagons(const DerivedOnceNet& A) {
     return true;
 }
 
+bool criterionPentagonTwoThreeQuadPent(const DerivedOnceNet& A) {
+    for (Dart d: A.darts()) {
+        Dart e = A.rev(d);
+        if (A.faceType(d) != pair<int,int>{5, 0})
+            continue;
+            
+        int countQ=0;
+        int countP=0;
+        Dart z = A.phi(d);
+        for (int i = 0; i < 5; i++) {
+            Dart f = A.rev(z);
+            if (A.faceType(f) == pair<int,int>{5, 0}) countP++;
+            if (A.faceType(f) == pair<int,int>{4,0}) countQ++;
+            z = A.phi(z);
+        }
+        
+        if (countQ*countP==6)
+            return false;
+    }
+    return true;
+}
+
+bool criterionPentagonTwoDegreeTwo(const DerivedOnceNet& A) {
+    for (Dart d: A.darts()) {
+        if (A.faceType(d) != pair<int,int>{5, 0})
+            continue;
+        int counter=0;
+        Dart z = d;
+        for (int i = 0; i < 5; i++)
+        {
+            if (A.degree(z.to) == 2) counter++;
+            z=A.phi(z);
+        }
+        if (counter==2)    return false;
+    }
+    return true;
+}
+
+bool criterionTriangleQuadrilateral3(const DerivedOnceNet& A) {
+    for (Dart d: A.darts()) {
+        Dart e = A.rev(d);
+        if (A.faceType(d) != pair<int,int>{3, 0}
+            or A.faceType(e) != pair<int,int>{4, 0})
+            continue;
+        
+        Dart z = A.rev(A.phi(A.phi(d)));
+        if (A.faceType(d).second==0) return false;
+    }
+    return true;
+}
+
+bool criterionTwoQuadrilateralsTwoPentagons(const DerivedOnceNet& A) {
+    for (Dart d: A.darts()) {
+        Dart e=A.rev(d);
+        if (A.faceType(d) != pair<int,int>{4, 0}
+            or A.faceType(e) != pair<int,int>{4, 0})
+            continue;
+        Dart f= A.rev(A.phi(d));
+        Dart g= A.rev(A.phi(A.phi(A.phi(d))));
+        if (A.faceType(f) != pair<int,int>{5,0}
+            or A.faceType(g) != pair<int,int>{5,0})
+            continue;
+        Dart f1=A.phi(f);
+        Dart f2=A.phi(f1);
+        Dart g1=A.phi(g);
+        Dart g2=A.phi(g1);
+        if (A.degree(f1.to)==2 or A.degree(f2.to)==2 or
+            A.degree(g1.to)==2 or A.degree(g2.to)==2) return false;        
+    }
+    return true;
+}
 
 int main() {
     vector<DerivedOnceNet> derived_once = 
@@ -332,7 +403,11 @@ int main() {
         {"triangle quadrilateral\t", criterionTriangleQuadrilateral},
         {"pentagon 3 quadrilaterals", criterionPentagonThreeQuadrilaterals},
         {"triangle quadrilateral 2", criterionTriangleQuadrilateral2},
-        {"2 quadrilaterals 3 pentagons", criterionTwoQuadrilateralsThreePentagons}
+        {"2 quadrilaterals 3 pentagons", criterionTwoQuadrilateralsThreePentagons},
+        {"2 quadrilaterals 2 pentagons", criterionTwoQuadrilateralsTwoPentagons}
+        //{"Esperimento crit ipotetico 1", criterionPentagonTwoThreeQuadPent},
+        //{"Esperimento crit ipotetico 2", criterionPentagonTwoDegreeTwo},
+        //{"Esperimento crit ipotetico 3", criterionTriangleQuadrilateral3}
     };
     
     map<string, vector<int>> excluded_by; 

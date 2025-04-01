@@ -44,23 +44,13 @@ vector<GeodesicSegment> findFace(vector<double> angles, vector<double> sides,
         completeGeneralizedPolygon(angles, sides, missing_sides);
     if (ssize(candidates) == 3)
         return {}; // Cannot be determined.
-    
-    //~ cout << "CIAO" << endl;
-    //~ for (double x: angles) cout << x << " " << " ";
-    //~ cout << endl;
-    //~ for (int x: missing_sides) cout << x << " " << " ";
-    //~ cout << endl;
         
     vector<vector<GeodesicSegment>> valid_faces;
     for (const auto& one_candidate: candidates) {
-        
-        //~ for (double x: one_candidate) cout << x << " " << " ";
-        //~ cout << endl;
         auto poly = constructPolygon(angles, one_candidate);
         if (poly.empty())
             continue;
         assert(ssize(poly) == ssize(angles));
-        //~ cout << isValidPolygon(poly) << endl;
         if (isValidPolygon(poly) and checkPinProperties(poly))
             valid_faces.push_back(poly);
     }
@@ -80,7 +70,7 @@ void searchFaceRealization(vector<double> angles, vector<double> sides) {
 
     int n = angles.size();
     assert(3 <= n and n <= 9);
-    for (int _ = 0; _ < 100'000; _++) {
+    for (int _ = 0; _ < 1; _++) {
         vector<double> sides2 = sides;
         vector<int> missing_sides;
         for (int i = 0; i < n; i++) {
@@ -108,5 +98,5 @@ void searchFaceRealization(vector<double> angles, vector<double> sides) {
 
 int main() {
     double a120 = M_PI*0.66666666666666666666666;
-    searchFaceRealization({a120, a120, a120, a120, a120}, {-1, -1, -1, -1, -1});
+    searchFaceRealization({a120, a120, a120}, {-1, -1, -1});
 }

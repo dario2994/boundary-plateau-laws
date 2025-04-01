@@ -455,6 +455,8 @@ vector<GeodesicSegment> constructPolygon(
     if (norm(res[0].P-res[n].P) > eps or norm(res[0].V-res[n].V) > eps)
         return {};
     
+    res.pop_back();
+    
     if (!isValidPolygon(res))
         return {};
          
@@ -472,6 +474,7 @@ bool checkPinProperties(const vector<GeodesicSegment>& poly) {
         TangentVector aft = poly[j].exp(poly[j].len);
         double angle = normalizeAngle(bef.inverseRot(aft.V) + M_PI);
         int degrees = std::round(angle * (180/M_PI));
+        cout << degrees << endl;
         assert(degrees == 120 or degrees == 240);
         if (degrees == 240)
             concave_vertices.push_back((i+1) % n);

@@ -86,6 +86,17 @@ class DerivedOnceNet : public CombinatorialMap {
         return {ssize(f), concave_num};
     }
     
+    // Returns the angles (in radiants) of the face, starting from the
+    // one just after d.
+    vector<double> faceAngles(const Dart& d) const {
+        vector<double> angles;
+        for (const Dart& e: face(d)) {
+            double angle = isConcaveAngle(e) ? 4*M_PI/3 : 2*M_PI/3;
+            angles.push_back(angle);
+        }
+        return angles;
+    }
+    
     bool isConvexFace(const vector<Dart>& f) const {
         return isConvexFace(f[0]);
     }

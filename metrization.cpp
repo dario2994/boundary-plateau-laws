@@ -9,6 +9,236 @@ typedef unsigned long long ULL;
 #include "derived_once_nets.cpp"
 #include "spherical_geometry.cpp"
 
+// Information on the length of a dart.
+// If consistent = false, we have discovered an inconsistency. In this
+// case the internal state shall be considered broken.
+// Otherwise, the internal state contains the following data:
+//  - If known = true, then the length is known to be len.
+//  - The length belongs to [lower_bound, upper_bound].
+struct MetricDart {
+    bool consistent;
+    bool known;
+    double len;
+    double lower_bound, upper_bound; // Strict inequalities.
+    MetricDart(): 
+        consistent(true), known(false), lower_bound(0), upper_bound(2*M_PI) {}
+    MetricDart(double _len): MetricDart() {
+        known = true;
+        len = _len;
+    }
+    
+    void setLen(double _len, double eps = 1e-5) { 
+        if (known) consistent &=  abs(len-_len) < eps;
+        else if (_len <= lower_bound or _len >= upper_bound) consistent = false;
+        else {
+            known = true;
+            len = _len; 
+        }
+    }
+    
+    double getLen() const {
+        return known ? len : -1;
+    }
+    
+    void setLowerBound(double lb) {
+        assert(0 <= lb and lb <= 2*M_PI);
+        if (known) consistent &= len > lb;
+        consistent &= lb < upper_bound;
+        lower_bound = max(lb, lower_bound);
+    }
+    
+    void setUpperBound(double ub) {
+        assert(0 <= ub and ub <= 2*M_PI);
+        if (known) consistent &= len < ub;
+        consistent &= lower_bound < ub;
+        upper_bound = min(ub, upper_bound);
+    }
+};
+
+// Keep track of return value.
+MetricDart merge(MetricDart d, MetricDart e) {
+    if (e.known)
+        d.setLen(e.len);
+    d.setLowerBound(e.lower_bound);
+    d.setUpperBound(e.upper_bound);
+    
+    return d;
+}
+
+class MetricDerivedOnceNet : public DerivedOnceNet {
+  private:
+    // We identify darts if we can show that they have the same length.
+    // _label is the low-level vector used to implement the associated
+    // DSU structure.
+    mutable vector<int> _label;
+    vector<MetricDart> _metric_darts;
+    bool consistent;
+    
+    // Implementation of DSU.
+    int ancestor(int x) const {
+        if (_label[x] != x) 
+            _label[x] = ancestor(_label[x]);
+        return _label[x];
+    }
+    
+    void identifyDarts(const Dart& d, const Dart& e) {
+        int x = ancestor(d.id), y = ancestor(e.id);
+        if (x != y) {
+            _label[x] = y;
+            _metric_darts[y] = merge(_metric_darts[x], _metric_darts[y]);
+        }
+    }
+    
+    bool equalLength(const Dart& d, const Dart& e) const { 
+        return ancestor(d.id) == ancestor(e.id); 
+    }
+    
+    MetricDart& metricDart(const Dart& d) { 
+        return _metric_darts[ancestor(d.id)];
+    }
+    
+    const MetricDart& metricDart(const Dart& d) const { 
+        return _metric_darts[ancestor(d.id)];
+    }
+    
+    void setLength(const Dart& d, double len) { 
+        metricDart(d).setLen(len); 
+    }
+    
+    double getLength(const Dart& d) const { 
+        return metricDart(d).getLen();
+    }
+    
+    void findRegularFaces(const Dart& d) {
+        static const vector<double> regular_sides = {-1, -1, 
+            M_PI, // biangle
+            acos(-1.0/3), // triangle
+            2*atan(sqrt(0.5)), // quadrilateral
+            acos(sqrt(5)/3)}; // pentagon
+        if (!isConvexFace(d))
+            return;
+            
+        bool is_regular = true;
+        for (const Dart& e: face(d))
+            is_regular &= equalLength(d, e);
+        if (!is_regular)
+            return;
+        
+        
+        int n = ssize(face(d));
+        for (const Dart& e: face(d))
+            setLength(d, regular_sides[n]);
+    }
+    
+    void findSymmetries(const Dart& d) {
+        if (!isConvexFace(d))
+            return;
+        
+        int n = ssize(face(d));
+        if (n <= 3) { // biangles and triangles are regular.
+            for (int i = 1; i < n; i++)
+                identifyDarts(d, phi(d, i));
+        } else if (n == 4) { // quadrilaterals are symmetric.
+            identifyDarts(d, phi(d, 2));
+            identifyDarts(phi(d, 1), phi(d, 3));
+            return;
+        } else if (n == 5) { // TODO: Maybe handle symmetric pentagons?
+            if (equalLength(d, phi(d))) 
+                identifyDarts(phi(d, 2), phi(d, 4));
+            if (equalLength(d, phi(d, 2))) 
+                identifyDarts(phi(d, 3), phi(d, 4));
+        }
+    }
+    
+    void determineFace(const Dart& d) {
+        int n = ssize(face(d));
+        if (n <= 2)
+            return;
+        
+        vector<double> angles = faceAngles(d);        
+        vector<double> sides;
+        vector<int> missing_sides;
+        for (int i = 0; i < n; i++) {
+            const Dart& e = phi(d, i);
+            sides.push_back(getLength(e));
+            if (sides.back() < 0)
+                missing_sides.push_back(i);
+        }
+        
+        if (ssize(missing_sides) > 3) // Cannot be determined.
+            return;
+        
+        // Faking some missing sides until we have exactly three.
+        for (int i = 0; i < n and ssize(missing_sides) < 3; i++) {
+            if (sides[i] < 0)
+                missing_sides.push_back(i);
+        }
+        
+        vector<vector<double>> candidates = 
+            completeGeneralizedPolygon(angles, sides, missing_sides);
+            
+        if (ssize(candidates) == 3)
+            return; // Cannot be determined.
+        
+        vector<vector<double>> valid_faces;
+        for (const auto& candidate: candidates) {
+            auto poly = constructGeneralizedPolygon(angles, candidate);
+            if (poly.empty())
+                continue;
+
+            if (isValidPolygon(poly) and checkPinProperties(poly))
+                valid_faces.push_back(candidate);
+        }
+        // It turns out that there is always at most one candidate, even
+        // though there could be two a priori.
+        assert(ssize(valid_faces) <= 1);
+        if (valid_faces.empty()) {
+            consistent = false;
+            return;
+        }
+        
+        sides = valid_faces[0];
+        for (int i = 0; i < n; i++)
+            setLength(phi(d, i), sides[i]);
+    }
+    
+    void checkMetricDartsConsistency() {
+        for (const Dart& d: darts())
+            consistent &= metricDart(d).consistent;
+    }
+    
+  public:
+    MetricDerivedOnceNet(const DerivedOnceNet& A): DerivedOnceNet(A) {
+        consistent = true;
+        // Init labels.
+        for (const Dart& d: darts()) {
+            assert(d.id == ssize(_label));
+            _label.push_back(d.id);
+            _metric_darts.push_back(MetricDart());
+        }
+        
+        for (const Dart& d: darts())
+            identifyDarts(d, rev(d));
+            
+        for (int _ = 0; _ < 5; _++)
+            for (const Dart& d: darts())
+                findSymmetries(d);
+        
+        if (!consistent)
+            return;
+        
+        for (const Dart& d: darts())
+            findRegularFaces(d);
+        
+        if (!consistent)
+            return;
+        
+        for (int _ = 0; _ < 10 and consistent; _++)
+            for (const Dart& d: darts())
+                determineFace(d);
+    }
+};
+
 
 int DEBUGGING;
 
@@ -170,7 +400,7 @@ vector<DartMetricData> determineSideLengths(const DerivedOnceNet& A) {
     auto complete_face = [&](Dart d) {
         vector<double> sides;
         vector<int> missing_sides;
-        vector<double> angles;
+        vector<double> angles = A.faceAngles(d);
         
         int n = A.faceType(d).first;
         for (int i = 0; i < n; i++) {
@@ -178,10 +408,6 @@ vector<DartMetricData> determineSideLengths(const DerivedOnceNet& A) {
             sides.push_back(get_length(e));
             if (get_length(e) < 0)
                 missing_sides.push_back(i);
-            if (A.isConcaveAngle(e))
-                angles.push_back(240 * (M_PI/180));
-            else
-                angles.push_back(120 * (M_PI / 180));
         } 
         
         assert(ssize(sides) == n);

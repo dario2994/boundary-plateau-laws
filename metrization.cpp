@@ -9,6 +9,12 @@ typedef unsigned long long ULL;
 #include "derived_once_nets.cpp"
 #include "spherical_geometry.cpp"
 
+static const vector<double> REGULAR_SIDES = {-1, -1, 
+    M_PI, // biangle
+    acos(-1.0/3), // triangle
+    2*atan(sqrt(0.5)), // quadrilateral
+    acos(sqrt(5)/3)}; // pentagon
+
 // Information on the length of a dart.
 // If consistent = false, we have discovered an inconsistency. In this
 // case the internal state shall be considered broken.
@@ -101,20 +107,7 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
         return _metric_darts[ancestor(d.id)];
     }
     
-    void setLength(const Dart& d, double len) { 
-        metricDart(d).setLen(len); 
-    }
-    
-    double getLength(const Dart& d) const { 
-        return metricDart(d).getLen();
-    }
-    
     void findRegularFaces(const Dart& d) {
-        static const vector<double> regular_sides = {-1, -1, 
-            M_PI, // biangle
-            acos(-1.0/3), // triangle
-            2*atan(sqrt(0.5)), // quadrilateral
-            acos(sqrt(5)/3)}; // pentagon
         if (!isConvexFace(d))
             return;
             
@@ -127,7 +120,7 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
         
         int n = ssize(face(d));
         for (const Dart& e: face(d))
-            setLength(d, regular_sides[n]);
+            metricDart(d).setLen(REGULAR_SIDES[n]);
     }
     
     void findSymmetries(const Dart& d) {
@@ -150,6 +143,18 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
         }
     }
     
+    void generalSideBounds(const Dart& d) {
+        if (faceType(d) == pair<int,int>{5, 0}) {
+            for (const Dart& e: face(d))
+                metricDart(d).setUpperBound(REGULAR_SIDES[3]);
+        }
+        if (faceType(d) == pair<int,int>{5, 1} and isConcaveAngle(d)) {
+            for (int i: {0, 1, 2, 4})
+                metricDart(phi(d, i)).setUpperBound(REGULAR_SIDES[3]);
+            metricDart(phi(d, 3)).setLowerBound(REGULAR_SIDES[3]);
+        }
+    }
+    
     void determineFace(const Dart& d) {
         int n = ssize(face(d));
         if (n <= 2)
@@ -160,7 +165,7 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
         vector<int> missing_sides;
         for (int i = 0; i < n; i++) {
             const Dart& e = phi(d, i);
-            sides.push_back(getLength(e));
+            sides.push_back(metricDart(e).getLen());
             if (sides.back() < 0)
                 missing_sides.push_back(i);
         }
@@ -200,7 +205,7 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
         
         sides = valid_faces[0];
         for (int i = 0; i < n; i++)
-            setLength(phi(d, i), sides[i]);
+            metricDart(phi(d, i)).setLen(sides[i]);
     }
     
     void checkMetricDartsConsistency() {
@@ -242,6 +247,12 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
         for (int _ = 0; _ < 10 and isConsistent(); _++)
             for (const Dart& d: darts())
                 determineFace(d);
+        
+        if (!isConsistent())
+            return;
+            
+        for (const Dart& d: darts())
+            generalSideBounds(d);
     }
 };
 

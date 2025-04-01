@@ -352,28 +352,22 @@ int main() {
     
     map<string, vector<int>> excluded_by; 
     vector<int> survivors;
+    
+    auto parse_subdirectories = [&](string directory_path) {
+        vector<int> subdirs;
 
-    string directory_path = "adhoc-blacklist/"; 
-    std::vector<int> blacklisted;
-
-    for (const auto& entry : std::filesystem::directory_iterator(directory_path)) {
-        if (entry.is_directory()) {
-            string filename = entry.path().filename().string();
-            int num = stoi(filename);
-            blacklisted.push_back(num);
-        } 
-    }
-
-    directory_path = "adhoc-whitelist/"; 
-    std::vector<int> whitelisted;
-
-    for (const auto& entry : std::filesystem::directory_iterator(directory_path)) {
-        if (entry.is_directory()) {
-            string filename = entry.path().filename().string();
-            int num = stoi(filename);
-            whitelisted.push_back(num);
-        } 
-    }
+        for (const auto& entry : filesystem::directory_iterator(directory_path)) {
+            if (entry.is_directory()) {
+                string filename = entry.path().filename().string();
+                int num = stoi(filename);
+                subdirs.push_back(num);
+            } 
+        }
+        
+        return subdirs;
+    }; 
+    vector<int> blacklisted = parse_subdirectories("adhoc-blacklist/");
+    vector<int> whitelisted = parse_subdirectories("adhoc-whitelist/");
 
     vector<int> excluded_white;
     vector<int> excluded_black;
@@ -390,18 +384,20 @@ int main() {
                 break;
             }
         }
-        if (survives==true)
-            for (int i=0; i<ssize(blacklisted); i++) 
-                if (blacklisted[i]==id) {
-                survives=false;
+        if (survives) {
+            for (int id2: blacklisted) if (id2 == id) {
+                survives = false;
                 excluded_black.push_back(id);
             }
-        if (survives==true)
-            for (int i=0; i<ssize(whitelisted); i++) 
-                if (whitelisted[i]==id) {
-                survives=false;
+        }
+
+        if (survives) {
+            for (int id2: whitelisted) if (id2 == id) {
+                survives = false;
                 excluded_white.push_back(id);
-            }        
+            }
+        }
+
         if (survives) 
             survivors.push_back(id);
     }

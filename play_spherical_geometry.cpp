@@ -47,10 +47,11 @@ vector<GeodesicSegment> findFace(vector<double> angles, vector<double> sides,
         
     vector<vector<GeodesicSegment>> valid_faces;
     for (const auto& one_candidate: candidates) {
-        auto poly = constructPolygon(angles, one_candidate);
+        auto poly = constructGeneralizedPolygon(angles, one_candidate);
         if (poly.empty())
             continue;
         assert(ssize(poly) == ssize(angles));
+        
         if (isValidPolygon(poly) and checkPinProperties(poly))
             valid_faces.push_back(poly);
     }

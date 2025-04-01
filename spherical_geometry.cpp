@@ -435,10 +435,10 @@ bool isValidPolygon(const vector<GeodesicSegment>& vec) {
     return true;
 }
 
-// Given angles and sides, it constructs a polygon with this data, 
-// starting from the given initial direction (identifying the direction 
+// Given angles and sides, it constructs a generalized polygon with this 
+// data, starting from the given initial direction (identifying the direction 
 // of the first edge from the first point).
-vector<GeodesicSegment> constructPolygon(
+vector<GeodesicSegment> constructGeneralizedPolygon(
         vector<double> angles, vector<double> sides,
         TangentVector initial_dir=TangentVector()) {
     int n = angles.size();
@@ -457,9 +457,6 @@ vector<GeodesicSegment> constructPolygon(
     
     res.pop_back();
     
-    if (!isValidPolygon(res))
-        return {};
-         
     return res;
 }
 
@@ -471,12 +468,12 @@ bool checkPinProperties(const vector<GeodesicSegment>& poly) {
     for (int i = 0; i < n; i++) {
         TangentVector bef = poly[i].exp(poly[i].len);
         int j = (i+1) % n;
-        TangentVector aft = poly[j].exp(poly[j].len);
-        double angle = normalizeAngle(bef.inverseRot(aft.V) + M_PI);
-        int degrees = std::round(angle * (180/M_PI));
-        cout << degrees << endl;
-        assert(degrees == 120 or degrees == 240);
-        if (degrees == 240)
+        TangentVector aft = poly[j];
+        double angle = bef.inverseRot(aft.V) + M_PI;
+        
+        assert(equalAngles(angle, 2*M_PI/3) or equalAngles(angle, 4*M_PI/3));
+        
+        if (equalAngles(angle, 4*M_PI/3))
             concave_vertices.push_back((i+1) % n);
     }
     

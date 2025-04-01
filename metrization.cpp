@@ -209,7 +209,7 @@ vector<DartMetricData> determineSideLengths(const DerivedOnceNet& A) {
         
         vector<vector<double>> valid_faces;
         for (const auto& one_candidate: candidates) {
-            auto poly = constructPolygon(angles, one_candidate);
+            auto poly = constructGeneralizedPolygon(angles, one_candidate);
             if (poly.empty())
                 continue;
             assert(ssize(poly) == n);

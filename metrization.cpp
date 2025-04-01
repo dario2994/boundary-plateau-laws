@@ -211,7 +211,7 @@ vector<DartMetricData> determineSideLengths(const DerivedOnceNet& A) {
         for (const auto& one_candidate: candidates) {
             auto poly = constructPolygon(angles, one_candidate);
             if (poly.empty())
-                return false;
+                continue;
             assert(ssize(poly) == n);
             if (isValidPolygon(poly) and checkPinProperties(poly))
                 valid_faces.push_back(one_candidate);
@@ -227,6 +227,7 @@ vector<DartMetricData> determineSideLengths(const DerivedOnceNet& A) {
         return true;
     };
     
+    // TODO: Repeating this 10 times is arbitrary, but should be ok.
     for (int i = 0; i < 10; i++) 
         for (Dart d: A.darts())
             if (!complete_face(d))

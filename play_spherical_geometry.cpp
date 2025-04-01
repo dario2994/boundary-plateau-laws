@@ -4,7 +4,7 @@ using namespace std;
 typedef unsigned long long ULL;
 
 #include "spherical_geometry.cpp"
-#include "spherical_faces.cpp"
+//~ #include "spherical_faces.cpp"
 
 
 
@@ -25,6 +25,8 @@ void unitTest() {
     for (double B = 0.1; B < 2*M_PI; B += 0.1)
     for (double C = 0.1; C < 2*M_PI; C += 0.1) {
         auto sides = computeTriangleSides(A, B, C);
+        if (ssize(sides) == 3)
+            continue;
         for (auto tri: sides) {
             TangentVector tv;
             tv = tv.exp(tri[2]).rot(B-M_PI);
@@ -36,16 +38,49 @@ void unitTest() {
     }
 }
 
+vector<GeodesicSegment> findFace(vector<double> angles, vector<double> sides, 
+                        vector<int> missing_sides) {
+    vector<vector<double>> candidates = 
+        completeGeneralizedPolygon(angles, sides, missing_sides);
+    if (ssize(candidates) == 3)
+        return {}; // Cannot be determined.
+    
+    //~ cout << "CIAO" << endl;
+    //~ for (double x: angles) cout << x << " " << " ";
+    //~ cout << endl;
+    //~ for (int x: missing_sides) cout << x << " " << " ";
+    //~ cout << endl;
+        
+    vector<vector<GeodesicSegment>> valid_faces;
+    for (const auto& one_candidate: candidates) {
+        
+        //~ for (double x: one_candidate) cout << x << " " << " ";
+        //~ cout << endl;
+        auto poly = constructPolygon(angles, one_candidate);
+        if (poly.empty())
+            continue;
+        assert(ssize(poly) == ssize(angles));
+        //~ cout << isValidPolygon(poly) << endl;
+        if (isValidPolygon(poly) and checkPinProperties(poly))
+            valid_faces.push_back(poly);
+    }
+    assert(ssize(valid_faces) <= 1);
+    if (valid_faces.empty())
+        return {};
+        
+    return valid_faces[0];
+}
+
 // Some values of sides may be negative. 
 // Those are then randomly generated.
-void searchFaceRealization(vector<int> angles, vector<double> sides) {
+void searchFaceRealization(vector<double> angles, vector<double> sides) {
     static random_device rd;  // Non-deterministic random number generator
     static mt19937 gen(rd()); // Mersenne Twister PRNG
     static uniform_real_distribution<double> rnd_side(0.02, 2*M_PI-0.02);
 
     int n = angles.size();
     assert(3 <= n and n <= 9);
-    for (int _ = 0; _ < 10'000'000; _++) {
+    for (int _ = 0; _ < 100'000; _++) {
         vector<double> sides2 = sides;
         vector<int> missing_sides;
         for (int i = 0; i < n; i++) {
@@ -57,9 +92,8 @@ void searchFaceRealization(vector<int> angles, vector<double> sides) {
         }
         assert(ssize(missing_sides) == 3);
         
-        auto polys = constructFace(angles, sides2, missing_sides);
-        if (!polys.empty()) {
-            auto poly = polys[0];
+        auto poly = findFace(angles, sides2, missing_sides);
+        if (!poly.empty()) {
             for (int i = 0; i < n; i++)
                 cout << poly[i].len << " ";
             cout << endl;
@@ -72,92 +106,7 @@ void searchFaceRealization(vector<int> angles, vector<double> sides) {
     }
 }
 
-void searchFaceBounds(vector<int> angles) {
-    static random_device rd;  // Non-deterministic random number generator
-    static mt19937 gen(rd()); // Mersenne Twister PRNG
-    static uniform_real_distribution<double> rnd_side(0.02, 2*M_PI-0.02);
-    
-    int n = angles.size();
-    assert(3 <= n and n <= 9);
-    
-    vector<double> _min(n, 1000);
-    vector<double> _max(n, 0);
-    
-    int cnt = 0;
-    for (int _ = 0; _ < 1e9; _++) {
-        if (_ > 2e6 and cnt == 0)
-            break;
-        if (_ >= 1e7 and cnt >= 1e4)
-            break;
-        vector<double> sides(n, -1);
-        for (int i = 0; i < n; i++)
-            sides[i] = rnd_side(gen);
-        auto polys = constructFace(angles, sides, {0, 1, 2});
-        //~ if (polys.size() >= 2) {
-            //~ vector<GeodesicSegment> vec = polys[0];
-            //~ for (auto gs: polys[1])
-                //~ vec.push_back(gs);
-            //~ savePicture(vec, "todel.txt");
-            //~ exit(0);
-        //~ }
-        for (auto poly: polys) {
-            cnt += 1;
-            for (int i = 0; i < n; i++) {
-                double l = poly[i].len;
-                _min[i] = min(_min[i], l);
-                _max[i] = max(_max[i], l);
-            }
-        }
-    }
-    
-    cout << "Found " << cnt << " candidates with angles: ";
-    for (int z: angles) cout << z << " ";
-    cout << endl;
-    if (cnt != 0) {
-        for (int i = 0; i < n; i++)
-            cout << "[" << _min[i] << ", " << _max[i] << "]" << endl;
-    }
-    cout << endl;
-}
-
 int main() {
-    searchFaceRealization({120, 120, 120}, {-1, -1, -1});
-    searchFaceRealization({120, 120, 120, 120}, {2*atan(sqrt(0.5)), -1, -1, -1});
-    searchFaceRealization({120, 120, 120, 120, 240}, {0.9153972, 0.9153972, -1, -1, -1});
-    cout.precision(10);
-    searchFaceRealization({120, 120, 120, 120, 120}, {acos(sqrt(5)/3), acos(sqrt(5)/3), -1, -1, -1});
-    
-    //~ cout.precision(10);
-    //~ for (double l = 0.72972766; l < 0.7297277; l += 1e-8) {
-        //~ searchFaceRealization({120, 120, 120, 120, 120}, {0.72972766, 0.72972766, -1, -1, -1});
-    //~ }
-    
-    //~ searchFaceRealization({120, 120, 240, 120, 120, 240}, {-1, 1, -1, -1, -1, -1});
-    //~ double a120 = 120*M_PI/180;
-    
-    //~ SimpleMap sm = SimpleMap().rot(a120-M_PI).exp(1).rot(a120-M_PI);
-    //~ cout << sm.alpha - M_PI << endl;
-    //~ return 0;
-    //~ auto res = completeGeneralizedPolygon({a120, a120, a120, a120}, {1, 1, 1, 1}, {1, 2, 3});
-    //~ constructPolygon({120, 120, 120, 120}, {1, 1, 1, 1}, {1, 2, 3});
-    //~ for (int i = 0; i < 4; i++) cout << res[0][i] << endl;
-    
-    //~ for (vector<int> angles: {120, 120, 120, 120, 240})
-        //~ searchFaceBounds({120, 120, 120, 120, 240});
-    
-    //~ function<vector<GeodesicSegment>(double)> f = [&](double len) {
-        //~ double a = M_PI/3;
-        //~ auto polys = 
-            //~ constructPolygon({2*a, a, 2*a, 4*a}, {len, 0, 0, 0}, {1, 2, 3});
-        //~ if (polys.empty())
-            //~ return vector<GeodesicSegment>();
-        //~ for (auto poly: polys) {
-            //~ if (validatePolygon(poly))
-                //~ return poly;
-        //~ }
-        //~ return vector<GeodesicSegment>();
-    //~ };
-    
-    //~ for (double len = 0.1; len < M_PI; len += 0.1)
-        //~ cout << len << ": " << f(len).size() << endl;
+    double a120 = M_PI*0.66666666666666666666666;
+    searchFaceRealization({a120, a120, a120, a120, a120}, {-1, -1, -1, -1, -1});
 }

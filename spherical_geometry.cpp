@@ -436,7 +436,7 @@ bool isValidPolygon(const vector<GeodesicSegment>& vec) {
 }
 
 // Given angles and sides, it constructs a polygon with this data, 
-// starting from the given initial directio (identifying the direction 
+// starting from the given initial direction (identifying the direction 
 // of the first edge from the first point).
 vector<GeodesicSegment> constructPolygon(
         vector<double> angles, vector<double> sides,

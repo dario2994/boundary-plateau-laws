@@ -236,6 +236,14 @@ vector<DartMetricData> determineSideLengths(const DerivedOnceNet& A) {
     vector<DartMetricData> res(2*A.E());
     for (Dart d: A.darts())
         res[d.id] = lengths[label[d.id]];
+        
+    for (Dart d: A.darts()) {
+        if (A.faceType(d) != pair<int,int>{5, 0})
+            continue;
+        if (res[d.id].known and res[d.id].len > regular_convex_polygons[3])
+            return {};
+    }
+        
     return res;
 }
 
@@ -267,16 +275,18 @@ int main() {
     in.close();
     
     int great = 0;
-    map<int,int> measure_effectiveness;
+    map<int,vector<int>> measure_effectiveness;
     for (int id: survivors) {
         const DerivedOnceNet& A = derived_once[id];
         vector<DartMetricData> labels = determineSideLengths(A);
-        if (labels.empty())
+        if (labels.empty()) {
             great++;
+            continue;
+        }
         int cnt = 0;
         for (auto z: labels)
             cnt += z.known;
-        measure_effectiveness[cnt]++;
+        measure_effectiveness[cnt].push_back(id);
         
         if (!labels.empty() and cnt == 0)
             cout << id << " ";
@@ -285,7 +295,11 @@ int main() {
     
     cout << great << endl;
     for (auto pp: measure_effectiveness)
-        cout << pp.first << " " << pp.second << endl;
+        cout << pp.first << " " << pp.second.size() << endl;
+    
+    for (int x: measure_effectiveness[6])
+        cout << x << " ";
+    cout << endl;
 }
 
 

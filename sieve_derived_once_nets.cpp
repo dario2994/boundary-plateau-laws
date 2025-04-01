@@ -5,6 +5,7 @@ typedef unsigned long long ULL;
 
 #include "combinatorial_maps.cpp"
 #include "derived_once_nets.cpp"
+#include "metrization.cpp"
 
 
 vector<DerivedOnceNet> parseDerivedOnceNets() {
@@ -325,6 +326,10 @@ bool criterionConsectiveVerticesDegree2(const DerivedOnceNet& A) {
     return true; 
 }
 
+bool criterionMetrization(const DerivedOnceNet& A) {
+    return MetricDerivedOnceNet(A).isConsistent();
+}
+
 int main() {
     vector<DerivedOnceNet> derived_once = 
         parseDerivedOnceNets();
@@ -347,7 +352,8 @@ int main() {
         {"pentagon 3 quadrilaterals", criterionPentagonThreeQuadrilaterals},
         {"triangle quadrilateral 2", criterionTriangleQuadrilateral2},
         {"2 quadrilaterals 3 pentagons", criterionTwoQuadrilateralsThreePentagons},
-        {"consecutive degree 2 vertices", criterionConsectiveVerticesDegree2}
+        {"consecutive degree 2 vertices", criterionConsectiveVerticesDegree2},
+        {"metrization\t\t", criterionMetrization}
     };
     
     map<string, vector<int>> excluded_by; 

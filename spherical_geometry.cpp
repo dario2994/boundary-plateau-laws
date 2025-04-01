@@ -420,7 +420,7 @@ bool isValidPolygon(const vector<GeodesicSegment>& vec) {
     int n = ssize(vec);
     assert(n >= 2);
     for (int i = 0; i < n; i++) {
-        if (vec[i].len < 0.01 or vec[i].len > 2*M_PI-0.01)
+        if (vec[i].len < 0.001 or vec[i].len > 2*M_PI-0.01)
             return false;
         int j = (i + 1) % n;
         if (vec[i].len >= M_PI and vec[j].len >= M_PI and n != 2)

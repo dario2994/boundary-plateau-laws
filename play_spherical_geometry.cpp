@@ -71,7 +71,7 @@ void searchFaceRealization(vector<double> angles, vector<double> sides) {
 
     int n = angles.size();
     assert(3 <= n and n <= 9);
-    for (int _ = 0; _ < 1; _++) {
+    for (int _ = 0; _ < 100'000; _++) {
         vector<double> sides2 = sides;
         vector<int> missing_sides;
         for (int i = 0; i < n; i++) {
@@ -85,11 +85,16 @@ void searchFaceRealization(vector<double> angles, vector<double> sides) {
         
         auto poly = findFace(angles, sides2, missing_sides);
         if (!poly.empty()) {
+            TangentVector a = poly[0].rot(-M_PI/3);
+            TangentVector b = poly[2].rot(-M_PI/3);
+            poly.push_back({a, 3});
+            poly.push_back({b, 3});
+            
             for (int i = 0; i < n; i++)
                 cout << poly[i].len << " ";
             cout << endl;
             
-            cout << poly[1].len - poly[2].len << endl;
+            //~ cout << poly[1].len - poly[2].len << endl;
             
             savePicture(poly, "todel.txt");
             return;
@@ -99,5 +104,5 @@ void searchFaceRealization(vector<double> angles, vector<double> sides) {
 
 int main() {
     double a120 = M_PI*0.66666666666666666666666;
-    searchFaceRealization({a120, a120, a120}, {-1, -1, -1});
+    searchFaceRealization({a120, a120, a120, a120, a120}, {0.01, 1.85, -1, -1, -1});
 }

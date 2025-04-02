@@ -308,7 +308,7 @@ bool criterionTwoQuadrilateralsThreePentagons(const DerivedOnceNet& A) {
     return true;
 }
 
-bool criterionConsectiveVerticesDegree2(const DerivedOnceNet& A) {
+bool criterionConsecutiveVerticesDegree2(const DerivedOnceNet& A) {
     int max=0;
     for (Dart d: A.darts()) {
         if (A.degree(d.to)==3) continue;
@@ -326,6 +326,26 @@ bool criterionConsectiveVerticesDegree2(const DerivedOnceNet& A) {
     return true; 
 }
 
+bool criterion2Concave2Quadrilaterals(const DerivedOnceNet& A) {
+    for (Dart d: A.darts()) {
+        if (A.faceType(d).second!=2)
+        continue;
+        int count=0;
+        pair<int,int> quad={4,0};
+        Dart tour=d;
+        while (1) {
+            if ((A.isConcaveAngle(tour)==true)) { 
+                if (A.faceType(A.rev(tour))!=quad) {
+                    return true;
+                }
+                else count=count+1;
+                if (count==2) return false;
+            }
+            tour=A.phi(tour);
+        }   
+    }
+    return true;
+}
 bool criterionMetrization(const DerivedOnceNet& A) {
     return MetricDerivedOnceNet(A).isConsistent();
 }
@@ -352,7 +372,8 @@ int main() {
         {"pentagon 3 quadrilaterals", criterionPentagonThreeQuadrilaterals},
         {"triangle quadrilateral 2", criterionTriangleQuadrilateral2},
         {"2 quadrilaterals 3 pentagons", criterionTwoQuadrilateralsThreePentagons},
-        {"consecutive degree 2 vertices", criterionConsectiveVerticesDegree2},
+        {"consecutive degree 2 vertices", criterionConsecutiveVerticesDegree2},
+        {"2 concave ang. 2 quadrilaterals",criterion2Concave2Quadrilaterals},
         {"metrization\t\t", criterionMetrization}
     };
     

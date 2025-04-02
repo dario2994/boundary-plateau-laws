@@ -36,6 +36,15 @@ bool onePin(const DerivedOnceNet& A) {
     return cnt == 1;
 }
 
+bool containsTriangleQuadrilateral(const DerivedOnceNet& A) {
+    for (Dart d:A.darts()) {
+        if (A.faceType(d)==pair<int,int> {3,0} and
+            A.faceType(A.rev(d))==pair<int,int> {4,0}) 
+            return true;
+    }
+    return false;        
+}
+
 bool containsBiangle(const DerivedOnceNet& A) {
     int cnt = 0;
     for (const vector<Dart>& face: A.faces()) {
@@ -56,6 +65,13 @@ bool containsTriangle(const DerivedOnceNet& A) {
     return cnt > 0;
 }
 
+bool containsPentagonTwoObtuse(const DerivedOnceNet& A) {
+    for (auto face: A.faces()) {
+        if (A.faceType(face[0])==pair<int,int> {5,2})
+            return true;
+    }
+    return false;    
+}
 
 bool sameFace(const DerivedOnceNet& A, Dart d, Dart e) {
     const vector<Dart>& face = A.face(d);
@@ -142,7 +158,7 @@ int main() {
     int cnt_interesting = 0;
     for (int id: survivors) {
         const DerivedOnceNet& A = derived_once[id];
-        bool interesting = containsHexagonsTwoObtuse(A);
+        bool interesting = containsPentagonTwoObtuse(A);
         cnt_interesting += interesting;
         if (interesting) {
             cout << id << endl;

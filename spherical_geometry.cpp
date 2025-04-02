@@ -162,7 +162,7 @@ ostream& operator <<(ostream& out, TangentVector tv) {
 //     tv.equatorNormal() is independent from equator_normal.
 double intersectWithEquator(TangentVector tv, pt equator_normal) {
     // This is a "bad" way to take care of the instability.
-    if (norm2(equator_normal^tv.equatorNormal()) < eps)
+    if (norm(equator_normal^tv.equatorNormal()) < eps)
         return 0;
     double theta = tv.inverseExp(normalize(equator_normal^tv.equatorNormal()));
     if (theta > M_PI) theta -= M_PI;

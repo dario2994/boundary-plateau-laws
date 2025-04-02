@@ -241,6 +241,8 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
             _metric_darts.push_back(MetricDart());
         }
         
+        // TODO: This code needs to be cleaned.
+        
         for (const Dart& d: darts())
             identifyDarts(d, rev(d));
             

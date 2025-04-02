@@ -149,10 +149,23 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
                 metricDart(d).setUpperBound(REGULAR_SIDES[3]);
         }
         if (faceType(d) == pair<int,int>{5, 1} and isConcaveAngle(d)) {
-            for (int i: {0, 1, 2, 4})
+            for (int i: {0, 1, 2, 4}) // TODO: We prove a bit less
                 metricDart(phi(d, i)).setUpperBound(REGULAR_SIDES[3]);
             metricDart(phi(d, 3)).setLowerBound(REGULAR_SIDES[3]);
         }
+    }
+    
+    // This part of the code does not exclude a single net.
+    void quadrilateralSideBounds(const Dart& d) {
+        static const double eps = 1e-8;
+        if (faceType(d) != pair<int,int>{4, 0})
+            return;
+        double l = metricDart(d).lower_bound;
+        double u = metricDart(d).upper_bound;
+        if (0 < l and l < M_PI)
+            metricDart(phi(d)).setUpperBound(2*atan(0.5 / tan(l/2)) + eps);
+        if (0 < u and u < M_PI)
+            metricDart(phi(d)).setLowerBound(2*atan(0.5 / tan(u/2)) - eps);
     }
     
     void determineFace(const Dart& d) {
@@ -253,6 +266,13 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
             
         for (const Dart& d: darts())
             generalSideBounds(d);
+        
+        if (!isConsistent())
+            return;
+            
+        for (int _ = 0; _ < 3 and isConsistent(); _++)
+            for (const Dart& d: darts())
+                quadrilateralSideBounds(d);
     }
 };
 

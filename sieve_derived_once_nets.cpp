@@ -338,21 +338,12 @@ bool criterionNoHexagon2ConcaveAnglesDist1(const DerivedOnceNet& A) {
 
 bool criterion2Concave2Quadrilaterals(const DerivedOnceNet& A) {
     for (Dart d: A.darts()) {
-        if (A.faceType(d).second!=2)
-        continue;
-        int count=0;
-        pair<int,int> quad={4,0};
-        Dart tour=d;
-        while (1) {
-            if ((A.isConcaveAngle(tour)==true)) { 
-                if (A.faceType(A.rev(tour))!=quad) {
-                    return true;
-                }
-                else count=count+1;
-                if (count==2) return false;
-            }
-            tour=A.phi(tour);
-        }   
+        Dart e= A.phi(A.phi(d));
+        if ((A.isConcaveAngle(d)==false) 
+            or (A.isConcaveAngle(e)==false)) continue;
+        pair<int,int> quad = {4,0};
+        if ((A.faceType(A.rev(d))==quad) and 
+            (A.faceType(A.rev(e))==quad)) return false;
     }
     return true;
 }

@@ -326,15 +326,16 @@ bool criterionConsecutiveVerticesDegree2(const DerivedOnceNet& A) {
     return true; 
 }
 
-bool criterionNoHexagon2ConcaveAnglesDist1(const DerivedOnceNet& A) {
-    for (Dart d: A.darts()) {
-        if (A.faceType(d)!= pair<int,int>{6,2}) continue;
-        if (((A.isConcaveAngle(d))==true) 
-            and (A.isConcaveAngle(A.phi((A.phi(d))))==true)) 
-            return false;
-    }
-    return true;
-}
+//To be verified, waiting for Eremenko's reply
+//bool criterionNoHexagon2ConcaveAnglesDist1(const DerivedOnceNet& A) {
+//    for (Dart d: A.darts()) {
+//        if (A.faceType(d)!= pair<int,int>{6,2}) continue;
+//        if (((A.isConcaveAngle(d))==true) 
+//            and (A.isConcaveAngle(A.phi((A.phi(d))))==true)) 
+//            return false;
+//    }
+//    return true;
+//}
 
 bool criterion2Concave2Quadrilaterals(const DerivedOnceNet& A) {
     for (Dart d: A.darts()) {
@@ -374,7 +375,7 @@ int main() {
         {"triangle quadrilateral 2", criterionTriangleQuadrilateral2},
         {"2 quadrilaterals 3 pentagons", criterionTwoQuadrilateralsThreePentagons},
         {"consecutive degree 2 vertices", criterionConsecutiveVerticesDegree2},
-        {"no hex. 2 conc. ang dist 1", criterionNoHexagon2ConcaveAnglesDist1},
+//        {"no hex. 2 conc. ang dist 1", criterionNoHexagon2ConcaveAnglesDist1},
         {"2 concave ang. 2 quadrilaterals",criterion2Concave2Quadrilaterals},
         {"metrization\t\t", criterionMetrization}
     };

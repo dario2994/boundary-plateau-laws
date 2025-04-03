@@ -314,11 +314,11 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
                 
         _embedded_darts.resize(2*E());
                 
-        for (Dart d: darts()) {
-            if (_embedded_darts[d.id].len > 0)
+        for (Dart uff: darts()) {
+            if (_embedded_darts[uff.id].len > 0 or !metricDart(uff).known)
                 continue;
             _visited_darts.clear();
-            embedDart(d, TangentVector());
+            embedDart(uff, TangentVector());
             
             if (!isConsistent())
                 return;
@@ -339,6 +339,35 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
                         consistent = false;
                 } else if (areIntersecting(ex, ey))
                     consistent = false;
+            } // Shall we also print that?
+            
+            if (!isConsistent())
+                return;
+            
+            vector<pt> equators_with_pin;
+            for (Dart d: _visited_darts) { 
+                if (isConcaveAngle(d)) {
+                    GeodesicSegment ed = _embedded_darts[rev(d).id];
+                    equators_with_pin.push_back(ed.rot(-2*M_PI/3).equatorNormal());
+                }
+            }
+            
+            vector<pt> pins;
+            for (int i = 1; i < ssize(equators_with_pin); i++) {
+                pt eq0 = equators_with_pin[0];
+                pt eq1 = equators_with_pin[i];
+                if (norm(eq0-eq1) > eps and norm(eq0+eq1) > eps) {
+                    pt pin = normalize(eq0^eq1);
+                    pins = {pin, -pin};
+                    break;
+                }
+            }
+            if (!pins.empty()) {
+                for (pt eq: equators_with_pin) {
+                    if (!areOrthogonal(pins[0], eq)) {
+                        consistent = false;
+                    }
+                }
             }
         }
     }

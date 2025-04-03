@@ -140,6 +140,6 @@ fig = plt.figure()
 
 # ~ for A in derived_once_nets:
 for k in survivors:
-# ~ for k in [4, 392, 1580, 2050, 2256, 2706, 3394, 4715, 4888, 5650]:
+# ~ for k in [4, 392, ...]:
     draw_derived_once_net(fig, k, *(derived_once_nets[k]))
 

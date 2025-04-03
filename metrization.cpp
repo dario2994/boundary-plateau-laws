@@ -157,6 +157,10 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
                 metricDart(phi(d, i)).setUpperBound(REGULAR_SIDES[3]);
             metricDart(phi(d, 3)).setLowerBound(REGULAR_SIDES[3]);
         }
+        if (faceType(d) == pair<int,int>{5, 0} and equalLength(d, phi(d))) {
+            metricDart(d).setUpperBound(REGULAR_SIDES[4]);
+            metricDart(phi(d)).setUpperBound(REGULAR_SIDES[4]);
+        }
     }
     
     // This part of the code does not exclude a single net.
@@ -368,6 +372,14 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
                         consistent = false;
                     }
                 }
+            }
+            
+            // TODO: For some reason, we are never able to determine the pin positions!
+            assert(pins.empty());
+            
+            // Now we check that for each equator, we are in good shape.
+            for (pt equator: equators_with_pin) {
+                
             }
         }
     }

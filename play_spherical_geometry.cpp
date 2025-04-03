@@ -56,7 +56,7 @@ vector<GeodesicSegment> findFace(vector<double> angles, vector<double> sides,
             continue;
         assert(ssize(poly) == ssize(angles));
         
-        //~ if (isValidPolygon(poly))
+        if (isValidPolygon(poly) and checkPinProperties(poly))
             valid_faces.push_back(poly);
     }
     //~ assert(ssize(valid_faces) <= 1);
@@ -114,17 +114,21 @@ int main() {
     
     double a120 = M_PI*0.66666666666666666666666;
     
-    cout << "A" << endl;
-    searchFaceRealization({a120, a120, 2*a120, a120,a120, 2*a120}, 
-                          {-1, -1, -1, -1, -1, -1});
+    //~ cout << "A" << endl;
+    //~ searchFaceRealization({a120, a120, 2*a120, a120,a120, 2*a120}, 
+                          //~ {-1, -1, -1, -1, -1, -1});
     
-    cout << "B" << endl;
-    searchFaceRealization({a120/2, a120, 2*a120}, 
-                          {-1, -1, -1});
+    //~ cout << "B" << endl;
+    //~ searchFaceRealization({a120/2, a120, 2*a120}, 
+                          //~ {-1, -1, -1});
     
-    cout << "C" << endl;
-    searchFaceRealization({a120, a120, a120, 2*a120}, 
-                          {-1, -1, -1, -1});                      
+    //~ cout << "C" << endl;
+    //~ searchFaceRealization({a120, a120, a120, 2*a120}, 
+                          //~ {-1, -1, -1, -1});                      
+    
+    double square = 2*atan(sqrt(0.5));
+    cout << square << endl;
+    searchFaceRealization({a120, a120, a120, a120, a120}, {square, square, -1, -1, -1});
     
     //~ auto angles = {a120, a120, a120, 2*a120, a120, 2*a120};
     //~ auto x = completeGeneralizedPolygon(angles, 

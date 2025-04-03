@@ -451,6 +451,9 @@ int main() {
         out << id << " ";
     out << endl;
     out.close();
+    
+    //~ for (int x: excluded_by["three quadrilaterals\t"])
+        //~ cout << x << ", ";
 }
 
 // 1641

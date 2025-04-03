@@ -26,6 +26,7 @@ struct MetricDart {
     bool known;
     double len;
     double lower_bound, upper_bound; // Strict inequalities.
+    
     MetricDart(): 
         consistent(true), known(false), lower_bound(0), upper_bound(2*M_PI) {}
     MetricDart(double _len): MetricDart() {
@@ -33,7 +34,7 @@ struct MetricDart {
         len = _len;
     }
     
-    void setLen(double _len, double eps = 1e-5) { 
+    void setLen(double _len) { 
         if (known) consistent &=  abs(len-_len) < eps;
         else if (_len <= lower_bound or _len >= upper_bound) consistent = false;
         else {
@@ -71,6 +72,8 @@ MetricDart merge(MetricDart d, MetricDart e) {
     return d;
 }
 
+
+// TODO: This shall expose some decent APIs.
 class MetricDerivedOnceNet : public DerivedOnceNet {
   private:
     // We identify darts if we can show that they have the same length.
@@ -78,6 +81,7 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
     // DSU structure.
     mutable vector<int> _label;
     vector<MetricDart> _metric_darts;
+    vector<GeodesicSegment> _embedded_darts;
     bool consistent;
     
     // Implementation of DSU.
@@ -157,7 +161,6 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
     
     // This part of the code does not exclude a single net.
     void quadrilateralSideBounds(const Dart& d) {
-        static const double eps = 1e-8;
         if (faceType(d) != pair<int,int>{4, 0})
             return;
         double l = metricDart(d).lower_bound;
@@ -226,6 +229,36 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
             consistent &= metricDart(d).consistent;
     }
     
+    // Temporary storage for the dfs of embedDart
+    vector<Dart> _visited_darts;
+    void embedDart(const Dart& d, TangentVector tv) {
+        MetricDart& md = metricDart(d);
+        GeodesicSegment& ed = _embedded_darts[d.id];
+        
+        if (!md.known)
+            return;
+        if (ed.len >= 0) { // Check == tv
+            if (norm(ed.P - tv.P) > eps or
+                norm(ed.V - tv.V) > eps)
+                md.consistent = false;
+            
+            return;
+        }
+        _visited_darts.push_back(d);
+        ed = {tv, md.len};
+        TangentVector rev_d = tv.exp(md.len);
+        rev_d.V = -rev_d.V;
+        embedDart(rev(d), rev_d);
+        
+        if (degree(d.from) == 3) {
+            embedDart(next(d), tv.rot(-2*M_PI/3));
+            embedDart(next(next(d)), tv.rot(2*M_PI/3));
+        } else if (degree(d.from == 2)) {
+            if (isConcaveAngle(rev(d))) embedDart(next(d), tv.rot(2*M_PI/3));
+            else embedDart(next(d), tv.rot(-2*M_PI/3));
+        }
+    } 
+    
   public:
     bool isConsistent() { 
         checkMetricDartsConsistency();
@@ -275,6 +308,39 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
         for (int _ = 0; _ < 3 and isConsistent(); _++)
             for (const Dart& d: darts())
                 quadrilateralSideBounds(d);
+        
+        if (!isConsistent())
+            return;
+                
+        _embedded_darts.resize(2*E());
+                
+        for (Dart d: darts()) {
+            if (_embedded_darts[d.id].len > 0)
+                continue;
+            _visited_darts.clear();
+            embedDart(d, TangentVector());
+            
+            if (!isConsistent())
+                return;
+            
+            // Check non-intersection of the embedded darts.
+            for (Dart x: _visited_darts) for (Dart y: _visited_darts) {
+                if (x.from > x.to)
+                    continue;
+                if (y.from > y.to)
+                    continue;
+                if (x.from == y.from and x.to == y.to)
+                    continue;
+                GeodesicSegment& ex = _embedded_darts[x.id];
+                GeodesicSegment& ey = _embedded_darts[y.id];
+                if (x.from == y.from or x.from == y.to or
+                    x.to == y.from or x.to == y.to) {
+                    if (ex.len > M_PI + eps and ey.len > M_PI + eps)
+                        consistent = false;
+                } else if (areIntersecting(ex, ey))
+                    consistent = false;
+            }
+        }
     }
 };
 

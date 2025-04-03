@@ -376,7 +376,7 @@ int main() {
         {"2 quadrilaterals 3 pentagons", criterionTwoQuadrilateralsThreePentagons},
         {"consecutive degree 2 vertices", criterionConsecutiveVerticesDegree2},
 //        {"no hex. 2 conc. ang dist 1", criterionNoHexagon2ConcaveAnglesDist1},
-        {"2 concave ang. 2 quadrilaterals",criterion2Concave2Quadrilaterals},
+        //~ {"2 concave ang. 2 quadrilaterals",criterion2Concave2Quadrilaterals},
         {"metrization\t\t", criterionMetrization}
     };
     
@@ -403,6 +403,7 @@ int main() {
     vector<int> excluded_black;
 
     for (int id = 0; id < ssize(derived_once); id++) {
+        //~ cout << id << " ";
         const DerivedOnceNet& A = derived_once[id];
         bool survives = true;
         for (auto pp: criteria) {

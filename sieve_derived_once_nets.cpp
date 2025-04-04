@@ -330,23 +330,6 @@ bool criterionMetrization(const DerivedOnceNet& A) {
     return MetricDerivedOnceNet(A).isConsistent();
 }
 
-bool criterion2Quadri2Penta2ConcaveAngles(const DerivedOnceNet& A) {
-    for (Dart d: A.darts()) {
-        Dart e=A.phi(A.phi(d));
-        Dart f=A.phi(e);
-        if ((A.isConcaveAngle(d)==false) 
-            or (A.isConcaveAngle(f)==false)) continue;
-        pair<int,int> quad = {4,0};
-        pair<int,int> pent = {5,0};
-        if ((A.faceType(A.rev(d))!=pent) or 
-            (A.faceType(A.rev(e))!=quad) or
-            (A.faceType(A.rev(f))!=pent)) continue;
-        Dart g=A.phi(A.phi(A.phi(A.rev(d))));
-        if (A.faceType(A.rev(g))==quad) return false;
-    }
-    return true;   
-}
-
 int main() {
     vector<DerivedOnceNet> derived_once = 
         parseDerivedOnceNets();
@@ -371,7 +354,6 @@ int main() {
         {"2 quadrilaterals 3 pentagons", criterionTwoQuadrilateralsThreePentagons},
         {"consecutive degree 2 vertices", criterionConsecutiveVerticesDegree2},
         {"metrization\t\t", criterionMetrization},
-        {"2 quadr. 2 pent. 2 concave ang.",criterion2Quadri2Penta2ConcaveAngles},
     };
     
     map<string, vector<int>> excluded_by; 

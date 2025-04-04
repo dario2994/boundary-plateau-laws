@@ -136,6 +136,45 @@ bool containsHexagonsTwoObtuse(const DerivedOnceNet& A) {
     return false;
 }
 
+bool containsAdjacentQuadrilatrals(const DerivedOnceNet& A) {
+    pair <int,int> quad={4,0};
+    for (Dart d: A.darts()) {
+        if ((A.faceType(A.rev(d))==quad) 
+        or (A.faceType(A.rev(d))==quad)) return true;
+    }
+    return false;
+}
+
+bool containsDoubleBlade(const DerivedOnceNet& A) {
+    pair <int,int> quad={4,0};
+    pair <int,int> pent={5,0};
+    for (Dart d: A.darts()) {
+        if ((A.faceType(A.rev(d))!=quad) 
+            or (A.faceType(A.rev(d))!=quad)) continue;
+        if ((A.faceType(A.rev(A.phi(d)))==pent) and
+            (A.faceType(A.rev(A.phi(A.rev(d))))==pent)) 
+            return true;
+    }
+    return false;
+}
+
+bool containsDoubleBladeConcavePent(const DerivedOnceNet& A) {
+    pair <int,int> quad={4,0};
+    pair <int,int> pent={5,0};
+    pair <int,int> concavepent={5,1};
+    for (Dart d: A.darts()) {
+        if ((A.faceType(A.rev(d))!=quad) 
+            or (A.faceType(A.rev(d))!=quad)) continue;
+        if ((A.faceType(A.rev(A.phi(d)))!=pent) and
+            (A.faceType(A.rev(A.phi(A.rev(d))))!=pent)) 
+            continue;
+        if (A.faceType(A.rev(A.phi(A.phi(d))))==concavepent) return true;
+    }
+    return false;
+}
+
+
+
 int main() {
     vector<DerivedOnceNet> derived_once = 
         parseDerivedOnceNets("data/derived_once_computer.txt");
@@ -155,15 +194,26 @@ int main() {
          
         
     
-    int cnt_interesting = 0;
+    int cnt_interesting1 = 0;
+    int cnt_interesting2 = 0;
+    int cnt_interesting3 = 0;
     for (int id: survivors) {
         const DerivedOnceNet& A = derived_once[id];
-        bool interesting = containsPentagonTwoObtuse(A);
-        cnt_interesting += interesting;
-        if (interesting) {
+        bool interesting1=containsAdjacentQuadrilatrals(A);
+        bool interesting2=containsDoubleBlade(A);
+        bool interesting3= containsDoubleBladeConcavePent(A);
+        cnt_interesting1 += interesting1;
+        cnt_interesting2 += interesting2;
+        cnt_interesting3 += interesting3; 
+        if (interesting3) {
             cout << id << endl;
         }
     }
     cout << endl;
-    cout << cnt_interesting << endl;
+    cout << "Ci sono "<< cnt_interesting1 << " reti con due quadrilateri convessi adiacenti" << endl;
+    cout << "In "<< cnt_interesting2 << " di queste i due quadrilateri hanno" << endl;
+    cout << "quattro edge in comune con due pentagoni convessi isosceli" << endl;
+    cout << "Tra queste ce ne sono " << cnt_interesting3 <<" dove la configurazione sopra" << endl;
+    cout << "ha tre edge in comune con un pentagono (5,1)" << endl;
 }
+

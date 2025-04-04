@@ -326,30 +326,25 @@ bool criterionConsecutiveVerticesDegree2(const DerivedOnceNet& A) {
     return true; 
 }
 
-//To be verified, waiting for Eremenko's reply
-//bool criterionNoHexagon2ConcaveAnglesDist1(const DerivedOnceNet& A) {
-//    for (Dart d: A.darts()) {
-//        if (A.faceType(d)!= pair<int,int>{6,2}) continue;
-//        if (((A.isConcaveAngle(d))==true) 
-//            and (A.isConcaveAngle(A.phi((A.phi(d))))==true)) 
-//            return false;
-//    }
-//    return true;
-//}
-
-bool criterion2Concave2Quadrilaterals(const DerivedOnceNet& A) {
-    for (Dart d: A.darts()) {
-        Dart e= A.phi(A.phi(d));
-        if ((A.isConcaveAngle(d)==false) 
-            or (A.isConcaveAngle(e)==false)) continue;
-        pair<int,int> quad = {4,0};
-        if ((A.faceType(A.rev(d))==quad) and 
-            (A.faceType(A.rev(e))==quad)) return false;
-    }
-    return true;
-}
 bool criterionMetrization(const DerivedOnceNet& A) {
     return MetricDerivedOnceNet(A).isConsistent();
+}
+
+bool criterion2Quadri2Penta2ConcaveAngles(const DerivedOnceNet& A) {
+    for (Dart d: A.darts()) {
+        Dart e=A.phi(A.phi(d));
+        Dart f=A.phi(e);
+        if ((A.isConcaveAngle(d)==false) 
+            or (A.isConcaveAngle(f)==false)) continue;
+        pair<int,int> quad = {4,0};
+        pair<int,int> pent = {5,0};
+        if ((A.faceType(A.rev(d))!=pent) or 
+            (A.faceType(A.rev(e))!=quad) or
+            (A.faceType(A.rev(f))!=pent)) continue;
+        Dart g=A.phi(A.phi(A.phi(A.rev(d))));
+        if (A.faceType(A.rev(g))==quad) return false;
+    }
+    return true;   
 }
 
 int main() {
@@ -375,9 +370,8 @@ int main() {
         {"triangle quadrilateral 2", criterionTriangleQuadrilateral2},
         {"2 quadrilaterals 3 pentagons", criterionTwoQuadrilateralsThreePentagons},
         {"consecutive degree 2 vertices", criterionConsecutiveVerticesDegree2},
-//        {"no hex. 2 conc. ang dist 1", criterionNoHexagon2ConcaveAnglesDist1},
-        //~ {"2 concave ang. 2 quadrilaterals",criterion2Concave2Quadrilaterals},
-        {"metrization\t\t", criterionMetrization}
+        {"metrization\t\t", criterionMetrization},
+        {"2 quadr. 2 pent. 2 concave ang.",criterion2Quadri2Penta2ConcaveAngles},
     };
     
     map<string, vector<int>> excluded_by; 

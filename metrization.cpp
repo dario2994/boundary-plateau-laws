@@ -127,23 +127,31 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
             metricDart(d).setLen(REGULAR_SIDES[n]);
     }
     
-    void findSymmetries(const Dart& d) {
+    void findSymmetries(const Dart& d, map<int,vector<Dart>>& partition) {
         if (!isConvexFace(d))
             return;
+            
+        int h = (ancestor(d.id)+1) * 1000;
         
         int n = ssize(face(d));
         if (n <= 3) { // biangles and triangles are regular.
-            for (int i = 1; i < n; i++)
-                identifyDarts(d, phi(d, i));
+            for (int i = 0; i < n; i++)
+                partition[n].push_back(d);
         } else if (n == 4) { // quadrilaterals are symmetric.
-            identifyDarts(d, phi(d, 2));
-            identifyDarts(phi(d, 1), phi(d, 3));
-            return;
+            partition[4 + h].push_back(phi(d));
+            partition[4 + h].push_back(phi(d, 3));
+            if (equalLength(d, phi(d))) partition[4].push_back(d);
         } else if (n == 5) { // TODO: Maybe handle non-convex pentagons?
-            if (equalLength(d, phi(d))) 
-                identifyDarts(phi(d, 2), phi(d, 4));
-            if (equalLength(d, phi(d, 2))) 
-                identifyDarts(phi(d, 3), phi(d, 4));
+            if (equalLength(d, phi(d))) {
+                partition[5 + h].push_back(phi(d, 2));
+                partition[5 + h].push_back(phi(d, 4));
+            }
+            if (equalLength(d, phi(d, 2))) {
+                partition[6 + h].push_back(phi(d, 3));
+                partition[6 + h].push_back(phi(d, 4));
+            }
+            if (equalLength(d, phi(d)) and equalLength(d, phi(d, 2)))
+                partition[5].push_back(d);
         }
     }
     
@@ -283,9 +291,14 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
         for (const Dart& d: darts())
             identifyDarts(d, rev(d));
             
-        for (int _ = 0; _ < 5; _++)
+        for (int _ = 0; _ < 10; _++) {
+            map<int,vector<Dart>> partition;
             for (const Dart& d: darts())
-                findSymmetries(d);
+                findSymmetries(d, partition);
+            for (auto pp: partition)
+                for (Dart d: pp.second)
+                    identifyDarts(pp.second[0], d);
+        }
         
         if (!isConsistent())
             return;

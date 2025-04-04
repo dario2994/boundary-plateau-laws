@@ -271,15 +271,15 @@ bool criterionTriangleQuadrilateral2(const DerivedOnceNet& A) {
             or A.faceType(e) != pair<int,int>{4, 0})
             continue;
         Dart opposite = A.phi(A.phi(e));
-        if (A.isConvexFace(A.rev(A.phi (e)))==true) return false;
-        if (A.isConvexFace(A.rev(A.phi(opposite)))==true) return false;
-        if (A.isConvexFace(A.rev(opposite))==false) continue;
-        if (ssize(A.face(A.rev(opposite)))!=4) return false;
+        if (A.isConvexFace(A.rev(A.phi(e)))) return false;
+        if (A.isConvexFace(A.rev(A.phi(opposite)))) return false;
+        if (!A.isConvexFace(A.rev(opposite))) continue;
+        if (ssize(A.face(A.rev(opposite))) != 4) return false;
         opposite = A.phi(A.phi(A.rev(opposite)));
-        if (A.isConvexFace(A.rev(opposite))==false) continue;
-        if (ssize(A.face(A.rev(opposite)))!=4) return false;
+        if (!A.isConvexFace(A.rev(opposite))) continue;
+        if (ssize(A.face(A.rev(opposite))) != 4) return false;
         opposite = A.phi(A.phi(A.rev(opposite)));
-        if (A.isConvexFace(A.rev(opposite))==true) return false;
+        if (A.isConvexFace(A.rev(opposite))) return false;
     }
     return true;
 }
@@ -432,4 +432,4 @@ int main() {
         //~ cout << x << ", ";
 }
 
-// 1641
+// 1476

@@ -221,16 +221,16 @@ bool isPesceMagro(const DerivedOnceNet& A) {
     auto faces = A.faces();
     if (ssize(faces)!= 3) return false;
     for (auto face: faces) {
-        if ((A.isConvexFace(face[0])==true) and (ssize(face)!=4)) return false;
-        if ((A.isConvexFace(face[0])==false) and (ssize(face)!=3)) return false;
+        if (A.isConvexFace(face[0]) and ssize(face) != 4) return false;
+        if (!A.isConvexFace(face[0]) and ssize(face) != 3) return false;
     }
     return true;
 }
 
 bool criterionTrianglesAreConvex(const DerivedOnceNet& A) {
-    if (isPesceMagro(A)==true) return true;
+    if (isPesceMagro(A)) return true;
     for (Dart d: A.darts()) {
-        if (A.faceType(d)== pair<int,int>{3,1}) return false;
+        if (A.faceType(d) == pair<int,int>{3,1}) return false;
     }
     return true;        
 }
@@ -265,6 +265,7 @@ bool criterionPentagonThreeQuadrilaterals(const DerivedOnceNet& A) {
 }
 
 bool criterionTriangleQuadrilateral2(const DerivedOnceNet& A) {
+    // TODO: Should be polished.
     for (Dart d: A.darts()) {
         Dart e = A.rev(d);
         if (A.faceType(d) != pair<int,int>{3, 0}
@@ -309,20 +310,20 @@ bool criterionTwoQuadrilateralsThreePentagons(const DerivedOnceNet& A) {
 }
 
 bool criterionConsecutiveVerticesDegree2(const DerivedOnceNet& A) {
-    int max=0;
+    int consecutive_deg2 = 0;
     for (Dart d: A.darts()) {
-        if (A.degree(d.to)==3) continue;
-        if (A.degree(A.phi(d).to)==3) continue;
-        if (A.degree(A.phi(A.phi(d)).to)==3) continue;
-            else max=3;
-        if (A.degree(A.phi(A.phi(A.phi(d))).to)==2) {
-            max=4;
-            break;
+        if (A.degree(d.from) == 2 and
+            A.degree(d.to) == 2 and
+            A.degree(A.phi(d).to) == 2) {
+            consecutive_deg2 = max(consecutive_deg2, 
+                                   3 + (A.degree(A.phi(d, 2).to) == 2));
         }
     }
-    if ((max==3) and (sumAreaConvexFaces(A)>7)) return false;
-    if ((max==4) and (sumAreaConvexFaces(A)>5)) return false;
-    if ((max==4) and (containsBiangle(A)==true)) return false;
+    if (consecutive_deg2 == 3)
+        return sumAreaConvexFaces(A) <= 7;
+    if (consecutive_deg2 == 4)
+        return sumAreaConvexFaces(A) <= 5 and !containsBiangle(A);
+    
     return true; 
 }
 

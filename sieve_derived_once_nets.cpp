@@ -383,7 +383,6 @@ int main() {
     vector<int> excluded_black;
 
     for (int id = 0; id < ssize(derived_once); id++) {
-        //~ cout << id << " ";
         const DerivedOnceNet& A = derived_once[id];
         bool survives = true;
         for (auto pp: criteria) {
@@ -406,7 +405,6 @@ int main() {
             for (int id2: whitelisted) if (id2 == id) {
                 survives = false;
                 excluded_white.push_back(id);
-                //~ cout << id << endl;
             }
         }
 

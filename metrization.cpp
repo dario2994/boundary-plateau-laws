@@ -216,8 +216,35 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
         vector<vector<double>> candidates = 
             completeGeneralizedPolygon(angles, sides, missing_sides);
             
-        if (ssize(candidates) == 3)
-            return; // Cannot be determined.
+        if (ssize(candidates) == 3) {
+            auto is_missing = [&](int id) {
+                id %= n;
+                bool found = false;
+                for (int x: missing_sides)
+                    found |= x == id;
+                return found;
+            };
+            // The lengths cannot be determined, but if the missing
+            // sides are adjacent, the central one is long either
+            // 0 or pi.
+            // The 0 case leads to consistent = false.
+            int first_missing = -1;
+            for (int i = 0; i < n; i++) {
+                if (is_missing(i) and is_missing(i+1) and is_missing(i+2))
+                    first_missing = i;
+            }
+            if (first_missing == -1)
+                return;
+            
+            double sum_angles = angles[first_missing] + 
+                                angles[(first_missing + 1) % n];
+            if (abs(sum_angles - 2*M_PI) < 0.1) {
+                consistent = false;
+            } else {
+                metricDart(phi(d, first_missing+1)).setLen(M_PI);
+            }
+            return;
+        }
         
         vector<vector<double>> valid_faces;
         for (const auto& candidate: candidates) {
@@ -416,15 +443,25 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
             for (Dart d: _visited_darts) { 
                 if (isConcaveAngle(d) and isConvexFace(rev(d)) 
                     and is_face_determined(rev(d))) {
+                    //~ cout << d << endl;
                     bool intersection = false;
                     TangentVector ed = _embedded_darts[rev(d).id].rot(M_PI/3);
+                    //~ cout << _embedded_darts[rev(d).id] << endl;
+                    //~ cout << _embedded_darts[next(rev(d)).id] << endl;
+                    //~ cout << ed << endl;
                      // TODO: Bad! This is ugly, but doing it properly
                      //       requires some thought.
                      //       Needs to be fixed asap.
                     GeodesicSegment gs(ed, M_PI-1e-3);
                     for (Dart e: _visited_darts) {
+                        if (e.from == d.to or e.to == d.to)
+                            continue;
                         GeodesicSegment gs2 = _embedded_darts[e.id];
                         gs2.len += 1e-3;
+                        
+                        //~ if (good_boundary(e))
+                            //~ cout << e << endl;
+                        
                         if (good_boundary(e) and areIntersecting(gs2, gs))
                             intersection = true;
                     }

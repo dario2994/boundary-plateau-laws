@@ -175,10 +175,11 @@ int main() {
          << " derived-once net candidates." << endl;
     cout << "There are " << survivors.size()
          << " survivors." << endl;
-         
-    MetricDerivedOnceNet mdon(derived_once[3745]);
-    cout << mdon.isConsistent() << endl;
-    return 0;
+    
+    //~ MetricDerivedOnceNet mdon(derived_once[1476]);
+    //~ cout << mdon.isConsistent() << endl;
+    
+    //~ return 0;
         
     
     int cnt_interesting1 = 0;

@@ -136,7 +136,7 @@ bool containsHexagonsTwoObtuse(const DerivedOnceNet& A) {
     return false;
 }
 
-bool containsAdjacentQuadrilatrals(const DerivedOnceNet& A) {
+bool containsAdjacentQuadrilaterals(const DerivedOnceNet& A) {
     pair <int,int> quad={4,0};
     for (Dart d: A.darts()) {
         if ((A.faceType(A.rev(d))==quad) 
@@ -158,10 +158,10 @@ bool containsDoubleBlade(const DerivedOnceNet& A) {
     return false;
 }
 
-bool containsDoubleBladeConcavePent(const DerivedOnceNet& A) {
+bool containsDoubleBladeConcavePent2(const DerivedOnceNet& A) {
     pair <int,int> quad={4,0};
     pair <int,int> pent={5,0};
-    pair <int,int> concavepent={5,1};
+    pair <int,int> concavepent={5,2};
     for (Dart d: A.darts()) {
         if ((A.faceType(A.rev(d))!=quad) 
             or (A.faceType(A.rev(d))!=quad)) continue;
@@ -199,9 +199,9 @@ int main() {
     int cnt_interesting3 = 0;
     for (int id: survivors) {
         const DerivedOnceNet& A = derived_once[id];
-        bool interesting1=containsAdjacentQuadrilatrals(A);
+        bool interesting1=containsAdjacentQuadrilaterals(A);
         bool interesting2=containsDoubleBlade(A);
-        bool interesting3= containsDoubleBladeConcavePent(A);
+        bool interesting3= containsDoubleBladeConcavePent2(A);
         cnt_interesting1 += interesting1;
         cnt_interesting2 += interesting2;
         cnt_interesting3 += interesting3; 
@@ -214,6 +214,6 @@ int main() {
     cout << "In "<< cnt_interesting2 << " di queste i due quadrilateri hanno" << endl;
     cout << "quattro edge in comune con due pentagoni convessi isosceli" << endl;
     cout << "Tra queste ce ne sono " << cnt_interesting3 <<" dove la configurazione sopra" << endl;
-    cout << "ha tre edge in comune con un pentagono (5,1)" << endl;
+    cout << "ha tre edge in comune con un pentagono (5,2)" << endl;
 }
 

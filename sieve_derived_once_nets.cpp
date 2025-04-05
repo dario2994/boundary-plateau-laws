@@ -312,6 +312,9 @@ bool criterionTwoQuadrilateralsThreePentagons(const DerivedOnceNet& A) {
 bool criterionConsecutiveVerticesDegree2(const DerivedOnceNet& A) {
     int consecutive_deg2 = 0;
     for (Dart d: A.darts()) {
+        // TODO: This should be improved.
+        //       Should we simplify the logic? Is it ok not to check
+        //       that these are distinct vertices.
         if (A.degree(d.from) == 2 and
             A.degree(d.to) == 2 and
             A.degree(A.phi(d).to) == 2) {

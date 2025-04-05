@@ -387,12 +387,40 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
                 }
             }
             
-            // TODO: For some reason, we are never able to determine the pin positions!
+            auto is_face_determined = [&](Dart d) {
+                bool determined = true;
+                for (Dart e: face(d))
+                    determined &= metricDart(e).known;
+                return determined;
+            };
+            
+            auto is_good_region = [&](Dart d) {
+                return is_face_determined(d) and isConvexFace(d);
+            };
+            
+            auto good_boundary = [&](Dart d) {
+                return is_good_region(d) and !is_good_region(d);
+            };
+            
+            // TODO: For some reason, we are never able to determine the pin positions! This is rather strange.
             assert(pins.empty());
             
-            // Now we check that for each equator, we are in good shape.
-            for (pt equator: equators_with_pin) {
-                
+            for (Dart d: _visited_darts) { 
+                if (isConcaveAngle(d) and isConvexFace(rev(d)) 
+                    and is_face_determined(rev(d))) {
+                    bool intersection = false;
+                    TangentVector ed = _embedded_darts[rev(d).id].rot(M_PI/3);
+                     // TODO: Bad! This is ugly, but doing it properly
+                     //       requires some thought.
+                    GeodesicSegment gs(ed, M_PI-1e-3);
+                    for (Dart e: _visited_darts) {
+                        if (good_boundary(e) and 
+                            areIntersecting(_embedded_darts[e.id], gs))
+                            intersection = true;
+                    }
+                    if (!intersection)
+                        consistent = false;
+                }
             }
         }
     }

@@ -165,7 +165,7 @@ bool containsDoubleBladeConcavePent2(const DerivedOnceNet& A) {
     for (Dart d: A.darts()) {
         if ((A.faceType(A.rev(d))!=quad) 
             or (A.faceType(A.rev(d))!=quad)) continue;
-        if ((A.faceType(A.rev(A.phi(d)))!=pent) and
+        if ((A.faceType(A.rev(A.phi(d)))!=pent) or
             (A.faceType(A.rev(A.phi(A.rev(d))))!=pent)) 
             continue;
         if (A.faceType(A.rev(A.phi(A.phi(d))))==concavepent) return true;

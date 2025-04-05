@@ -406,7 +406,6 @@ int main() {
             for (int id2: whitelisted) if (id2 == id) {
                 survives = false;
                 excluded_white.push_back(id);
-                cout << id << endl;
             }
         }
 

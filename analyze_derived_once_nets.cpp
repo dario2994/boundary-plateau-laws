@@ -5,6 +5,7 @@ typedef unsigned long long ULL;
 
 #include "combinatorial_maps.cpp"
 #include "derived_once_nets.cpp"
+#include "metrization.cpp"
 
 
 int countObtuseAngles(const DerivedOnceNet& A, Dart d) {
@@ -175,6 +176,9 @@ int main() {
     cout << "There are " << survivors.size()
          << " survivors." << endl;
          
+    MetricDerivedOnceNet mdon(derived_once[3745]);
+    cout << mdon.isConsistent() << endl;
+    return 0;
         
     
     int cnt_interesting1 = 0;

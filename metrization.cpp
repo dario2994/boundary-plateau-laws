@@ -399,7 +399,7 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
             };
             
             auto good_boundary = [&](Dart d) {
-                return is_good_region(d) and !is_good_region(d);
+                return is_good_region(d) and !is_good_region(rev(d));
             };
             
             // TODO: For some reason, we are never able to determine the pin positions! This is rather strange.
@@ -412,10 +412,12 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
                     TangentVector ed = _embedded_darts[rev(d).id].rot(M_PI/3);
                      // TODO: Bad! This is ugly, but doing it properly
                      //       requires some thought.
+                     //       Needs to be fixed asap.
                     GeodesicSegment gs(ed, M_PI-1e-3);
                     for (Dart e: _visited_darts) {
-                        if (good_boundary(e) and 
-                            areIntersecting(_embedded_darts[e.id], gs))
+                        GeodesicSegment gs2 = _embedded_darts[e.id];
+                        gs2.len += 1e-3;
+                        if (good_boundary(e) and areIntersecting(gs2, gs))
                             intersection = true;
                     }
                     if (!intersection)

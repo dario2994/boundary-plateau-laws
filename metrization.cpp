@@ -35,6 +35,9 @@ struct MetricDart {
     }
     
     void setLen(double _len) { 
+        if (_len < 1e-6)
+            consistent = false;
+        
         if (known) consistent &=  abs(len-_len) < eps;
         else if (_len <= lower_bound or _len >= upper_bound) consistent = false;
         else {
@@ -64,6 +67,8 @@ struct MetricDart {
 
 // Keep track of return value.
 MetricDart merge(MetricDart d, MetricDart e) {
+    if (!e.consistent)
+        d.consistent = false;
     if (e.known)
         d.setLen(e.len);
     d.setLowerBound(e.lower_bound);
@@ -309,7 +314,7 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
         if (!isConsistent())
             return;
         
-        for (int _ = 0; _ < 10 and isConsistent(); _++)
+        for (int _ = 0; _ < 12 and isConsistent(); _++)
             for (const Dart& d: darts())
                 determineFace(d);
         
@@ -404,6 +409,9 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
             
             // TODO: For some reason, we are never able to determine the pin positions! This is rather strange.
             assert(pins.empty());
+            
+            //~ cout << ssize(_visited_darts) << " " << ssize(darts()) << endl;
+            //~ assert(ssize(_visited_darts) == ssize(darts()));
             
             for (Dart d: _visited_darts) { 
                 if (isConcaveAngle(d) and isConvexFace(rev(d)) 

@@ -333,6 +333,35 @@ bool criterionConsecutiveVerticesDegree2(const DerivedOnceNet& A) {
     return true; 
 }
 
+bool criterionPent1(const DerivedOnceNet& A) {
+    pair <int,int> pent1= {5,1};
+    pair <int,int> quad = {5,0};
+    for (Dart d:A.darts()) {
+        if ((A.degree(d.from)!=2) or A.faceType(d)!=pent1) continue;
+        Dart opp=A.phi(A.phi(d));
+        if (A.faceType(A.rev(opp))!=quad) continue;
+        if ((A.faceType(A.rev(A.phi(d)))==quad) or 
+            (A.faceType(A.rev(A.phi(opp)))==quad)) return false;
+    }
+    return true;
+}
+
+//bool criterioSperimentale(const DerivedOnceNet& A) {
+//    pair <int,int> quad = {4,0};
+//    pair <int,int> pent = {5,0};
+//    for (Dart d:A.darts()) {
+//        if ((A.faceType(d)!=quad) or (A.faceType(A.rev(d))!=quad))
+//            continue;
+//        Dart e=A.rev(A.phi(d));
+//        if (A.faceType(e)!=pent) continue;
+//        if ((A.degree((A.phi(A.phi(d))).to)==2) and 
+//            (A.degree((A.phi(A.phi(e))).to)==2)) return false;
+//        if ((A.degree((A.phi(A.phi(A.rev(d)))).to)==2) and
+//            (A.degree((A.phi(A.phi(A.phi(e)))).to)==2)) return false;        
+//    }
+//    return true;
+//}
+
 bool criterionMetrization(const DerivedOnceNet& A) {
     return MetricDerivedOnceNet(A).isConsistent();
 }
@@ -361,6 +390,8 @@ int main() {
         {"2 quadrilaterals 3 pentagons", criterionTwoQuadrilateralsThreePentagons},
         {"consecutive degree 2 vertices", criterionConsecutiveVerticesDegree2},
         {"metrization\t\t", criterionMetrization},
+        //{"criterio sperimentale\t",criterioSperimentale},
+        {"pentagon {5,1} + quadrilaterals",criterionPent1},
     };
     
     map<string, vector<int>> excluded_by; 

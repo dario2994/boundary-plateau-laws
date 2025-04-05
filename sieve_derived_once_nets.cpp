@@ -315,6 +315,9 @@ bool criterionConsecutiveVerticesDegree2(const DerivedOnceNet& A) {
         // TODO: This should be improved.
         //       Should we simplify the logic? Is it ok not to check
         //       that these are distinct vertices.
+        // Camillo: I think it is OK, if they are not three distinct
+        //        vertices then there would be a concave biangle,
+        //        which is excluded. 
         if (A.degree(d.from) == 2 and
             A.degree(d.to) == 2 and
             A.degree(A.phi(d).to) == 2) {

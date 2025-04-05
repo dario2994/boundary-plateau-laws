@@ -113,6 +113,7 @@ int main() {
     //~ cout << len << endl;
     
     double a120 = M_PI*0.66666666666666666666666;
+    double a240 = 2*a120;
     
     //~ cout << "A" << endl;
     //~ searchFaceRealization({a120, a120, 2*a120, a120,a120, 2*a120}, 
@@ -128,7 +129,7 @@ int main() {
     
     double square = 2*atan(sqrt(0.5));
     cout << square << endl;
-    searchFaceRealization({a120, a120, a120, a120, a120}, {square, square, -1, -1, -1});
+    searchFaceRealization({a120, a120, a120, a120, a240}, {-1, -1, M_PI+0.9, -1, -1});
     
     //~ auto angles = {a120, a120, a120, 2*a120, a120, 2*a120};
     //~ auto x = completeGeneralizedPolygon(angles, 

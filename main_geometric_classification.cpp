@@ -148,7 +148,20 @@ int main() {
     }
     cout << endl;
     
-    const vector<DerivedOnceNet> derived_once_vec = derived_once.getList();
+    // Removing symmetric duplicates.
+    vector<DerivedOnceNet> derived_once_vec = derived_once.getList();
+    vector<DerivedOnceNet> _tmp;
+    for (int i = 0; i < ssize(derived_once_vec); i++) {
+        const DerivedOnceNet& sym = symmetrize(derived_once_vec[i]);
+        bool is_new = true;
+        for (int j = 0; j < i and is_new; j++) {
+            is_new &= !areIsomorphic(sym, derived_once_vec[j]);
+        }
+        if (is_new)
+            _tmp.push_back(sym);
+    }
+    derived_once_vec = _tmp;
+    
     
     cout << "We found " << derived_once_vec.size() 
          << " derived-once nets candidates." << endl;

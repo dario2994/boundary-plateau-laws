@@ -38,6 +38,7 @@ struct CombinatorialMap {
     friend CombinatorialMap constructOneEdge();
     friend CombinatorialMap constructOneLoop();
     friend CombinatorialMap parseCombinatorialMap(istream& in);
+    friend CombinatorialMap symmetrize(const CombinatorialMap&);
     
   private:
     int _V, _E, _F; // Vertices, Edges, Faces
@@ -485,6 +486,13 @@ CombinatorialMap parseCombinatorialMap(istream& in) {
         A._prev[A._next[i]] = i;
     }
     return A;
+}
+
+CombinatorialMap symmetrize(const CombinatorialMap& A) {
+    CombinatorialMap B = A;
+    swap(B._next, B._prev);
+    B.checkConsistency();
+    return B;
 }
 
 

@@ -23,6 +23,7 @@ class DerivedOnceNet : public CombinatorialMap {
   public:
     DerivedOnceNet(const CombinatorialMap& A): CombinatorialMap(A) {}
     friend DerivedOnceNet parseDerivedOnceNet(istream& in);
+    friend DerivedOnceNet symmetrize(const DerivedOnceNet&);
     
     pair<Dart, Dart> addEdge(Dart bef, Dart aft) = delete;
     pair<Dart, Dart> addVertex(Dart bef, Dart aft) = delete;
@@ -196,6 +197,16 @@ DerivedOnceNet parseDerivedOnceNet(istream& in) {
         A._concave_angles.push_back(A.dart(id));
     }
     return A;
+}
+
+DerivedOnceNet symmetrize(const DerivedOnceNet& A) {
+    vector<Dart> sym_concave_angles;
+    for (const Dart& d: A._concave_angles)
+        sym_concave_angles.push_back(A.rev(A.phi(d)));
+    
+    DerivedOnceNet B(symmetrize(static_cast<CombinatorialMap>(A)));
+    B._concave_angles = sym_concave_angles;
+    return B;
 }
 
 

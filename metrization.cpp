@@ -74,6 +74,86 @@ MetricDart merge(MetricDart d, MetricDart e) {
 }
 
 
+vector<int> findEqualLengths(const DerivedOnceNet& A) {
+    int n = 2*A.E();
+    
+    // BEGIN: Implementation of DSU.
+    vector<int> label(n);
+    for (int i = 0; i < n; i++) label[i] = i;
+    
+    function<int(int)> ancestor = [&](int x) {
+        return (label[x] == x) ? x : (label[x] = ancestor(label[x]));
+    };
+    
+    auto are_equal = [&](const Dart& d, const Dart& e) {
+        return ancestor(d.id) == ancestor(e.id);
+    };
+    
+    auto set_equal = [&](const Dart& d, const Dart& e) {
+        int x = ancestor(d.id), y = ancestor(e.id);
+        if (x != y) 
+            label[x] = y;
+    };
+    // END: Implementation of DSU.
+    
+    // The ideas are all contained in the following function.
+    // We employ multiple simple strategy to prove that two different
+    // darts shall have the same length.
+    auto find_simmetries = [&](Dart d, map<int,vector<Dart>>& partition) {
+        if (!A.isConvexFace(d))
+            return;
+            
+        int h = (ancestor(d.id) + 1) * 1000;
+        
+        int n = A.faceType(d).first;
+        if (n <= 3) { // biangles and triangles are regular.
+            for (int i = 0; i < n; i++)
+                partition[n].push_back(d);
+        } else if (n == 4) { // quadrilaterals are symmetric.
+            partition[4 + h].push_back(A.phi(d));
+            partition[4 + h].push_back(A.phi(d, 3));
+            // square
+            if (are_equal(d, A.phi(d))) partition[4].push_back(d);
+        } else if (n == 5) { // TODO: Maybe handle non-convex pentagons?
+            if (are_equal(d, A.phi(d))) {
+                partition[5 + h].push_back(A.phi(d, 2));
+                partition[5 + h].push_back(A.phi(d, 4));
+            }
+            if (are_equal(d, A.phi(d, 2))) {
+                partition[6 + h].push_back(A.phi(d, 3));
+                partition[6 + h].push_back(A.phi(d, 4));
+            }
+            if (are_equal(d, A.phi(d)) and are_equal(d, A.phi(d, 2)))
+                partition[5].push_back(d);
+        }
+    };
+    
+    for (const Dart& d: A.darts())
+        set_equal(d, A.rev(d));
+    
+    while (1) {
+        vector<int> bef_label = label;
+        map<int,vector<Dart>> partition;
+        for (const Dart& d: A.darts())
+            find_simmetries(d, partition);
+        
+        for (auto _: partition) {
+            vector<Dart> equivalence_class = _.second;
+            const Dart& repr = equivalence_class[0];
+            for (const Dart& d: equivalence_class)
+                set_equal(repr, d);
+        }
+        
+        if (label == bef_label)
+            break;
+    }
+    
+    for (int i = 0; i < n; i++)
+        ancestor(i);
+    
+    return label;
+}
+
 // TODO: This shall expose some decent APIs.
 class MetricDerivedOnceNet : public DerivedOnceNet {
   private:
@@ -88,31 +168,16 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
     // be embedded in the sphere.
     bool consistent;
     
-    // Implementation of DSU.
-    int ancestor(int x) const {
-        if (_label[x] != x) 
-            _label[x] = ancestor(_label[x]);
-        return _label[x];
-    }
-    
-    void identifyDarts(const Dart& d, const Dart& e) {
-        int x = ancestor(d.id), y = ancestor(e.id);
-        if (x != y) {
-            _label[x] = y;
-            _metric_darts[y] = merge(_metric_darts[x], _metric_darts[y]);
-        }
-    }
-    
-    bool equalLength(const Dart& d, const Dart& e) const { 
-        return ancestor(d.id) == ancestor(e.id); 
+    bool equalLength(const Dart& d, const Dart& e) const {
+        return _label[d.id] == _label[e.id]; 
     }
     
     MetricDart& metricDart(const Dart& d) { 
-        return _metric_darts[ancestor(d.id)];
+        return _metric_darts[_label[d.id]];
     }
     
     const MetricDart& metricDart(const Dart& d) const { 
-        return _metric_darts[ancestor(d.id)];
+        return _metric_darts[_label[d.id]];
     }
     
     void findRegularFaces(const Dart& d) {
@@ -129,34 +194,6 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
         int n = ssize(face(d));
         for (const Dart& e: face(d))
             metricDart(d).setLen(REGULAR_SIDES[n]);
-    }
-    
-    void findSymmetries(const Dart& d, map<int,vector<Dart>>& partition) {
-        if (!isConvexFace(d))
-            return;
-            
-        int h = (ancestor(d.id)+1) * 1000;
-        
-        int n = ssize(face(d));
-        if (n <= 3) { // biangles and triangles are regular.
-            for (int i = 0; i < n; i++)
-                partition[n].push_back(d);
-        } else if (n == 4) { // quadrilaterals are symmetric.
-            partition[4 + h].push_back(phi(d));
-            partition[4 + h].push_back(phi(d, 3));
-            if (equalLength(d, phi(d))) partition[4].push_back(d);
-        } else if (n == 5) { // TODO: Maybe handle non-convex pentagons?
-            if (equalLength(d, phi(d))) {
-                partition[5 + h].push_back(phi(d, 2));
-                partition[5 + h].push_back(phi(d, 4));
-            }
-            if (equalLength(d, phi(d, 2))) {
-                partition[6 + h].push_back(phi(d, 3));
-                partition[6 + h].push_back(phi(d, 4));
-            }
-            if (equalLength(d, phi(d)) and equalLength(d, phi(d, 2)))
-                partition[5].push_back(d);
-        }
     }
     
     void generalSideBounds(const Dart& d) {
@@ -310,29 +347,9 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
   
     MetricDerivedOnceNet(const DerivedOnceNet& A): DerivedOnceNet(A) {
         consistent = true;
-        // Init labels.
-        for (const Dart& d: darts()) {
-            assert(d.id == ssize(_label));
-            _label.push_back(d.id);
-            _metric_darts.push_back(MetricDart());
-        }
         
-        // TODO: This code needs to be cleaned.
-        
-        for (const Dart& d: darts())
-            identifyDarts(d, rev(d));
-            
-        for (int _ = 0; _ < 10; _++) {
-            map<int,vector<Dart>> partition;
-            for (const Dart& d: darts())
-                findSymmetries(d, partition);
-            for (auto pp: partition)
-                for (Dart d: pp.second)
-                    identifyDarts(pp.second[0], d);
-        }
-        
-        if (!isConsistent())
-            return;
+        _label = findEqualLengths(*this);
+        _metric_darts.resize(2*E());
         
         for (const Dart& d: darts())
             findRegularFaces(d);

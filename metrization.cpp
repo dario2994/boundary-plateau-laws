@@ -29,10 +29,6 @@ struct MetricDart {
     
     MetricDart(): 
         consistent(true), known(false), lower_bound(0), upper_bound(2*M_PI) {}
-    MetricDart(double _len): MetricDart() {
-        known = true;
-        len = _len;
-    }
     
     void setLowerBound(double lb) {
         assert(0 <= lb and lb <= 2*M_PI);
@@ -61,17 +57,6 @@ struct MetricDart {
         }
     }
 };
-
-MetricDart merge(MetricDart d, MetricDart e) {
-    if (!e.consistent)
-        d.consistent = false;
-    if (e.known)
-        d.setLen(e.len);
-    d.setLowerBound(e.lower_bound);
-    d.setUpperBound(e.upper_bound);
-    
-    return d;
-}
 
 
 vector<int> findEqualLengths(const DerivedOnceNet& A) {
@@ -154,19 +139,46 @@ vector<int> findEqualLengths(const DerivedOnceNet& A) {
     return label;
 }
 
+// If it returns the empty vector, the net cannot be embedded in S^2.
+// Otherwise, it returns a vector len of size ssize(A.darts()).
+// len[d.id] = -1: We cannot determine the length of d.
+// len[d.id] > 0: The length of d is len[d.id].
+//~ vector<double> determineLengths(const DerivedOnceNet& A, vector<int> label) {
+    //~ vector<double> _len(2*A.E(), -1);
+    
+    //~ auto get_len = [&](const Dart& d) {
+        //~ return _len[label[d.id]];
+    //~ };
+    
+    //~ auto set_len = [&](const Dart& d, double x) {
+        //~ if (x <= eps) return false;
+        
+        //~ double& y = _len[label[d.id]];
+        //~ if (y > 0) {
+            //~ if (abs(x-y) > eps) return false;
+            //~ return true;
+        //~ }
+        //~ y = x;
+        //~ return true;
+    //~ };
+    
+    
+//~ }
+
+
+
 // TODO: This shall expose some decent APIs.
 class MetricDerivedOnceNet : public DerivedOnceNet {
   private:
-    // We identify darts if we can show that they have the same length.
-    // _label is the low-level vector used to implement the associated
-    // DSU structure.
-    mutable vector<int> _label;
-    vector<MetricDart> _metric_darts;
-    vector<GeodesicSegment> _embedded_darts;
-    
     // If consistent = false, then we have proven that the net cannot
     // be embedded in the sphere.
     bool consistent;
+    
+    // If _label[d.id] == _label[e.id], then d and e have necessarily
+    // the same length.
+    vector<int> _label;
+    vector<MetricDart> _metric_darts;
+    vector<GeodesicSegment> _embedded_darts;
     
     bool equalLength(const Dart& d, const Dart& e) const {
         return _label[d.id] == _label[e.id]; 
@@ -180,7 +192,7 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
         return _metric_darts[_label[d.id]];
     }
     
-    void findRegularFaces(const Dart& d) {
+    void determineRegularFace(const Dart& d) {
         if (!isConvexFace(d))
             return;
             
@@ -190,38 +202,9 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
         if (!is_regular)
             return;
         
-        
         int n = ssize(face(d));
         for (const Dart& e: face(d))
             metricDart(d).setLen(REGULAR_SIDES[n]);
-    }
-    
-    void generalSideBounds(const Dart& d) {
-        if (faceType(d) == pair<int,int>{5, 0}) {
-            for (const Dart& e: face(d))
-                metricDart(d).setUpperBound(REGULAR_SIDES[3]);
-        }
-        if (faceType(d) == pair<int,int>{5, 1} and isConcaveAngle(d)) {
-            for (int i: {0, 1, 2, 4}) // TODO: We prove a bit less
-                metricDart(phi(d, i)).setUpperBound(REGULAR_SIDES[3]);
-            metricDart(phi(d, 3)).setLowerBound(REGULAR_SIDES[3]);
-        }
-        if (faceType(d) == pair<int,int>{5, 0} and equalLength(d, phi(d))) {
-            metricDart(d).setUpperBound(REGULAR_SIDES[4]);
-            metricDart(phi(d)).setUpperBound(REGULAR_SIDES[4]);
-        }
-    }
-    
-    // This part of the code does not exclude a single net.
-    void quadrilateralSideBounds(const Dart& d) {
-        if (faceType(d) != pair<int,int>{4, 0})
-            return;
-        double l = metricDart(d).lower_bound;
-        double u = metricDart(d).upper_bound;
-        if (0 < l and l < M_PI)
-            metricDart(phi(d)).setUpperBound(2*atan(0.5 / tan(l/2)) + eps);
-        if (0 < u and u < M_PI)
-            metricDart(phi(d)).setLowerBound(2*atan(0.5 / tan(u/2)) - eps);
     }
     
     void determineFace(const Dart& d) {
@@ -231,58 +214,53 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
         
         vector<double> angles = faceAngles(d);        
         vector<double> sides;
-        vector<int> missing_sides;
-        vector<int> known_sides;
+        vector<int> missing;
+        vector<int> known;
         for (int i = 0; i < n; i++) {
             const MetricDart& e = metricDart(phi(d, i));
             sides.push_back(e.len);
             if (e.known)
-                known_sides.push_back(i);
+                known.push_back(i);
             else
-                missing_sides.push_back(i);
+                missing.push_back(i);
         }
         
-        if (ssize(missing_sides) > 3) // Cannot be determined.
+        if (ssize(missing) > 3) // Cannot be determined.
             return;
     
         // Faking some missing sides until we have exactly three.
-        while (ssize(missing_sides) < 3) {
-            missing_sides.push_back(known_sides.back());
-            known_sides.pop_back();
+        while (ssize(missing) < 3) {
+            missing.push_back(known.back());
+            known.pop_back();
         }
-    
-        assert(ssize(missing_sides) == 3);
+        assert(ssize(missing) == 3);
         
         vector<vector<double>> candidates = 
-            completeGeneralizedPolygon(angles, sides, missing_sides);
+            completeGeneralizedPolygon(angles, sides, missing);
             
         if (ssize(candidates) == 3) {
             auto is_missing = [&](int id) {
-                id %= n;
-                bool found = false;
-                for (int x: missing_sides)
-                    found |= x == id;
-                return found;
+                return find(missing.begin(), missing.end(), id % n)
+                       != missing.end();
             };
-            // The lengths cannot be determined, but if the missing
+            // The lengths cannot be determined, but if the three missing
             // sides are adjacent, the central one is long either
             // 0 or pi.
             // The 0 case leads to consistent = false.
-            int first_missing = -1;
+            int pos = -1;
             for (int i = 0; i < n; i++) {
                 if (is_missing(i) and is_missing(i+1) and is_missing(i+2))
-                    first_missing = i;
+                    pos = i;
             }
-            if (first_missing == -1)
+            
+            if (pos == -1)
                 return;
             
-            double sum_angles = angles[first_missing] + 
-                                angles[(first_missing + 1) % n];
-            if (abs(sum_angles - 2*M_PI) < 0.1) {
+            double sum_angles = angles[pos] + angles[(pos + 1) % n];
+            if (abs(sum_angles - 2*M_PI) < 0.1)
                 consistent = false;
-            } else {
-                metricDart(phi(d, first_missing+1)).setLen(M_PI);
-            }
+            else
+                metricDart(phi(d, pos+1)).setLen(M_PI);
             return;
         }
         
@@ -306,6 +284,31 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
         sides = valid_faces[0];
         for (int i = 0; i < n; i++)
             metricDart(phi(d, i)).setLen(sides[i]);
+    }
+    
+    void enforceSideInequalities(const Dart& d) {
+        if (faceType(d) == pair<int,int>{5, 0}) {
+            for (const Dart& e: face(d))
+                metricDart(d).setUpperBound(REGULAR_SIDES[3]);
+        }
+        if (faceType(d) == pair<int,int>{5, 1} and isConcaveAngle(d)) {
+            for (int i: {0, 1, 2, 4}) // TODO: We prove a bit less
+                metricDart(phi(d, i)).setUpperBound(REGULAR_SIDES[3] - eps);
+            metricDart(phi(d, 3)).setLowerBound(REGULAR_SIDES[3] + eps);
+        }
+        if (faceType(d) == pair<int,int>{5, 0} and equalLength(d, phi(d))) {
+            metricDart(d).setUpperBound(REGULAR_SIDES[4] - eps);
+            metricDart(phi(d)).setUpperBound(REGULAR_SIDES[4] - eps);
+        }
+        // This part of the code does not exclude a single net.
+        if (faceType(d) == pair<int,int>{4, 0}) {
+            double l = metricDart(d).lower_bound;
+            double u = metricDart(d).upper_bound;
+            if (0 < l and l < M_PI)
+                metricDart(phi(d)).setUpperBound(2*atan(0.5 / tan(l/2)) + eps);
+            if (0 < u and u < M_PI)
+                metricDart(phi(d)).setLowerBound(2*atan(0.5 / tan(u/2)) - eps);
+        }
     }
     
     // Temporary storage for the dfs of embedDart
@@ -348,35 +351,32 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
     MetricDerivedOnceNet(const DerivedOnceNet& A): DerivedOnceNet(A) {
         consistent = true;
         
+        // Step 1: Identify equal sides.
         _label = findEqualLengths(*this);
         _metric_darts.resize(2*E());
         
+        // Step 2: Determine the length of some sides.
         for (const Dart& d: darts())
-            findRegularFaces(d);
-        
-        if (!isConsistent())
-            return;
+            determineRegularFace(d);
         
         for (int _ = 0; _ < 12 and isConsistent(); _++)
             for (const Dart& d: darts())
                 determineFace(d);
-        
-        if (!isConsistent())
-            return;
-            
-        for (const Dart& d: darts())
-            generalSideBounds(d);
-        
-        if (!isConsistent())
-            return;
-            
-        for (int _ = 0; _ < 3 and isConsistent(); _++)
-            for (const Dart& d: darts())
-                quadrilateralSideBounds(d);
-        
-        if (!isConsistent())
-            return;
                 
+        if (!isConsistent())
+            return;
+            
+        // Step 3: Enforce all inequalities we have proven on sides
+        //         depending on the type of the face they belong to.
+        for (int _ = 0; _ < 10 and isConsistent(); _++)
+            for (const Dart& d: darts())
+                enforceSideInequalities(d);
+            
+        if (!isConsistent())
+            return;
+            
+        // Step 4: Embed a part of the net (i.e., the darts whose length
+        //         we were able to determine in step 2) in the sphere.
         _embedded_darts.resize(2*E());
                 
         for (Dart uff: darts()) {
@@ -404,7 +404,7 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
                         consistent = false;
                 } else if (areIntersecting(ex, ey))
                     consistent = false;
-            } // Shall we also print that?
+            }
             
             if (!isConsistent())
                 return;
@@ -453,18 +453,11 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
             // TODO: For some reason, we are never able to determine the pin positions! This is rather strange.
             assert(pins.empty());
             
-            //~ cout << ssize(_visited_darts) << " " << ssize(darts()) << endl;
-            //~ assert(ssize(_visited_darts) == ssize(darts()));
-            
             for (Dart d: _visited_darts) { 
                 if (isConcaveAngle(d) and isConvexFace(rev(d)) 
                     and is_face_determined(rev(d))) {
-                    //~ cout << d << endl;
                     bool intersection = false;
                     TangentVector ed = _embedded_darts[rev(d).id].rot(M_PI/3);
-                    //~ cout << _embedded_darts[rev(d).id] << endl;
-                    //~ cout << _embedded_darts[next(rev(d)).id] << endl;
-                    //~ cout << ed << endl;
                      // TODO: Bad! This is ugly, but doing it properly
                      //       requires some thought.
                      //       Needs to be fixed asap.

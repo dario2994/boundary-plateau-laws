@@ -34,22 +34,6 @@ struct MetricDart {
         len = _len;
     }
     
-    void setLen(double _len) { 
-        if (_len < 1e-6)
-            consistent = false;
-        
-        if (known) consistent &=  abs(len-_len) < eps;
-        else if (_len <= lower_bound or _len >= upper_bound) consistent = false;
-        else {
-            known = true;
-            len = _len; 
-        }
-    }
-    
-    double getLen() const {
-        return known ? len : -1;
-    }
-    
     void setLowerBound(double lb) {
         assert(0 <= lb and lb <= 2*M_PI);
         if (known) consistent &= len > lb;
@@ -63,9 +47,21 @@ struct MetricDart {
         consistent &= lower_bound < ub;
         upper_bound = min(ub, upper_bound);
     }
+    
+    void setLen(double _len) { 
+        if (_len < 1e-6)
+            consistent = false;
+        
+        if (known) consistent &=  abs(len-_len) < eps;
+        else {
+            known = true;
+            len = _len; 
+            setLowerBound(_len-eps);
+            setUpperBound(_len+eps);
+        }
+    }
 };
 
-// Keep track of return value.
 MetricDart merge(MetricDart d, MetricDart e) {
     if (!e.consistent)
         d.consistent = false;
@@ -87,6 +83,9 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
     mutable vector<int> _label;
     vector<MetricDart> _metric_darts;
     vector<GeodesicSegment> _embedded_darts;
+    
+    // If consistent = false, then we have proven that the net cannot
+    // be embedded in the sphere.
     bool consistent;
     
     // Implementation of DSU.
@@ -196,21 +195,25 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
         vector<double> angles = faceAngles(d);        
         vector<double> sides;
         vector<int> missing_sides;
+        vector<int> known_sides;
         for (int i = 0; i < n; i++) {
-            const Dart& e = phi(d, i);
-            sides.push_back(metricDart(e).getLen());
-            if (sides.back() < 0)
+            const MetricDart& e = metricDart(phi(d, i));
+            sides.push_back(e.len);
+            if (e.known)
+                known_sides.push_back(i);
+            else
                 missing_sides.push_back(i);
         }
         
         if (ssize(missing_sides) > 3) // Cannot be determined.
             return;
-        
+    
         // Faking some missing sides until we have exactly three.
-        for (int i = 0; i < n and ssize(missing_sides) < 3; i++) {
-            if (sides[i] >= 0)
-                missing_sides.push_back(i);
+        while (ssize(missing_sides) < 3) {
+            missing_sides.push_back(known_sides.back());
+            known_sides.pop_back();
         }
+    
         assert(ssize(missing_sides) == 3);
         
         vector<vector<double>> candidates = 
@@ -268,11 +271,6 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
             metricDart(phi(d, i)).setLen(sides[i]);
     }
     
-    void checkMetricDartsConsistency() {
-        for (const Dart& d: darts())
-            consistent &= metricDart(d).consistent;
-    }
-    
     // Temporary storage for the dfs of embedDart
     vector<Dart> _visited_darts;
     void embedDart(const Dart& d, TangentVector tv) {
@@ -305,7 +303,8 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
     
   public:
     bool isConsistent() { 
-        checkMetricDartsConsistency();
+        for (const Dart& d: darts())
+            consistent &= metricDart(d).consistent;
         return consistent; 
     }
   

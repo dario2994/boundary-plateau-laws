@@ -4,7 +4,6 @@ using namespace std;
 typedef unsigned long long ULL;
 
 #include "spherical_geometry.cpp"
-//~ #include "spherical_faces.cpp"
 
 
 

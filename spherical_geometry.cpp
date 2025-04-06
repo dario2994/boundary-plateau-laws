@@ -376,6 +376,12 @@ struct GeodesicSegment:TangentVector {
         return theta >= (2*M_PI - eps) or theta <= len + eps;
     }
     
+    GeodesicSegment rev() const {
+        TangentVector tv = this->exp(len);
+        tv.V = -tv.V;
+        return {tv, len};
+    }
+    
     void serialize(ostream& out) const {
         TangentVector::serialize(out);
         out << " ";

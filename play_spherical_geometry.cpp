@@ -6,6 +6,33 @@ typedef unsigned long long ULL;
 #include "spherical_geometry.cpp"
 
 
+vector<double> completeFace(vector<double> angles, vector<double> sides) {
+    int n = ssize(angles);
+    vector<int> missing;
+    for (int i = 0; i < n; i++) {
+        if (sides[i] < 0)
+            missing.push_back(i);
+    }
+    
+    vector<vector<double>> candidates = 
+        completeGeneralizedPolygon(angles, sides, missing);
+    assert(ssize(candidates) != 3);
+        
+    vector<vector<double>> valid_faces;
+    for (const auto& one_candidate: candidates) {
+        auto poly = constructGeneralizedPolygon(angles, one_candidate);
+        if (poly.empty())
+            continue;
+        assert(ssize(poly) == ssize(angles));
+        
+        if (isValidPolygon(poly) and checkPinProperties(poly))
+            valid_faces.push_back(one_candidate);
+    }
+    if (valid_faces.empty())
+        return {};
+    assert(ssize(valid_faces) == 1);
+    return valid_faces[0];
+}
 
 // Saves a collection of geodesic segments to file (in a format suitable
 // for visualization).
@@ -17,24 +44,6 @@ void savePicture(vector<GeodesicSegment> vec, string out_file) {
         out << endl;
     }
     out.close();
-}
-
-void unitTest() {
-    for (double A = 0.1; A < 2*M_PI; A += 0.1) 
-    for (double B = 0.1; B < 2*M_PI; B += 0.1)
-    for (double C = 0.1; C < 2*M_PI; C += 0.1) {
-        auto sides = computeTriangleSides(A, B, C);
-        if (ssize(sides) == 3)
-            continue;
-        for (auto tri: sides) {
-            TangentVector tv;
-            tv = tv.exp(tri[2]).rot(B-M_PI);
-            tv = tv.exp(tri[0]).rot(C-M_PI);
-            tv = tv.exp(tri[1]).rot(A-M_PI);
-            assert(norm(tv.P-TangentVector().P) < eps);
-            assert(norm(tv.V-TangentVector().V) < eps);
-        }
-    }
 }
 
 vector<GeodesicSegment> findFace(vector<double> angles, vector<double> sides, 
@@ -55,8 +64,10 @@ vector<GeodesicSegment> findFace(vector<double> angles, vector<double> sides,
             continue;
         assert(ssize(poly) == ssize(angles));
         
-        if (isValidPolygon(poly) and checkPinProperties(poly))
+        if (isValidPolygon(poly))
             valid_faces.push_back(poly);
+        //~ if (isValidPolygon(poly) and checkPinProperties(poly))
+            //~ valid_faces.push_back(poly);
     }
     //~ assert(ssize(valid_faces) <= 1);
     if (valid_faces.empty())
@@ -99,41 +110,98 @@ void searchFaceRealization(vector<double> angles, vector<double> sides) {
 }
 
 int main() {
-    //~ TangentVector a(pt{0.9921950484, 0.1246955727, 0}, 
-                    //~ pt{-0.06234778636, 0.4960975242, -0.8660254038});
-    //~ TangentVector b(pt{-0.4809434217, 0.3948067189, -0.7828288956}, 
-                    //~ pt{-0.8700617272, -0.3250090607, 0.3706233955});
-    
-    //~ pt equator_a = a.equatorNormal();
-    //~ pt equator_b = b.equatorNormal();
-    //~ cout << equator_a << " " << equator_b << endl;
-    
-    //~ double len = intersectWithEquator(a, equator_b);
-    //~ cout << len << endl;
-    
     double a120 = M_PI*0.66666666666666666666666;
     double a240 = 2*a120;
     
-    //~ cout << "A" << endl;
-    //~ searchFaceRealization({a120, a120, 2*a120, a120,a120, 2*a120}, 
-                          //~ {-1, -1, -1, -1, -1, -1});
+    //~ searchFaceRealization({a120, a120, a120, a240, a120, a240}, {-1, -1, -1, -1, -1, -1});
     
-    //~ cout << "B" << endl;
-    //~ searchFaceRealization({a120/2, a120, 2*a120}, 
-                          //~ {-1, -1, -1});
     
-    //~ cout << "C" << endl;
-    //~ searchFaceRealization({a120, a120, a120, 2*a120}, 
-                          //~ {-1, -1, -1, -1});                      
+    auto f = [&](double x, bool save)->pair<double,double> {
+        vector<GeodesicSegment> picture;
+        auto add_to_picture = [&](vector<GeodesicSegment> gs) {
+            for (auto x: gs)
+                picture.push_back(x);
+        };
+        
+        auto new_face = [&](vector<double> angles, 
+                            vector<double> sides, 
+                            TangentVector tv_init)->vector<GeodesicSegment> {
+            sides = 
+                completeFace(angles, sides);
+            if (sides.empty())
+                return {};
+            vector<GeodesicSegment> res = 
+                constructGeneralizedPolygon(angles, sides, tv_init);
+            add_to_picture(res);
+            
+            return res;
+        };
+        
+        auto face1 = new_face({a120, a120, a120, a120}, 
+                              {x, -1, -1, -1}, 
+                              TangentVector());
+        if (face1.empty())
+            return {-1, -1};
+        
+        double y = face1[1].len;
+        //~ cout << y << endl;
+        
+        auto face2 = new_face({a120, a120, a120, a120},
+                              {x, -1, -1, -1},
+                              face1[0].rev());
+        if (face2.empty())
+            return {-1, -1};
+            
+        auto face3 = new_face({a120, a120, a120, a120, a120},
+                              {y, y, -1, -1, -1},
+                              face1[1].rev());
+        if (face3.empty())
+            return {-1, -1};
+        
+        auto face4 = new_face({a120, a120, a120, a120, a120},
+                              {y, y, -1, -1, -1},
+                              face2[1].rev());
+        if (face4.empty())
+            return {-1, -1};                      
+            
+        auto face5 = new_face({a120, a120, a120, a120, a120},
+                              {x, face3[4].len, -1, -1, -1},
+                              face1[2].rev());
+        if (face5.empty())
+            return {-1, -1};
+            
+        if (save)
+            savePicture(picture, "todel.txt");
+        
+        double len1 = face4[2].len;
+        double len2 = face5[4].len;
+        
+        return {len1, len2};
+    };
     
-    double square = 2*atan(sqrt(0.5));
-    cout << square << endl;
-    searchFaceRealization({a120, a120, a120, a120, a240}, {-1, -1, M_PI+0.9, -1, -1});
-    
-    //~ auto angles = {a120, a120, a120, 2*a120, a120, 2*a120};
-    //~ auto x = completeGeneralizedPolygon(angles, 
-                          //~ {-1, -1, -1, 1.064049786, 0.1251442919, 3.080912009}, {0, 1, 2});
-    //~ for (auto y: x) {
-        //~ constructGeneralizedPolygon(angles, y);
+    // Configuration that we already understand.
+    //~ for (double x = 1.45; x < 1.47; x += 0.0001) {
+        //~ auto pp = f(x, false);
+        //~ if (pp.first < 0)
+            //~ continue;
+        //~ double y = pp.first, z = pp.second;
+        //~ if (abs(y-z) > 0.01)
+            //~ continue;
+        //~ cout << x << " " << y << " " << z << " " << y-z << endl;
     //~ }
+    
+    //~ f(1.4626, true);
+    
+    // Another configuration.
+    
+    for (double x = 0.1; x < 2*M_PI; x += 0.001) {
+        auto pp = f(x, false);
+        if (pp.first < 0)
+            continue;
+        double y = pp.first, z = pp.second;
+        //~ if (abs(y-z) > 0.01)
+            //~ continue;
+        cout << x << " " << y << " " << z << " " << y-z << endl;
+    }
+    
 }

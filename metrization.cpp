@@ -139,33 +139,6 @@ vector<int> findEqualLengths(const DerivedOnceNet& A) {
     return label;
 }
 
-// If it returns the empty vector, the net cannot be embedded in S^2.
-// Otherwise, it returns a vector len of size ssize(A.darts()).
-// len[d.id] = -1: We cannot determine the length of d.
-// len[d.id] > 0: The length of d is len[d.id].
-//~ vector<double> determineLengths(const DerivedOnceNet& A, vector<int> label) {
-    //~ vector<double> _len(2*A.E(), -1);
-    
-    //~ auto get_len = [&](const Dart& d) {
-        //~ return _len[label[d.id]];
-    //~ };
-    
-    //~ auto set_len = [&](const Dart& d, double x) {
-        //~ if (x <= eps) return false;
-        
-        //~ double& y = _len[label[d.id]];
-        //~ if (y > 0) {
-            //~ if (abs(x-y) > eps) return false;
-            //~ return true;
-        //~ }
-        //~ y = x;
-        //~ return true;
-    //~ };
-    
-    
-//~ }
-
-
 
 // TODO: This shall expose some decent APIs.
 class MetricDerivedOnceNet : public DerivedOnceNet {
@@ -178,7 +151,6 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
     // the same length.
     vector<int> _label;
     vector<MetricDart> _metric_darts;
-    vector<GeodesicSegment> _embedded_darts;
     
     bool equalLength(const Dart& d, const Dart& e) const {
         return _label[d.id] == _label[e.id]; 
@@ -191,6 +163,15 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
     const MetricDart& metricDart(const Dart& d) const { 
         return _metric_darts[_label[d.id]];
     }
+    
+    // If _len_darts[d.id] > 0, then we are able to determine that
+    // d has length _len_darts[d.id].
+    // It contains the same information as metricDart(d).len, but it is
+    // conceptually easier to access.
+    vector<double> _len_darts;
+    
+    double dartLen(const Dart& d) const { return _len_darts[d.id]; }
+    bool isLenKnown(const Dart& d) const { return _len_darts[d.id] > 0; }
     
     void determineRegularFace(const Dart& d) {
         if (!isConvexFace(d))
@@ -311,33 +292,32 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
         }
     }
     
-    // Temporary storage for the dfs of embedDart
-    vector<Dart> _visited_darts;
-    void embedDart(const Dart& d, TangentVector tv) {
-        MetricDart& md = metricDart(d);
-        GeodesicSegment& ed = _embedded_darts[d.id];
+    void embedDart(const Dart& d, TangentVector tv, 
+                   vector<GeodesicSegment>& embedded_darts) {
+        GeodesicSegment& ed = embedded_darts[d.id];
         
-        if (!md.known)
+        if (!isLenKnown(d))
             return;
-        if (ed.len >= 0) { // Check == tv
-            if (norm(ed.P - tv.P) > eps or
-                norm(ed.V - tv.V) > eps)
-                md.consistent = false;
-            
+        if (ed.len >= 0) { // Check ed == tv
+            consistent &= norm(ed.P - tv.P) < eps 
+                          and norm(ed.V - tv.V) < eps;
             return;
         }
-        _visited_darts.push_back(d);
-        ed = {tv, md.len};
-        TangentVector rev_d = tv.exp(md.len);
+        
+        double len = dartLen(d);
+        ed = {tv, len};
+        TangentVector rev_d = tv.exp(len);
         rev_d.V = -rev_d.V;
-        embedDart(rev(d), rev_d);
+        embedDart(rev(d), rev_d, embedded_darts);
         
         if (degree(d.from) == 3) {
-            embedDart(next(d), tv.rot(-2*M_PI/3));
-            embedDart(next(next(d)), tv.rot(2*M_PI/3));
+            embedDart(next(d), tv.rot(-2*M_PI/3), embedded_darts);
+            embedDart(next(next(d)), tv.rot(2*M_PI/3), embedded_darts);
         } else if (degree(d.from == 2)) {
-            if (isConcaveAngle(rev(d))) embedDart(next(d), tv.rot(2*M_PI/3));
-            else embedDart(next(d), tv.rot(-2*M_PI/3));
+            if (isConcaveAngle(rev(d))) 
+                embedDart(next(d), tv.rot(2*M_PI/3), embedded_darts);
+            else 
+                embedDart(next(d), tv.rot(-2*M_PI/3), embedded_darts);
         }
     } 
     
@@ -377,27 +357,50 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
             
         // Step 4: Embed a part of the net (i.e., the darts whose length
         //         we were able to determine in step 2) in the sphere.
-        _embedded_darts.resize(2*E());
-                
-        for (Dart uff: darts()) {
-            if (_embedded_darts[uff.id].len > 0 or !metricDart(uff).known)
+        _len_darts.resize(2*E(), -1);
+        for (const Dart& d: darts()) {
+            if (metricDart(d).known) {
+                _len_darts[d.id] = metricDart(d).len;
+            }
+        }
+        
+        vector<bool> visited_darts(2*E(), false);
+        vector<vector<GeodesicSegment>> embedded_components;
+        vector<vector<Dart>> active_components;
+        
+        for (const Dart& d: darts()) {
+            if (visited_darts[d.id] or dartLen(d) < 0)
                 continue;
-            _visited_darts.clear();
-            embedDart(uff, TangentVector());
+            vector<GeodesicSegment> embedded_darts(2*E());
+            vector<Dart> active_darts;
+            embedDart(d, TangentVector(), embedded_darts);
+            for (int i = 0; i < 2*E(); i++) {
+                if (embedded_darts[i].len > 0) {
+                    visited_darts[i] = true;
+                    active_darts.push_back(dart(i));
+                }
+            }
             
             if (!isConsistent())
                 return;
+            embedded_components.push_back(embedded_darts);
+            active_components.push_back(active_darts);
+        }
+        
+        // Step 5: Check that all embedded components are non-self-intersecting.
+        for (int _ = 0; _ < ssize(embedded_components); _++) {
+            const vector<GeodesicSegment>& embedded_darts = embedded_components[_];
+            const vector<Dart>& active_darts = active_components[_];
             
-            // Check non-intersection of the embedded darts.
-            for (Dart x: _visited_darts) for (Dart y: _visited_darts) {
+            for (const Dart& x: active_darts) for (const Dart& y: active_darts) {
                 if (x.from > x.to)
                     continue;
                 if (y.from > y.to)
                     continue;
                 if (x.from == y.from and x.to == y.to)
                     continue;
-                GeodesicSegment& ex = _embedded_darts[x.id];
-                GeodesicSegment& ey = _embedded_darts[y.id];
+                const GeodesicSegment& ex = embedded_darts[x.id];
+                const GeodesicSegment& ey = embedded_darts[y.id];
                 if (x.from == y.from or x.from == y.to or
                     x.to == y.from or x.to == y.to) {
                     if (ex.len > M_PI + eps and ey.len > M_PI + eps)
@@ -408,11 +411,17 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
             
             if (!isConsistent())
                 return;
-            
+        }
+        
+        // Step 6: Look for inconsistencies involving the two pins.
+        for (int _ = 0; _ < ssize(embedded_components); _++) {
+            const vector<GeodesicSegment>& embedded_darts = embedded_components[_];
+            const vector<Dart>& active_darts = active_components[_];
+               
             vector<pt> equators_with_pin;
-            for (Dart d: _visited_darts) { 
+            for (const Dart& d: active_darts) { 
                 if (isConcaveAngle(d)) {
-                    GeodesicSegment ed = _embedded_darts[rev(d).id];
+                    GeodesicSegment ed = embedded_darts[rev(d).id];
                     equators_with_pin.push_back(ed.rot(-2*M_PI/3).equatorNormal());
                 }
             }
@@ -427,49 +436,44 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
                     break;
                 }
             }
-            if (!pins.empty()) {
-                for (pt eq: equators_with_pin) {
-                    if (!areOrthogonal(pins[0], eq)) {
-                        consistent = false;
-                    }
-                }
-            }
-            
-            auto is_face_determined = [&](Dart d) {
-                bool determined = true;
-                for (Dart e: face(d))
-                    determined &= metricDart(e).known;
-                return determined;
-            };
-            
-            auto is_good_region = [&](Dart d) {
-                return is_face_determined(d) and isConvexFace(d);
-            };
-            
-            auto good_boundary = [&](Dart d) {
-                return is_good_region(d) and !is_good_region(rev(d));
-            };
             
             // TODO: For some reason, we are never able to determine the pin positions! This is rather strange.
             assert(pins.empty());
             
-            for (Dart d: _visited_darts) { 
+            if (!pins.empty()) {
+                for (pt eq: equators_with_pin) 
+                    consistent &= areOrthogonal(pins[0], eq);
+            }
+            
+            auto is_face_determined = [&](const Dart& d) {
+                bool determined = true;
+                for (Dart e: face(d))
+                    determined &= dartLen(e) > 0;
+                return determined;
+            };
+            
+            auto is_good_region = [&](const Dart& d) {
+                return is_face_determined(d) and isConvexFace(d);
+            };
+            
+            auto good_boundary = [&](const Dart& d) {
+                return is_good_region(d) and !is_good_region(rev(d));
+            };
+            
+            for (const Dart& d: active_darts) { 
                 if (isConcaveAngle(d) and isConvexFace(rev(d)) 
                     and is_face_determined(rev(d))) {
                     bool intersection = false;
-                    TangentVector ed = _embedded_darts[rev(d).id].rot(M_PI/3);
+                    TangentVector ed = embedded_darts[rev(d).id].rot(M_PI/3);
                      // TODO: Bad! This is ugly, but doing it properly
                      //       requires some thought.
                      //       Needs to be fixed asap.
                     GeodesicSegment gs(ed, M_PI-1e-3);
-                    for (Dart e: _visited_darts) {
+                    for (const Dart& e: active_darts) {
                         if (e.from == d.to or e.to == d.to)
                             continue;
-                        GeodesicSegment gs2 = _embedded_darts[e.id];
+                        GeodesicSegment gs2 = embedded_darts[e.id];
                         gs2.len += 1e-3;
-                        
-                        //~ if (good_boundary(e))
-                            //~ cout << e << endl;
                         
                         if (good_boundary(e) and areIntersecting(gs2, gs))
                             intersection = true;

@@ -290,6 +290,11 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
             if (0 < u and u < M_PI)
                 metricDart(phi(d)).setLowerBound(2*atan(0.5 / tan(u/2)) - eps);
         }
+        // It seems like Conjecture 21.2 is not useful.
+        //~ if (faceAnglesDeg(d) == vector<int>{120, 120, 240, 120, 240}) {
+            //~ metricDart(d).setUpperBound(REGULAR_SIDES[3]-eps);
+            //~ metricDart(phi(d, 2)).setUpperBound(REGULAR_SIDES[3]-eps);
+        //~ }
     }
     
     void embedDart(const Dart& d, TangentVector tv, 

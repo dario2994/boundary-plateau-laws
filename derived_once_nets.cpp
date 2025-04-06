@@ -97,6 +97,18 @@ class DerivedOnceNet : public CombinatorialMap {
         return angles;
     }
     
+    // Returns the angles (in degrees) of the face, starting from the
+    // one just after d.
+    vector<int> faceAnglesDeg(const Dart& d) const {
+        vector<int> angles;
+        for (const Dart& e: face(d)) {
+            int angle = isConcaveAngle(e) ? 240 : 120;
+            angles.push_back(angle);
+        }
+        return angles;
+    }
+    
+    
     bool isConvexFace(const vector<Dart>& f) const {
         return isConvexFace(f[0]);
     }

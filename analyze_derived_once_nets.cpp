@@ -16,6 +16,33 @@ int countObtuseAngles(const DerivedOnceNet& A, Dart d) {
     return res;
 }
 
+int sumAreaConvexFaces(const DerivedOnceNet& A) {
+    int res = 0;
+    for (auto face: A.faces()) {
+        if (A.isConvexFace(face))
+            res += A.faceArea(face);
+    }
+    return res;
+}
+
+int pinContribution(const DerivedOnceNet& A, Dart d) {
+    if (A.faceType(d).second != 2)
+        return 0;
+    //~ assert(A.degree(d.from) == 3 and A.degree(d.to) == 3);
+    int dist = -1;
+    Dart curr = d;
+    while (1) {
+        if (A.isConcaveAngle(curr)) {
+            if (dist == -1) dist = 1;
+            else break;
+        } else if (dist >= 0) dist++;
+        
+        curr = A.phi(curr);
+    }
+    int contribution = max(4-dist, 0);
+    return contribution;
+}
+
 vector<DerivedOnceNet> parseDerivedOnceNets(string in_file) {
     ifstream in(in_file);
     int cnt;
@@ -179,24 +206,31 @@ int main() {
     //~ MetricDerivedOnceNet mdon(derived_once[1476]);
     //~ cout << mdon.isConsistent() << endl;
     
-    //~ return 0;
-        
+    //~ return 0;        
     
-    int cnt_interesting1 = 0;
-    int cnt_interesting2 = 0;
+    int cnt_interesting = 0;
     for (int id: survivors) {
         const DerivedOnceNet& A = derived_once[id];
-        bool interesting1=containsAdjacentQuadrilaterals(A);
-        bool interesting2=containsDoubleBlade(A);
-        cnt_interesting1 += interesting1;
-        cnt_interesting2 += interesting2;
-        if (interesting2) {
-            cout << id << endl;
+        if (containsPentagonTwoObtuse(A)==false) continue;
+        int area1=2+sumAreaConvexFaces(A);
+        if (containsBiangle(A)==true) area1=area1-4; 
+        Dart opposite;
+        for (Dart d:A.darts()) {
+            if (A.faceType(d)!=pair <int,int> {5,2}) continue;
+            if ((A.degree((A.phi(d).to))==2) 
+                and (A.degree((A.phi(A.phi(A.phi(d)))).to)==2)) {
+                opposite=d;
+                break;
+            }
         }
+        int area2=pinContribution(A,opposite);
+        if (area2+area1>5) continue;
+        cnt_interesting=cnt_interesting+1;
+        cout << id << endl;
     }
     cout << endl;
-    cout << "Ci sono "<< cnt_interesting1 << " reti con due quadrilateri convessi adiacenti" << endl;
-    cout << "In "<< cnt_interesting2 << " di queste i due quadrilateri hanno" << endl;
-    cout << "quattro edge in comune con due pentagoni convessi isosceli" << endl;
+    cout << "Ci sono "<< cnt_interesting << " reti con un pentagono {5,1}" << endl;
+    cout << "in cui il lato opposto agli angoli concavi potrebbe" << endl;
+    cout << "essere lungo pi greco o piu'" << endl;
 }
 

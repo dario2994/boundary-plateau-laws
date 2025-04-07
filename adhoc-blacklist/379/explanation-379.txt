@@ -1,1 +1,6 @@
-The net contains a quadrilateral with adjacent concave angles. Recall that the argument given in the overleaf divides into two cases: the easy and the difficult one. The easy one can be applied without any restriction. For the difficult one we need the quadrilateral to show apriori that the edges are shorter than pi. The edges which connect to pin are shown to satisfy this property diectly in the overleaf. So we need to show that 01 is shorter than pi: but this edge is in common with a convex-triangle.
+The net contains a quadrilateral with adjacent concave angles. 
+Recall that the argument given in the overleaf divides into two cases: the easy and the difficult one. 
+The easy one can be applied without any restriction. For the difficult one we need the quadrilateral 
+to show apriori that the edges are shorter than pi. The edges which connect to pin are shown to 
+satisfy this property diectly in the overleaf. So we need to show that 01 is shorter than pi: 
+but this edge is in common with a convex-triangle.

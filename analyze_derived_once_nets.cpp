@@ -229,7 +229,7 @@ int main() {
         cout << id << endl;
     }
     cout << endl;
-    cout << "Ci sono "<< cnt_interesting << " reti con un pentagono {5,1}" << endl;
+    cout << "Ci sono "<< cnt_interesting << " reti con un pentagono {5,2}" << endl;
     cout << "in cui il lato opposto agli angoli concavi potrebbe" << endl;
     cout << "essere lungo pi greco o piu'" << endl;
 }

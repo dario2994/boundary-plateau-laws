@@ -8,8 +8,8 @@ typedef unsigned long long ULL;
 #include "metrization.cpp"
 
 
-vector<DerivedOnceNet> parseDerivedOnceNets() {
-    ifstream in("data/derived_once_computer.txt");
+vector<DerivedOnceNet> parseDerivedOnceNets(string in_file) {
+    ifstream in(in_file);
     int cnt;
     in >> cnt;
     vector<DerivedOnceNet> res;
@@ -377,7 +377,7 @@ bool criterionMetrization(const DerivedOnceNet& A) {
 
 int main() {
     vector<DerivedOnceNet> derived_once = 
-        parseDerivedOnceNets();
+        parseDerivedOnceNets("data/derived_once_computer.txt");
     cout << "There are " << derived_once.size()
          << " derived-once net candidates." << endl << endl;
          
@@ -410,7 +410,7 @@ int main() {
     auto parse_subdirectories = [&](string directory_path) {
         vector<int> subdirs;
 
-        for (const auto& entry : filesystem::directory_iterator(directory_path)) {
+        for (const auto& entry: filesystem::directory_iterator(directory_path)) {
             if (entry.is_directory()) {
                 string filename = entry.path().filename().string();
                 int num = stoi(filename);
@@ -422,6 +422,39 @@ int main() {
     }; 
     vector<int> blacklisted = parse_subdirectories("adhoc-blacklist/");
     vector<int> whitelisted = parse_subdirectories("adhoc-whitelist/");
+    
+    vector<DerivedOnceNet> derived_once_old = 
+        parseDerivedOnceNets("data/derived_once_computer_old.txt");
+        
+    auto findNet = [&](const DerivedOnceNet& A) {
+        auto B = symmetrize(A);
+        bool found = false;
+        for (int new_id = 0; new_id < ssize(derived_once); new_id++) {
+            if (areIsomorphic(A, derived_once[new_id])
+                or areIsomorphic(B, derived_once[new_id])) {
+                return new_id;
+            }
+        }
+        assert(0);
+        return -1;
+    };
+        
+    // Renaming whitelist and blacklist if the numbering changes.
+    //~ cout << "BLACK: " << endl;
+    //~ for (int old_id: blacklisted) {
+        //~ int new_id = findNet(derived_once_old[old_id]);
+        //~ cout << old_id << ": " << new_id << endl;
+        //~ filesystem::rename("adhoc-blacklist/" + to_string(old_id),
+                           //~ "adhoc-blacklist/" + to_string(new_id));
+    //~ }
+    
+    //~ cout << "WHITE: " << endl;
+    //~ for (int old_id: whitelisted) {
+        //~ int new_id = findNet(derived_once_old[old_id]);
+        //~ cout << old_id << ": " << new_id << endl;
+        //~ filesystem::rename("adhoc-whitelist/" + to_string(old_id),
+                           //~ "adhoc-whitelist/" + to_string(new_id));
+    //~ }
 
     vector<int> excluded_white;
     vector<int> excluded_black;

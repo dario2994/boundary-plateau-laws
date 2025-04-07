@@ -346,15 +346,6 @@ bool criterionPent1(const DerivedOnceNet& A) {
     return true;
 }
 
-bool criterionPent2(const DerivedOnceNet& A) {
-    for (Dart d:A.darts()) {
-        if (A.faceType(d)!=pair<int,int> {5,2}) continue;
-        if ((A.degree(d.to)==2) and (A.faceType(A.rev(d))==pair<int,int> {3,0}))
-            return false;       
-    }
-    return true;
-}
-
 //bool criterioSperimentale(const DerivedOnceNet& A) {
 //    pair <int,int> quad = {4,0};
 //    pair <int,int> pent = {5,0};
@@ -401,7 +392,6 @@ int main() {
         {"metrization\t\t", criterionMetrization},
         //{"criterio sperimentale\t",criterioSperimentale},
         {"pentagon {5,1} + quadrilaterals", criterionPent1},
-        {"pentagon {5,2} + triangle", criterionPent2}
     };
     
     map<string, vector<int>> excluded_by; 

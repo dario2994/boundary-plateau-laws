@@ -211,26 +211,11 @@ int main() {
     int cnt_interesting = 0;
     for (int id: survivors) {
         const DerivedOnceNet& A = derived_once[id];
-        if (containsPentagonTwoObtuse(A)==false) continue;
-        int area1=2+sumAreaConvexFaces(A);
-        if (containsBiangle(A)==true) area1=area1-4; 
-        Dart opposite;
-        for (Dart d:A.darts()) {
-            if (A.faceType(d)!=pair <int,int> {5,2}) continue;
-            if ((A.degree((A.phi(d).to))==2) 
-                and (A.degree((A.phi(A.phi(A.phi(d)))).to)==2)) {
-                opposite=d;
-                break;
-            }
-        }
-        int area2=pinContribution(A,opposite);
-        if (area2+area1>5) continue;
-        cnt_interesting=cnt_interesting+1;
+        if (containsBiangle(A)==false) continue;
         cout << id << endl;
+        cnt_interesting++;
     }
     cout << endl;
-    cout << "Ci sono "<< cnt_interesting << " reti con un pentagono {5,2}" << endl;
-    cout << "in cui il lato opposto agli angoli concavi potrebbe" << endl;
-    cout << "essere lungo pi greco o piu'" << endl;
+    cout << "Ci sono "<< cnt_interesting << " reti con un biangolo " << endl;
 }
 

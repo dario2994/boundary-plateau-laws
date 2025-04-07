@@ -14,6 +14,10 @@ static const vector<double> REGULAR_SIDES = {-1, -1,
     acos(-1.0/3), // triangle
     2*atan(sqrt(0.5)), // quadrilateral
     acos(sqrt(5)/3)}; // pentagon
+    
+// The length a = 58.25684287.. given by Taylor at page 502.
+// If x = tan(a/2), then 8x^6+39x^4-4=0. 
+static const double QUAD_PENT = 1.0167737169750890006208651870679862;
 
 // Information on the length of a dart.
 // If consistent = false, we have discovered an inconsistency. In this
@@ -184,8 +188,7 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
             return;
         
         int n = ssize(face(d));
-        for (const Dart& e: face(d))
-            metricDart(d).setLen(REGULAR_SIDES[n]);
+        metricDart(d).setLen(REGULAR_SIDES[n]);
     }
     
     void determineFace(const Dart& d) {
@@ -269,8 +272,7 @@ class MetricDerivedOnceNet : public DerivedOnceNet {
     
     void enforceSideInequalities(const Dart& d) {
         if (faceType(d) == pair<int,int>{5, 0}) {
-            for (const Dart& e: face(d))
-                metricDart(d).setUpperBound(REGULAR_SIDES[3]);
+            metricDart(d).setUpperBound(REGULAR_SIDES[3]-eps);
         }
         if (faceType(d) == pair<int,int>{5, 1} and isConcaveAngle(d)) {
             for (int i: {0, 1, 2, 4}) // TODO: We prove a bit less

@@ -423,21 +423,21 @@ int main() {
     vector<int> blacklisted = parse_subdirectories("adhoc-blacklist/");
     vector<int> whitelisted = parse_subdirectories("adhoc-whitelist/");
     
-    vector<DerivedOnceNet> derived_once_old = 
-        parseDerivedOnceNets("data/derived_once_computer_old.txt");
+    //~ vector<DerivedOnceNet> derived_once_old = 
+        //~ parseDerivedOnceNets("data/derived_once_computer_old.txt");
         
-    auto findNet = [&](const DerivedOnceNet& A) {
-        auto B = symmetrize(A);
-        bool found = false;
-        for (int new_id = 0; new_id < ssize(derived_once); new_id++) {
-            if (areIsomorphic(A, derived_once[new_id])
-                or areIsomorphic(B, derived_once[new_id])) {
-                return new_id;
-            }
-        }
-        assert(0);
-        return -1;
-    };
+    //~ auto findNet = [&](const DerivedOnceNet& A) {
+        //~ auto B = symmetrize(A);
+        //~ bool found = false;
+        //~ for (int new_id = 0; new_id < ssize(derived_once); new_id++) {
+            //~ if (areIsomorphic(A, derived_once[new_id])
+                //~ or areIsomorphic(B, derived_once[new_id])) {
+                //~ return new_id;
+            //~ }
+        //~ }
+        //~ assert(0);
+        //~ return -1;
+    //~ };
         
     // Renaming whitelist and blacklist if the numbering changes.
     //~ cout << "BLACK: " << endl;

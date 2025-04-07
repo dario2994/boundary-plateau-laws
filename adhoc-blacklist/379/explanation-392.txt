@@ -1,3 +1,0 @@
-Note that to apply the argument excluding concave angles reported in the overleaf we just need 
-to show that 01 is no longer than \pi. This is obvious because it is also the edge of a
-convex triangle.

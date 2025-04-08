@@ -1,0 +1,1 @@
+Eliminating all the triangles we get to a cycle with 4 vertices which subdivides the sphere into two quadrilaterals with consecutive concave angles. It is shown in the classification of the extinct nets that the latter configuration is not possible.

@@ -1,0 +1,1 @@
+We apply iteratively the triangle elimination until we arrive to a net without triangles. This is done three times. The nonconvex face which is a {7,1} looses a vertex three times until it becomes a {4,1} quadrilateral. However the latter does not exist 

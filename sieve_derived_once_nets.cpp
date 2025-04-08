@@ -71,12 +71,30 @@ bool containsLongEdges(const DerivedOnceNet& A) {
                 6 + pinContribution(A, d) + pinContribution(A, e))
             continue;
 
-        //aggiunto da Camillo, vedi Lemma 4.7(iv)
+        //aggiunto da Camillo, vedi Lemma 4.7(iv)&(v)
 
-        if ((A.faceArea(d)<=pinContribution(A,d)+4) 
-                or (A.faceArea(e)<=pinContribution(A,e)+4))
+        if (((A.degree(d.to)==2) or (A.degree(d.from)==2))
+            and ((A.faceArea(d)<=pinContribution(A,d)+4) 
+                or (A.faceArea(e)<=pinContribution(A,e)+4)))
             continue;
 
+        if ((A.degree((A.phi(d)).to)==2) and (A.faceArea(d)<=4))
+            continue;
+
+        if ((A.degree((A.phi(e)).to)==2) and (A.faceArea(e)<=4))
+            continue;
+        
+        Dart pred=d;
+        for (int i=0; i <(A.faceType(d)).first-1; i++) 
+            pred=A.phi(pred);
+        if ((A.degree(pred.from)==2) and (A.faceArea(d)<=4))
+                continue;
+        
+        pred=e;
+        for (int i=0; i <(A.faceType(d)).first-1; i++) 
+        pred=A.phi(pred);
+        if ((A.degree(pred.from)==2) and (A.faceArea(e)<=4))
+            continue;  
         return true;
         
     }

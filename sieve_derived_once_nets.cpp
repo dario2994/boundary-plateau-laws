@@ -398,6 +398,21 @@ bool criterionTriangleAndNonConvexMerge(const DerivedOnceNet& A) {
 //    return true;
 //}
 
+bool criterionPentagon2Quadrilaterals(const DerivedOnceNet& A) {
+    pair<int,int> quad={4,0};
+    pair<int,int> pent={5,0};
+    for (Dart d:A.darts()) {
+        Dart e=A.rev(d);
+        if ((A.faceType(d)!=quad) or (A.faceType(A.rev(e))!=quad))
+            continue;
+        if (A.faceType(A.rev(A.phi(d)))!=pent) continue;
+        if ((A.degree((A.phi(e)).to)==2) 
+            and (A.degree((A.phi(A.phi(d))).to)==2))
+                return false;
+    }
+    return true;    
+}
+
 bool criterionMetrization(const DerivedOnceNet& A) {
     return MetricDerivedOnceNet(A).isConsistent();
 }
@@ -429,6 +444,7 @@ int main() {
         //{"criterio sperimentale\t",criterioSperimentale},
         {"pentagon {5,1} + quadrilaterals", criterionPent1},
         {"convex triangle + {n,1} face",criterionTriangleAndNonConvexMerge},
+        {"pentagon 2 quadrilaterals",criterionPentagon2Quadrilaterals},
     };
     
     map<string, vector<int>> excluded_by; 

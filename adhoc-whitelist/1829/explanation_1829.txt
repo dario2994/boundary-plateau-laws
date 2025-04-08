@@ -1,0 +1,1 @@
+This is the net obtained from Heppes 7 removing the appropriate edges.

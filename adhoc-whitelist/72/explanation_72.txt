@@ -1,0 +1,1 @@
+This is the net which is obtained from removing the appropriate edges from the dodecahedron.

@@ -186,6 +186,42 @@ bool containsDoubleBlade(const DerivedOnceNet& A) {
     return false;
 }
 
+bool findPentagonalPrism(const DerivedOnceNet& A) {
+    for (auto face:A.faces()) {
+        Dart d=face[0];
+        if ((A.faceType(d)!= pair<int,int> {7,2}) and
+            (A.faceType(d)!= pair<int,int> {4,0})) return false;
+    }    
+    return true;
+}
+
+bool findDodecahedron(const DerivedOnceNet& A) {
+    for (auto face:A.faces()) {
+        Dart d=face[0];
+        if ((A.faceType(d)!= pair<int,int> {8,2}) and
+            (A.faceType(d)!= pair<int,int> {5,0})) return false;
+    }    
+    return true;
+}
+
+bool findHeppes7(const DerivedOnceNet& A) {
+    for (auto face:A.faces()) {
+        Dart d=face[0];
+        if ((A.faceType(d)!= pair<int,int> {7,2}) and
+            (A.faceType(d)!= pair<int,int> {5,0})) return false;
+    }    
+    return true;
+}
+
+bool findHeppes5(const DerivedOnceNet& A) {
+    for (auto face:A.faces()) {
+        Dart d=face[0];
+        if ((A.faceType(d)!= pair<int,int> {6,2}) and
+            (A.faceType(d)!= pair<int,int> {5,0})) return false;
+    }    
+    return true;
+}
+
 int main() {
     vector<DerivedOnceNet> derived_once = 
         parseDerivedOnceNets("data/derived_once_computer.txt");
@@ -211,11 +247,11 @@ int main() {
     int cnt_interesting = 0;
     for (int id: survivors) {
         const DerivedOnceNet& A = derived_once[id];
-        if (containsTriangle(A)==false) continue;
+        if (findHeppes5(A)==false) continue;
         cout << id << endl;
         cnt_interesting++;
     }
     cout << endl;
-    cout << "Ci sono "<< cnt_interesting << " reti con un triangolo " << endl;
+    cout << "Ci sono "<< cnt_interesting << " candidati per Heppes 5 " << endl;
 }
 

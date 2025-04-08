@@ -70,6 +70,13 @@ bool containsLongEdges(const DerivedOnceNet& A) {
         if (A.faceArea(d) + A.faceArea(e) <= 
                 6 + pinContribution(A, d) + pinContribution(A, e))
             continue;
+
+        //aggiunto da Camillo, vedi Lemma 4.7(iv)
+
+        if ((A.faceArea(d)<=pinContribution(A,d)+4) 
+                or (A.faceArea(e)<=pinContribution(A,e)+4))
+            continue;
+
         return true;
         
     }

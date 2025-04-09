@@ -399,15 +399,16 @@ bool criterionTriangleAndNonConvexMerge(const DerivedOnceNet& A) {
 //}
 
 bool criterionPentagon2Quadrilaterals(const DerivedOnceNet& A) {
-    pair<int,int> quad={4,0};
-    pair<int,int> pent={5,0};
-    for (Dart d:A.darts()) {
-        Dart e=A.rev(d);
-        if ((A.faceType(d)!=quad) or (A.faceType(A.rev(e))!=quad))
+    pair<int,int> quad = {4, 0};
+    pair<int,int> pent = {5, 0};
+    for (Dart d: A.darts()) {
+        Dart e = A.rev(d);
+        if (A.faceType(d) != quad or A.faceType(e) != quad)
             continue;
-        if (A.faceType(A.rev(A.phi(d)))!=pent) continue;
-        if ((A.degree((A.phi(e)).to)==2) 
-            and (A.degree((A.phi(A.phi(d))).to)==2))
+        if (A.faceType(A.rev(A.phi(d))) != pent) 
+            continue;
+        if (A.degree(A.phi(e).to) == 2 
+            and A.degree(A.phi(d, 2).to) == 2)
                 return false;
     }
     return true;    

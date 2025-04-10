@@ -213,12 +213,33 @@ bool findHeppes7(const DerivedOnceNet& A) {
     return true;
 }
 
+bool containsTripleQuadrilateral(const DerivedOnceNet &A) {
+    pair<int,int> quad = {4,0}; 
+    for (Dart d:A.darts()) {
+        if ((A.faceType(d)!=quad) or (A.faceType(A.rev(d))!= quad))
+            continue;
+        if (A.faceType(A.rev(A.phi(A.phi(d))))==quad) return true;
+    }
+    return false;
+}
+
 bool findHeppes5(const DerivedOnceNet& A) {
     for (auto face:A.faces()) {
         Dart d=face[0];
         if ((A.faceType(d)!= pair<int,int> {6,2}) and
             (A.faceType(d)!= pair<int,int> {5,0})) return false;
     }    
+    return true;
+}
+
+bool findFalange(const DerivedOnceNet& A) {
+    if (containsTripleQuadrilateral(A)==false) return false;
+    for (Dart d: A.darts()) {
+        if ((A.faceType(d)!=pair<int,int> {4,0}) and
+            (A.faceType(d)!=pair<int,int> {5,1}) and
+            (A.faceType(d)!=pair<int,int> {6,1}) and
+            (A.faceType(d)!=pair<int,int> {7,1})) return false;
+    }
     return true;
 }
 
@@ -247,11 +268,11 @@ int main() {
     int cnt_interesting = 0;
     for (int id: survivors) {
         const DerivedOnceNet& A = derived_once[id];
-        if (findHeppes5(A)==false) continue;
+        if (findFalange(A)==false) continue;
         cout << id << endl;
         cnt_interesting++;
     }
     cout << endl;
-    cout << "Ci sono "<< cnt_interesting << " candidati per Heppes 5 " << endl;
+    cout << "Ci sono "<< cnt_interesting << " reti con una potenziale falange " << endl;
 }
 

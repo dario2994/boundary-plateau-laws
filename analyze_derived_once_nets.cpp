@@ -247,8 +247,8 @@ bool findInteresting(const DerivedOnceNet& A) {
     if (containsTripleQuadrilateral(A)==false) return false;
     for (Dart d:A.darts()) {
         if ((A.faceType(d)!=pair<int,int> {4,0}) and
-            (A.faceType(d)!=pair<int,int> {6,1}) and
-            (A.faceType(d)!=pair<int,int> {6,2})) return false;  
+            (A.faceType(d)!=pair<int,int> {7,1}) and
+            (A.faceType(d)!=pair<int,int> {7,2})) return false;  
     }
     return true;
 }
@@ -278,12 +278,11 @@ int main() {
     int cnt_interesting = 0;
     for (int id: survivors) {
         const DerivedOnceNet& A = derived_once[id];
-        if (containsTripleQuadrilateral(A)==false) continue;
-        if (containsTriangle(A)==false) continue;
+        if (findInteresting(A)==false) continue;
         cout << id << endl;
         cnt_interesting++;
     }
     cout << endl;
-    cout << "Ci sono "<< cnt_interesting << " potenzialmente riducibile alla 2995 " << endl;
+    cout << "Ci sono "<< cnt_interesting << " candidate " << endl;
 }
 

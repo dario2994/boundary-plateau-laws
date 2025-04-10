@@ -244,11 +244,11 @@ bool findFalange(const DerivedOnceNet& A) {
 }
 
 bool findInteresting(const DerivedOnceNet& A) {
-    if (containsAdjacentQuadrilaterals(A)==false) return false;
+    if (containsTripleQuadrilateral(A)==false) return false;
     for (Dart d:A.darts()) {
         if ((A.faceType(d)!=pair<int,int> {4,0}) and
-            (A.faceType(d)!=pair<int,int> {5,1}) and
-            (A.faceType(d)!=pair<int,int> {5,2})) return false;  
+            (A.faceType(d)!=pair<int,int> {6,1}) and
+            (A.faceType(d)!=pair<int,int> {6,2})) return false;  
     }
     return true;
 }
@@ -278,12 +278,12 @@ int main() {
     int cnt_interesting = 0;
     for (int id: survivors) {
         const DerivedOnceNet& A = derived_once[id];
-        if (containsAdjacentQuadrilaterals(A)==false) continue;
+        if (containsTripleQuadrilateral(A)==false) continue;
         if (containsTriangle(A)==false) continue;
         cout << id << endl;
         cnt_interesting++;
     }
     cout << endl;
-    cout << "Ci sono "<< cnt_interesting << " reti che si potrebbero ridurre alla 1508 " << endl;
+    cout << "Ci sono "<< cnt_interesting << " potenzialmente riducibile alla 2995 " << endl;
 }
 

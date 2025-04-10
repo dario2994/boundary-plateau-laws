@@ -1,0 +1,1 @@
+After eliminating all the triangles the net becomes the 2995 which is already blacklisted.

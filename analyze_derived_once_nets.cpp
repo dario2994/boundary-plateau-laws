@@ -70,7 +70,7 @@ bool containsTriangleQuadrilateral(const DerivedOnceNet& A) {
             A.faceType(A.rev(d))==pair<int,int> {4,0}) 
             return true;
     }
-    return false;        
+    return false;       
 }
 
 bool containsBiangle(const DerivedOnceNet& A) {
@@ -243,6 +243,16 @@ bool findFalange(const DerivedOnceNet& A) {
     return true;
 }
 
+bool findInteresting(const DerivedOnceNet& A) {
+    if (containsAdjacentQuadrilaterals(A)==false) return false;
+    for (Dart d:A.darts()) {
+        if ((A.faceType(d)!=pair<int,int> {4,0}) and
+            (A.faceType(d)!=pair<int,int> {5,1}) and
+            (A.faceType(d)!=pair<int,int> {5,2})) return false;  
+    }
+    return true;
+}
+
 int main() {
     vector<DerivedOnceNet> derived_once = 
         parseDerivedOnceNets("data/derived_once_computer.txt");
@@ -268,11 +278,11 @@ int main() {
     int cnt_interesting = 0;
     for (int id: survivors) {
         const DerivedOnceNet& A = derived_once[id];
-        if (findFalange(A)==false) continue;
+        if (findInteresting(A)==false) continue;
         cout << id << endl;
         cnt_interesting++;
     }
     cout << endl;
-    cout << "Ci sono "<< cnt_interesting << " reti con una potenziale falange " << endl;
+    cout << "Ci sono "<< cnt_interesting << " reti con due quadrilateri adiacenti e 4 facce in tutto " << endl;
 }
 

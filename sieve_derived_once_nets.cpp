@@ -414,6 +414,17 @@ bool criterionPentagon2Quadrilaterals(const DerivedOnceNet& A) {
     return true;    
 }
 
+bool ThreeconsecutiveQuadrPent(const DerivedOnceNet &A) {
+    pair<int,int> quad = {4,0}; 
+    for (Dart d:A.darts()) {
+        if ((A.faceType(d)!=quad) or (A.faceType(A.rev(d))!= quad))
+            continue;
+        Dart e=A.rev(A.phi(A.phi(d)));
+        if (A.faceType(e)!=quad) continue;
+    }
+    return false;
+}
+
 bool criterionMetrization(const DerivedOnceNet& A) {
     return MetricDerivedOnceNet(A).isConsistent();
 }

@@ -275,14 +275,11 @@ int main() {
     int cnt_interesting = 0;
     for (int id: survivors) {
         const DerivedOnceNet& A = derived_once[id];
-        if (containsPentagon(A)==true) continue;
-        if (containsTripleQuadrilateral(A)==true) continue;
-        if (containsAdjacentQuadrilaterals(A)==false) continue;
         if (containsTriangle(A)==false) continue;
         cout << id << endl;
         cnt_interesting++;
     }
     cout << endl;
-    cout << "Ci sono "<< cnt_interesting << " candidate figlie di 3233" << endl;
+    cout << "Ci sono "<< cnt_interesting << " reti con un triangolo" << endl;
 }
 

@@ -426,6 +426,29 @@ bool ThreeconsecutiveQuadrPent(const DerivedOnceNet &A) {
     return false;
 }
 
+bool NoSpecialHexagon(const DerivedOnceNet& A) {
+    if (containsLongEdges(A)==true) return true;
+    for (Dart d:A.darts()) {
+        if (A.faceType(d)!=pair<int,int> {6,2}) continue;
+        Dart tour=d;
+        int first=0;
+        int second=0;
+        bool crossed=false;
+        for (int i=0; i<6; i++) {
+            if (A.degree(tour.to)==2) {
+                if (crossed==false) {
+                    crossed=true;
+                    first=i;
+                }
+                else second=i;
+            }
+            tour=A.phi(tour);
+        }
+        if ((second-first)==2) return false;
+    }
+    return true;
+}
+
 bool criterionMetrization(const DerivedOnceNet& A) {
     return MetricDerivedOnceNet(A).isConsistent();
 }
@@ -458,6 +481,7 @@ int main() {
         {"pentagon {5,1} + quadrilaterals", criterionPent1},
         {"convex triangle + {n,1} face",criterionTriangleAndNonConvexMerge},
         {"pentagon 2 quadrilaterals",criterionPentagon2Quadrilaterals},
+        {"special hexagon {6,2}\t",NoSpecialHexagon},
     };
     
     map<string, vector<int>> excluded_by; 

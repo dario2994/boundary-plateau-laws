@@ -382,7 +382,7 @@ bool criterionTriangleAndNonConvexMerge(const DerivedOnceNet& A) {
     return true;
 }
 
-bool criterionPentagonTwoQuadrilateralsTwoBisectors(const DerivedOnceNet& A) {
+bool criterionPentagonTwoQuadrilateralsTwo(const DerivedOnceNet& A) {
     pair <int,int> quad = {4,0};
     pair <int,int> pent = {5,0};
     for (Dart d:A.darts()) {
@@ -454,7 +454,7 @@ int main() {
         {"2 quadrilaterals 3 pentagons", criterionTwoQuadrilateralsThreePentagons},
         {"consecutive degree 2 vertices", criterionConsecutiveVerticesDegree2},
         {"metrization\t\t", criterionMetrization},
-        {"pentagon 2 quadr. 2 bisectors",criterionPentagonTwoQuadrilateralsTwoBisectors},
+        {"pentagon 2 quadr. 2 bisectors",criterionPentagonTwoQuadrilateralsTwo},
         {"pentagon {5,1} + quadrilaterals", criterionPent1},
         {"convex triangle + {n,1} face",criterionTriangleAndNonConvexMerge},
         {"pentagon 2 quadrilaterals",criterionPentagon2Quadrilaterals},

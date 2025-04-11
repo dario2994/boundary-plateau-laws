@@ -390,10 +390,10 @@ bool criterionTriangleAndNonConvexMerge(const DerivedOnceNet& A) {
 //            continue;
 //        Dart e=A.rev(A.phi(d));
 //        if (A.faceType(e)!=pent) continue;
-//        if ((A.degree((A.phi(A.phi(d))).to)==2) and 
-//            (A.degree((A.phi(A.phi(e))).to)==2)) return false;
-//        if ((A.degree((A.phi(A.phi(A.rev(d)))).to)==2) and
-//            (A.degree((A.phi(A.phi(A.phi(e)))).to)==2)) return false;        
+//        if (((A.degree((A.phi(A.phi(d))).to)==2) 
+//            or (A.degree((A.phi(A.rev(d))).to)==2)) and
+//            ((A.degree((A.phi(A.phi(e))).to)==2) or 
+//            (A.degree((A.phi(A.phi(A.phi(e)))).to)==2))) return false;        
 //    }
 //    return true;
 //}
@@ -453,7 +453,7 @@ int main() {
         {"2 quadrilaterals 3 pentagons", criterionTwoQuadrilateralsThreePentagons},
         {"consecutive degree 2 vertices", criterionConsecutiveVerticesDegree2},
         {"metrization\t\t", criterionMetrization},
-        //{"criterio sperimentale\t",criterioSperimentale},
+        //       {"criterio sperimentale\t",criterioSperimentale},
         {"pentagon {5,1} + quadrilaterals", criterionPent1},
         {"convex triangle + {n,1} face",criterionTriangleAndNonConvexMerge},
         {"pentagon 2 quadrilaterals",criterionPentagon2Quadrilaterals},

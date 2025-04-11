@@ -244,11 +244,10 @@ bool findFalange(const DerivedOnceNet& A) {
 }
 
 bool findInteresting(const DerivedOnceNet& A) {
-    if (containsTripleQuadrilateral(A)==false) return false;
+    if (containsAdjacentQuadrilaterals(A)==false) return false;
+    if (containsTriangle(A)==false) return false;
     for (Dart d:A.darts()) {
-        if ((A.faceType(d)!=pair<int,int> {4,0}) and
-            (A.faceType(d)!=pair<int,int> {7,1}) and
-            (A.faceType(d)!=pair<int,int> {7,2})) return false;  
+        if (A.faceType(d)==pair<int,int> {5,0}) return false;
     }
     return true;
 }

@@ -243,14 +243,11 @@ bool findFalange(const DerivedOnceNet& A) {
     return true;
 }
 
-bool findInteresting(const DerivedOnceNet& A) {
-    if (containsAdjacentQuadrilaterals(A)==false) return false;
+bool containsPentagon(const DerivedOnceNet& A) {
     for (Dart d:A.darts()) {
-        if ((A.faceType(d)!=pair<int,int> {4,0}) and
-            (A.faceType(d)!=pair<int,int> {6,2}))
-             return false;
+        if (A.faceType(d)==pair <int,int> {5,0}) return true;
     }
-    return true;
+    return false;
 }
 
 int main() {
@@ -278,11 +275,14 @@ int main() {
     int cnt_interesting = 0;
     for (int id: survivors) {
         const DerivedOnceNet& A = derived_once[id];
+        if (containsPentagon(A)==true) continue;
+        if (containsTripleQuadrilateral(A)==true) continue;
+        if (containsAdjacentQuadrilaterals(A)==false) continue;
         if (containsTriangle(A)==false) continue;
         cout << id << endl;
         cnt_interesting++;
     }
     cout << endl;
-    cout << "Ci sono "<< cnt_interesting << " candidate con triangoli" << endl;
+    cout << "Ci sono "<< cnt_interesting << " candidate figlie di 3233" << endl;
 }
 

@@ -382,21 +382,22 @@ bool criterionTriangleAndNonConvexMerge(const DerivedOnceNet& A) {
     return true;
 }
 
-//bool criterioSperimentale(const DerivedOnceNet& A) {
-//    pair <int,int> quad = {4,0};
-//    pair <int,int> pent = {5,0};
-//    for (Dart d:A.darts()) {
-//        if ((A.faceType(d)!=quad) or (A.faceType(A.rev(d))!=quad))
-//            continue;
-//        Dart e=A.rev(A.phi(d));
-//        if (A.faceType(e)!=pent) continue;
-//        if (((A.degree((A.phi(A.phi(d))).to)==2) 
-//            or (A.degree((A.phi(A.rev(d))).to)==2)) and
-//            ((A.degree((A.phi(A.phi(e))).to)==2) or 
-//            (A.degree((A.phi(A.phi(A.phi(e)))).to)==2))) return false;        
-//    }
-//    return true;
-//}
+bool criterionPentagonTwoQuadrilateralsTwoBisectors(const DerivedOnceNet& A) {
+    pair <int,int> quad = {4,0};
+    pair <int,int> pent = {5,0};
+    for (Dart d:A.darts()) {
+        if ((A.faceType(d)!=quad) 
+            or (A.faceType(A.rev(d))!=quad)) continue;
+        Dart e=A.rev(A.phi(d));
+        if (A.faceType(e)!=pent) continue;
+        if ((A.degree((A.phi(A.phi(d))).to)==2) and
+            (A.degree((A.phi(A.phi(e))).to)==2)) return false;
+        if ((A.degree((A.phi(A.rev(d))).to)==2) and
+            (A.degree((A.phi(A.phi(A.phi(e)))).to)==2)) 
+            return false;        
+    }
+    return true;
+}
 
 bool criterionPentagon2Quadrilaterals(const DerivedOnceNet& A) {
     pair<int,int> quad = {4, 0};
@@ -453,7 +454,7 @@ int main() {
         {"2 quadrilaterals 3 pentagons", criterionTwoQuadrilateralsThreePentagons},
         {"consecutive degree 2 vertices", criterionConsecutiveVerticesDegree2},
         {"metrization\t\t", criterionMetrization},
-        //       {"criterio sperimentale\t",criterioSperimentale},
+        {"pentagon 2 quadr. 2 bisectors",criterionPentagonTwoQuadrilateralsTwoBisectors},
         {"pentagon {5,1} + quadrilaterals", criterionPent1},
         {"convex triangle + {n,1} face",criterionTriangleAndNonConvexMerge},
         {"pentagon 2 quadrilaterals",criterionPentagon2Quadrilaterals},

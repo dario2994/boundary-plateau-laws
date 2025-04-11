@@ -1,0 +1,1 @@
+The net 3233 can be obtained from the cubical net removing two edges. In particular, if we consider Figure 1 in the overleaf, it can be obtained removing the edges V_1V_2 and V_6V_7

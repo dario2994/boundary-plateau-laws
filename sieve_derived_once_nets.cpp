@@ -478,7 +478,7 @@ int main() {
     }; 
     vector<int> blacklisted = parse_subdirectories("adhoc-blacklist/");
     vector<int> whitelisted = parse_subdirectories("adhoc-whitelist/");
-    
+    vector<int> graylisted  = parse_subdirectories("adhoc-graylist/");    
     //~ vector<DerivedOnceNet> derived_once_old = 
         //~ parseDerivedOnceNets("data/derived_once_computer_old.txt");
         
@@ -514,6 +514,7 @@ int main() {
 
     vector<int> excluded_white;
     vector<int> excluded_black;
+    vector<int> excluded_gray;
 
     for (int id = 0; id < ssize(derived_once); id++) {
         const DerivedOnceNet& A = derived_once[id];
@@ -541,6 +542,13 @@ int main() {
             }
         }
 
+        if (survives) {
+            for (int id2: graylisted) if (id2 == id) {
+                survives = false;
+                excluded_gray.push_back(id);
+            }
+        }
+
         if (survives) 
             survivors.push_back(id);
     }
@@ -553,6 +561,7 @@ int main() {
     
     cout << "Blacklisted ad hoc\t\t\t" << excluded_black.size() << endl;
     cout << "Whitelisted\t\t\t\t" << excluded_white.size() << endl;
+    cout << "Graylisted\t\t\t\t" << excluded_gray.size() << endl;
     cout << endl;    
     
     cout << "# survivors = " << survivors.size() << endl;

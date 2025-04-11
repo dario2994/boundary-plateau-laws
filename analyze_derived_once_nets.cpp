@@ -278,11 +278,11 @@ int main() {
     int cnt_interesting = 0;
     for (int id: survivors) {
         const DerivedOnceNet& A = derived_once[id];
-        if (findInteresting(A)==false) continue;
+        if (containsTriangle(A)==false) continue;
         cout << id << endl;
         cnt_interesting++;
     }
     cout << endl;
-    cout << "Ci sono "<< cnt_interesting << " candidate " << endl;
+    cout << "Ci sono "<< cnt_interesting << " candidate con triangoli" << endl;
 }
 

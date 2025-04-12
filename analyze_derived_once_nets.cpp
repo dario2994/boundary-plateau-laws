@@ -250,6 +250,18 @@ bool containsPentagon(const DerivedOnceNet& A) {
     return false;
 }
 
+bool analyzeconjectureHeptagon(const DerivedOnceNet& A) {
+    for (Dart d:A.darts()) {
+        if ((A.faceType(d)!=pair <int,int> {7,2}) or
+            (A.faceType(A.rev(d))!=pair<int,int> {5,0}))
+            continue;
+        Dart e=A.phi(A.phi(d));
+        Dart f=A.phi(A.phi(e));
+        if ((A.degree(e.to)==2) and (A.degree(f.to)==2)) return true;
+    }
+    return false;
+}
+
 int main() {
     vector<DerivedOnceNet> derived_once = 
         parseDerivedOnceNets("data/derived_once_computer.txt");
@@ -275,11 +287,11 @@ int main() {
     int cnt_interesting = 0;
     for (int id: survivors) {
         const DerivedOnceNet& A = derived_once[id];
-        if (containsTriangle(A)==false) continue;
+        if (analyzeconjectureHeptagon(A)==false) continue;
         cout << id << endl;
         cnt_interesting++;
     }
     cout << endl;
-    cout << "Ci sono "<< cnt_interesting << " reti con un triangolo" << endl;
+    cout << "Ci sono "<< cnt_interesting << " reti da escludere con la congettura dell'eptagono" << endl;
 }
 

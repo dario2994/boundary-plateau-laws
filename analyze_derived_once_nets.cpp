@@ -257,7 +257,7 @@ bool analyzeconjectureHeptagon(const DerivedOnceNet& A) {
             continue;
         Dart e=A.phi(A.phi(d));
         Dart f=A.phi(A.phi(e));
-        if ((A.degree(e.to)==2) and (A.degree(f.to)==2)) return true;
+        if ((A.isConcaveAngle(e)==true) and (A.isConcaveAngle(f)==true)) return true;
     }
     return false;
 }
@@ -287,11 +287,11 @@ int main() {
     int cnt_interesting = 0;
     for (int id: survivors) {
         const DerivedOnceNet& A = derived_once[id];
-        if (containsPentagonOneObtuse(A)==false) continue;
+        if (analyzeconjectureHeptagon(A)==false) continue;
         cout << id << endl;
         cnt_interesting++;
     }
     cout << endl;
-    cout << "Ci sono "<< cnt_interesting << " reti che contengono pentagoni {5,1}" << endl;
+    cout << "Ci sono "<< cnt_interesting << " reti escludibili da Congettura eptagono" << endl;
 }
 

@@ -435,7 +435,7 @@ bool NoSpecialHexagon(const DerivedOnceNet& A) {
         int second=0;
         bool crossed=false;
         for (int i=0; i<6; i++) {
-            if (A.degree(tour.to)==2) {
+            if (A.isConcaveAngle(tour)==true) {
                 if (crossed==false) {
                     crossed=true;
                     first=i;

@@ -139,9 +139,9 @@ bool containsConcaveTriangle(const DerivedOnceNet& A) {
     return false;
 }
 
-bool containsConcavePentagon(const DerivedOnceNet& A) {
+bool containsPentagonOneObtuse(const DerivedOnceNet& A) {
     for (auto face: A.faces()) {
-        if (ssize(face) == 5 and !A.isConvexFace(face[0]))
+        if (A.faceType(face[0])==pair<int,int> {5,1})
             return true;
     }
     return false;
@@ -287,11 +287,11 @@ int main() {
     int cnt_interesting = 0;
     for (int id: survivors) {
         const DerivedOnceNet& A = derived_once[id];
-        if (containsTriangle(A)==false) continue;
+        if (containsPentagonOneObtuse(A)==false) continue;
         cout << id << endl;
         cnt_interesting++;
     }
     cout << endl;
-    cout << "Ci sono "<< cnt_interesting << " reti che contengono triangoli" << endl;
+    cout << "Ci sono "<< cnt_interesting << " reti che contengono pentagoni {5,1}" << endl;
 }
 

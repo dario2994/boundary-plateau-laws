@@ -1,0 +1,1 @@
+After we remove the triangle 796 the face 576'11'3'10'0 becomes a {6,1} hexagon with angles 120-120-120-240-120-240.

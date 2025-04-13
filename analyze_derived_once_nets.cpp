@@ -262,6 +262,46 @@ bool analyzeconjectureHeptagon(const DerivedOnceNet& A) {
     return false;
 }
 
+int countIslands(const DerivedOnceNet& A) {
+    Dart start;
+    int sides;
+    int concave=0;
+    for (auto face:A.faces()) {
+        if ((A.faceType(face[0])).second!=0) {
+            concave++;
+            start=face[0];
+            sides=(A.faceType(face[0])).second;
+        }
+    }
+    if (concave==1) return 1;
+    Dart tour=start;
+    bool notouch=true;
+    for (int i=0; i<sides; i++) {
+        if ((A.faceType(A.rev(tour))).second==0) start=tour;
+            else notouch=false;
+        tour=A.phi(tour);
+    }
+    if (notouch==true) return 1;
+    tour=A.phi(start);
+    int components =0;
+    bool touching=false;
+    for (int i=0; i<sides; i++) {
+        if ((A.faceType(A.rev(tour))).second==0) {
+            if (touching==true) components++;
+            touching=false;
+        }
+        else touching=true;
+        tour=A.phi(tour);
+    }
+    return components;    
+}
+
+bool containsTwoConcaveFace(const DerivedOnceNet& A) {
+    for (auto face:A.faces()) 
+        if ((A.faceType(face[0])).second==2) return true;
+    return false;
+}
+
 int main() {
     vector<DerivedOnceNet> derived_once = 
         parseDerivedOnceNets("data/derived_once_computer.txt");
@@ -284,14 +324,24 @@ int main() {
     
     //~ return 0;        
     
-    int cnt_interesting = 0;
+    int cnt_triangles = 0;
+    int cnt_one_component =0;
+    int cnt_lucky=0;
     for (int id: survivors) {
         const DerivedOnceNet& A = derived_once[id];
-        if (containsTriangle(A)==false) continue;
-        cout << id << endl;
-        cnt_interesting++;
+        if (containsTriangle(A)==true) {
+            cnt_triangles++;
+            continue;
+        }
+        if (countIslands(A)==1) {
+            cnt_one_component++;
+            if (containsTwoConcaveFace(A)==true) cnt_lucky++;
+        }
     }
     cout << endl;
-    cout << "Ci sono "<< cnt_interesting << " reti con triangolo" << endl;
+    cout << "Ci sono "<< cnt_triangles << " reti con triangolo" << endl;
+    cout << "Tra le altre " << survivors.size() - cnt_triangles << " ce ne sono " << cnt_one_component << " con una sola isola" << endl;
+    cout << "E " << survivors.size()-cnt_triangles-cnt_one_component << " con piu' isole" << endl;
+    cout << "Tra quelle con una sola isola " << cnt_lucky << " hanno almeno una faccia {n,2}" << endl;
 }
 

@@ -1,0 +1,1 @@
+After removing the triangle 7'10'6 the face 127'10'65'11'4 becomes an hexagon with two concave angles separated by one convex angle.

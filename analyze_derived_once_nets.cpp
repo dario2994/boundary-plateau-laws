@@ -324,24 +324,14 @@ int main() {
     
     //~ return 0;        
     
-    int cnt_triangles = 0;
-    int cnt_one_component =0;
-    int cnt_lucky=0;
+    int cnt_interesting=0;
     for (int id: survivors) {
         const DerivedOnceNet& A = derived_once[id];
-        if (containsTriangle(A)==true) {
-            cnt_triangles++;
-            continue;
-        }
-        if (countIslands(A)==1) {
-            cnt_one_component++;
-            if (containsTwoConcaveFace(A)==true) cnt_lucky++;
-        }
+        if (containsTriangleQuadrilateral(A)==false) continue;
+        cout << id;
+        cnt_interesting++;
     }
     cout << endl;
-    cout << "Ci sono "<< cnt_triangles << " reti con triangolo" << endl;
-    cout << "Tra le altre " << survivors.size() - cnt_triangles << " ce ne sono " << cnt_one_component << " con una sola isola" << endl;
-    cout << "E " << survivors.size()-cnt_triangles-cnt_one_component << " con piu' isole" << endl;
-    cout << "Tra quelle con una sola isola " << cnt_lucky << " hanno almeno una faccia {n,2}" << endl;
+    cout << "Ci sono "<< cnt_interesting << " reti con triangolo+quadrilatero" << endl;
 }
 

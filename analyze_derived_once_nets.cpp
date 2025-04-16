@@ -302,6 +302,94 @@ bool containsTwoConcaveFace(const DerivedOnceNet& A) {
     return false;
 }
 
+bool findCandidate15(const DerivedOnceNet& A) {
+    int pent=0;
+    int quad=0;
+    int eighttwo=0;
+    if (containsAdjacentQuadrilaterals(A)==true) return false;
+    for (auto face:A.faces()) {
+        if (A.faceType(face[0])==pair<int,int> {4,0}) {
+            Dart tour=face[0]; 
+            for (int i=0; i<4; i++) {
+                if (A.degree(tour.to)==2) return false;
+                tour=A.phi(tour);
+            }
+            quad++;
+            continue;
+        }
+        if (A.faceType(face[0])==pair<int,int> {5,0}) {
+            pent++;
+            continue;
+        }
+        if (A.faceType(face[0])==pair<int,int> {8,2}) {
+            Dart tour=face[0];
+            int uno;
+            int due;
+            int count=0;
+            for (int i=0; i<8; i++) {
+                if ((A.faceType(A.rev(tour))).second==2) return false;
+                tour=A.phi(tour);
+            }
+            eighttwo++;
+            continue;
+
+        }
+        return false;
+    }
+    if ((quad==2) and (pent==4) and (eighttwo==2)) return true;
+    return false;
+}
+
+bool findCandidate16(const DerivedOnceNet& A) {
+    if (containsAdjacentQuadrilaterals(A)==false) return false;
+    int quad=0;
+    int eighttwo=0;
+    for (auto face:A.faces()) {
+        if (A.faceType(face[0])==pair<int,int> {4,0}) {
+            quad++;
+            continue;
+        }
+        if (A.faceType(face[0])==pair<int,int> {8,2}) {
+            eighttwo++;
+            continue;
+        }
+        return false;
+    }
+    if ((quad==4) and (eighttwo==2)) return true;
+    return false;
+}
+
+bool findCandidate17(const DerivedOnceNet& A) {
+    if (containsAdjacentQuadrilaterals(A)==true) return false;
+    int pent=0;
+    int quad=0;
+    int seventwo=0;
+    for (auto face:A.faces()) {
+        if (A.faceType(face[0])==pair<int,int> {4,0}) {
+            quad++;
+            continue;
+        }
+        if (A.faceType(face[0])==pair<int,int> {5,0}) {
+            pent++;
+            continue;
+        }
+        if (A.faceType(face[0])==pair<int,int> {7,2}) {
+            Dart tour=face[0];
+            int touch=0;
+            for (int i=0; i<7; i++) {
+                if ((A.faceType(A.rev(tour))).second==2) touch++;
+                tour=A.phi(tour);
+            }
+            if (touch!=1) return false;
+            seventwo++;
+            continue;
+        }
+        return false;
+    }
+    if ((quad==2) and (pent==2) and (seventwo==2)) return true;
+    return false;
+}
+
 int main() {
     vector<DerivedOnceNet> derived_once = 
         parseDerivedOnceNets("data/derived_once_computer.txt");
@@ -327,11 +415,11 @@ int main() {
     int cnt_interesting=0;
     for (int id: survivors) {
         const DerivedOnceNet& A = derived_once[id];
-        if (containsTriangleQuadrilateral(A)==false) continue;
-        cout << id;
+        if (findCandidate17(A)==false) continue;
+        cout << id << endl;
         cnt_interesting++;
     }
     cout << endl;
-    cout << "Ci sono "<< cnt_interesting << " reti con triangolo+quadrilatero" << endl;
+    cout << "Ci sono "<< cnt_interesting << " reti tra cui cercare la 17" << endl;
 }
 

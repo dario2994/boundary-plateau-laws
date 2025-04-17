@@ -58,10 +58,10 @@ struct Configuration {
         double l2 = QO + 2*AQ;
         double t = delta/2 + QO;
         
-        double x = l0-l2;
-        double y = 2*sqrt(2) * l1 * t;
+        //~ double x = l0-l2;
+        //~ double y = 2*sqrt(2) * l1 * t;
         //~ cout << x << " > " << y << endl;
-        cout << x - y << endl;
+        //~ cout << x - y << endl;
         
         //~ cout << l0 << " " << l1 << " " << l2 << " " << t << endl;
         
@@ -85,10 +85,10 @@ double argmin(function<double(double)> f, double l, double r) {
 }
 
 int main() {
-    //~ double L = 0.12;
-    //~ double delta = 0.02;
-    double L = 0.02;
-    double delta = 1.0/250;
+    double L = 0.12;
+    double delta = 0.02;
+    //~ double L = 0.02;
+    //~ double delta = 1.0/250;
     Configuration C(delta, L);
     cout << C.cost(0.7, 1, 10, 12.5) << endl;
     

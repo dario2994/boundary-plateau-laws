@@ -415,11 +415,11 @@ int main() {
     int cnt_interesting=0;
     for (int id: survivors) {
         const DerivedOnceNet& A = derived_once[id];
-        if (findCandidate17(A)==false) continue;
+        if (containsDoubleBlade(A)==false) continue;
         cout << id << endl;
         cnt_interesting++;
     }
     cout << endl;
-    cout << "Ci sono "<< cnt_interesting << " reti tra cui cercare la 17" << endl;
+    cout << "Ci sono "<< cnt_interesting << " reti con una doppia lama" << endl;
 }
 

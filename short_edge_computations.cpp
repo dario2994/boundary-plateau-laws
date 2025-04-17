@@ -9,10 +9,7 @@ double I(double a, double b, double c) {
     assert(0 < c);
     double z = (b-a) / c;
     a /= z, b /= z;
-    if (a >= 1 or b >= 1)
-        return 1e9;
-    assert(a < 1 and b < 1);
-    return pow(z, 2) * (sqrt(1-a*a) - sqrt(1-b*b));
+    return pow(z, 2) * (pow(1+b*b, 1.5) - pow(1+a*a, 1.5)) / 3;
 }
 
 double J(double a, double b) {
@@ -60,6 +57,11 @@ struct Configuration {
         double l1 = 2 * AO;
         double l2 = QO + 2*AQ;
         double t = delta/2 + QO;
+        
+        double x = l0-l2;
+        double y = 2*sqrt(2) * l1 * t;
+        //~ cout << x << " > " << y << endl;
+        cout << x - y << endl;
         
         //~ cout << l0 << " " << l1 << " " << l2 << " " << t << endl;
         

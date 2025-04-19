@@ -390,6 +390,24 @@ bool findCandidate17(const DerivedOnceNet& A) {
     return false;
 }
 
+bool containsSmallEdges(const DerivedOnceNet& A) {
+    for (Dart d:A.darts()) {
+        if (((A.faceType(d)).second!=0) 
+            and ((A.faceType(A.rev(d))).second!=0)
+            and ((A.faceType(A.phi(d))).second!=0) 
+            and ((A.faceType(A.rev(A.phi(d)))).second!=0)) 
+            return true;
+    } 
+    return false;
+}
+
+bool containsConsDeg2(const DerivedOnceNet& A) {
+    for (Dart d:A.darts()) {
+        if ((A.degree(d.to)==2) and (A.degree((A.phi(d)).to)==2)) return true;
+    } 
+    return false;
+}
+
 int main() {
     vector<DerivedOnceNet> derived_once = 
         parseDerivedOnceNets("data/derived_once_computer.txt");
@@ -415,11 +433,11 @@ int main() {
     int cnt_interesting=0;
     for (int id: survivors) {
         const DerivedOnceNet& A = derived_once[id];
-        if (containsDoubleBlade(A)==false) continue;
+        if (containsConsDeg2(A)==false) continue;
         cout << id << endl;
         cnt_interesting++;
     }
     cout << endl;
-    cout << "Ci sono "<< cnt_interesting << " reti con una doppia lama" << endl;
+    cout << "Ci sono "<< cnt_interesting << " reti con vertici consecutivi di grado 2" << endl;
 }
 

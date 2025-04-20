@@ -528,7 +528,7 @@ struct ConvexSphericalTriangle {
     const double& A(int i) const { return _angles[(i+3) % 3]; }
     double& S(int i) { return _sides[(i+3) % 3]; }
     const double& S(int i) const { return _sides[(i+3) % 3]; }
-    double area() const { return M_PI - (A(0) + A(1) + A(2)); }
+    double area() const { return (A(0) + A(1) + A(2)) - M_PI; }
     
     double get(char c) const {
         if ('A' <= c and c <= 'C')

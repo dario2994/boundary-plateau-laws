@@ -58,12 +58,29 @@ double argmin(function<double(double)> f, double l, double r) {
     return l;
 }
 
+double argmin_naive(function<double(double)> f, double l, double r) {
+    double ans = 0;
+    double f_ans = 1e18;
+    for (double m = l; m < r; m += (r-l)/3000) {
+        double f_m = f(m);
+        if (f_m < f_ans) {
+            f_ans = f_m;
+            ans = m;
+        }
+    }
+    return ans;
+}
+
 int main() {
-    double L = 0.5;
-    double delta = 0.7;
+    double L = 0.2;
+    double delta = 0.02;
+    //~ double L = argmin_naive([&](double z) { return -Configuration(delta, z).cost(); }, delta*3, 0.5);
     //~ double L = 0.02;
     //~ double delta = 1.0/250;
+    cout << L << endl;
     Configuration C(delta, L);
+    //~ cout << C.AQO.get('c') << " " << C.AQO.get('a') << endl;
+    //~ cout << C.APO.area() << " " << C.AQO.area() << endl;
     cout << C.cost() << endl;
 }
 

@@ -408,6 +408,13 @@ bool containsConsDeg2(const DerivedOnceNet& A) {
     return false;
 }
 
+bool containsHexagon61(const DerivedOnceNet& A) {
+    for (auto face:A.faces()) {
+        if (A.faceType(face[0])==pair<int,int> {6,1}) return true;
+    }
+    return false;
+}
+
 int main() {
     vector<DerivedOnceNet> derived_once = 
         parseDerivedOnceNets("data/derived_once_computer.txt");
@@ -433,11 +440,11 @@ int main() {
     int cnt_interesting=0;
     for (int id: survivors) {
         const DerivedOnceNet& A = derived_once[id];
-        if (containsConsDeg2(A)==false) continue;
+        if (containsTriangle(A)==false) continue;
         cout << id << endl;
         cnt_interesting++;
     }
     cout << endl;
-    cout << "Ci sono "<< cnt_interesting << " reti con vertici consecutivi di grado 2" << endl;
+    cout << "Ci sono "<< cnt_interesting << " reti con un triangolo" << endl;
 }
 

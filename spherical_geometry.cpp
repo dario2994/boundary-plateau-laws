@@ -525,10 +525,12 @@ struct ConvexSphericalTriangle {
     array<double, 3> _angles, _sides;
     
     double& A(int i) { return _angles[(i+3) % 3]; }
+    const double& A(int i) const { return _angles[(i+3) % 3]; }
     double& S(int i) { return _sides[(i+3) % 3]; }
-    double area() { return M_PI - (A(0) + A(1) + A(2)); }
+    const double& S(int i) const { return _sides[(i+3) % 3]; }
+    double area() const { return M_PI - (A(0) + A(1) + A(2)); }
     
-    double get(char c) {
+    double get(char c) const {
         if ('A' <= c and c <= 'C')
             return _angles[c-'A'];
         if ('a' <= c and c <= 'c')
@@ -542,16 +544,19 @@ struct ConvexSphericalTriangle {
     }
     
     bool isKnown(vector<double> vec) {
-        for (int x: vec) {
+        for (double x: vec) {
             if (!isKnown(x))
                 return false;
         }
         return true;
     }
     
-    ConvexSphericalTriangle(map<char, double> known):
+    ConvexSphericalTriangle():
             _angles{UNKNOWN, UNKNOWN, UNKNOWN}, 
-            _sides{UNKNOWN, UNKNOWN, UNKNOWN} {
+            _sides{UNKNOWN, UNKNOWN, UNKNOWN} {}
+    
+    ConvexSphericalTriangle(map<char, double> known):
+            ConvexSphericalTriangle() {
         assert(ssize(known) == 3);
         for (int i = 0; i < 3; i++) {
             if (known.count('A' + i))
@@ -562,11 +567,12 @@ struct ConvexSphericalTriangle {
         
         for (int i = 0; i < 3; i++) {
             if (isKnown({S(i), S(i+1)})) {
+                //~ cout << i << endl;
+                //~ cout << S(i) << " " << S(i+1) << endl;
                 if (isKnown(A(i+2))) {
                     double tmp = cos(S(i)) * cos(S(i+1)) + sin(S(i)) * sin(S(i+1)) * cos(A(i+2));
                     S(i+2) = acos(tmp);
-                }
-                if (isKnown(A(i))) {
+                } else if (isKnown(A(i))) {
                     if (S(i) <= asin(sin(S(i+1))*sin(A(i)))) {
                         assert(0);
                     }
@@ -577,8 +583,7 @@ struct ConvexSphericalTriangle {
                                  * sin((A(i) + theta)/2)
                                  / sin((A(i) - theta)/2);
                     S(i+2) = 2 * atan(tmp);
-                }
-                if (isKnown(A(i+1))) {
+                } else if (isKnown(A(i+1))) {
                     if (S(i+1) <= asin(sin(S(i))*sin(A(i+1)))) {
                         assert(0);
                     }
@@ -590,24 +595,25 @@ struct ConvexSphericalTriangle {
                                  / sin((A(i+1) - theta)/2);
                     S(i+2) = 2 * atan(tmp);
                 }
+                break;
             }
         }
         
+        //~ cout << A(0) << " " << A(1) << " " << A(2) << endl;
         for (int i = 0; i < 3; i++) {
             if (isKnown({A(i), A(i+1)})) {
+                //~ cout << i << endl;
                 if (isKnown(S(i+2))) {
                     double tmp = -cos(A(i)) * cos(A(i+1)) + sin(A(i)) * sin(A(i+1)) * cos(S(i+2));
                     A(i+2) = acos(tmp);
-                }
-                if (isKnown(S(i))) {
+                } else if (isKnown(S(i))) {
                     double len = asin(sin(S(i)) * sin(A(i+1)) / sin(A(i)));
-                    assert(S(i) >= M_PI/2 or A(i) <= A(i+1)); // Otherwise, there are two solutions.
+                    //~ assert(S(i) >= M_PI/2 or A(i) <= A(i+1)); // Otherwise, there are two solutions.
                     double tmp = tan((A(i)-A(i+1))/2)
                                  * sin((S(i) + len)/2)
                                  / sin((S(i) - len)/2);
                     A(i+2) = 2 * atan(1/tmp); 
-                }
-                if (isKnown(S(i+1))) {
+                } else if (isKnown(S(i+1))) {
                     double len = asin(sin(S(i+1)) * sin(A(i)) / sin(A(i+1)));
                     assert(S(i+1) >= M_PI/2 or A(i+1) <= A(i)); // Otherwise, there are two solutions.
                     double tmp = tan((A(i+1)-A(i))/2)
@@ -615,6 +621,7 @@ struct ConvexSphericalTriangle {
                                  / sin((S(i+1) - len)/2);
                     A(i+2) = 2 * atan(1/tmp); 
                 }
+                break;
             }
         }
         
@@ -626,9 +633,7 @@ struct ConvexSphericalTriangle {
                              (sin(S(i+1)) * sin(S(i+2)));     
                 _angles[i] = acos(tmp);
             }
-        }
-        
-        if (isKnown({A(0), A(1), A(2)})) {
+        } else if (isKnown({A(0), A(1), A(2)})) {
             for (int i = 0; i < 3; i++) {
                 double tmp = (cos(A(i)) + cos(A(i+1))*cos(A(i+2)))
                               /

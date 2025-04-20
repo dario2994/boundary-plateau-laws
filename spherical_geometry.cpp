@@ -520,4 +520,127 @@ bool checkPinProperties(const vector<GeodesicSegment>& poly) {
 }
 
 
+const static double UNKNOWN = 493.5209641;
+struct ConvexSphericalTriangle {
+    array<double, 3> _angles, _sides;
+    
+    double& A(int i) { return _angles[(i+3) % 3]; }
+    double& S(int i) { return _sides[(i+3) % 3]; }
+    double area() { return M_PI - (A(0) + A(1) + A(2)); }
+    
+    double get(char c) {
+        if ('A' <= c and c <= 'C')
+            return _angles[c-'A'];
+        if ('a' <= c and c <= 'c')
+            return _sides[c-'a'];
+        assert(0);
+        return -1;
+    }
+    
+    bool isKnown(double x) {
+        return x != UNKNOWN;
+    }
+    
+    bool isKnown(vector<double> vec) {
+        for (int x: vec) {
+            if (!isKnown(x))
+                return false;
+        }
+        return true;
+    }
+    
+    ConvexSphericalTriangle(map<char, double> known):
+            _angles{UNKNOWN, UNKNOWN, UNKNOWN}, 
+            _sides{UNKNOWN, UNKNOWN, UNKNOWN} {
+        assert(ssize(known) == 3);
+        for (int i = 0; i < 3; i++) {
+            if (known.count('A' + i))
+                _angles[i] = known['A' + i];
+            if (known.count('a' + i))
+                _sides[i] = known['a' + i];
+        }
+        
+        for (int i = 0; i < 3; i++) {
+            if (isKnown({S(i), S(i+1)})) {
+                if (isKnown(A(i+2))) {
+                    double tmp = cos(S(i)) * cos(S(i+1)) + sin(S(i)) * sin(S(i+1)) * cos(A(i+2));
+                    S(i+2) = acos(tmp);
+                }
+                if (isKnown(A(i))) {
+                    if (S(i) <= asin(sin(S(i+1))*sin(A(i)))) {
+                        assert(0);
+                    }
+                    double theta = asin(sin(S(i+1))*sin(A(i)) / sin(S(i)));
+                    assert(S(i) < S(i+1)); // Otherwise, there are two solutions.
+                    
+                    double tmp = tan((S(i)-S(i+1)) / 2) 
+                                 * sin((A(i) + theta)/2)
+                                 / sin((A(i) - theta)/2);
+                    S(i+2) = 2 * atan(tmp);
+                }
+                if (isKnown(A(i+1))) {
+                    if (S(i+1) <= asin(sin(S(i))*sin(A(i+1)))) {
+                        assert(0);
+                    }
+                    double theta = asin(sin(S(i))*sin(A(i+1)) / sin(S(i+1)));
+                    assert(S(i+1) < S(i)); // Otherwise, there are two solutions.
+                    
+                    double tmp = tan((S(i+1)-S(i)) / 2) 
+                                 * sin((A(i+1) + theta)/2)
+                                 / sin((A(i+1) - theta)/2);
+                    S(i+2) = 2 * atan(tmp);
+                }
+            }
+        }
+        
+        for (int i = 0; i < 3; i++) {
+            if (isKnown({A(i), A(i+1)})) {
+                if (isKnown(S(i+2))) {
+                    double tmp = -cos(A(i)) * cos(A(i+1)) + sin(A(i)) * sin(A(i+1)) * cos(S(i+2));
+                    A(i+2) = acos(tmp);
+                }
+                if (isKnown(S(i))) {
+                    double len = asin(sin(S(i)) * sin(A(i+1)) / sin(A(i)));
+                    assert(S(i) >= M_PI/2 or A(i) <= A(i+1)); // Otherwise, there are two solutions.
+                    double tmp = tan((A(i)-A(i+1))/2)
+                                 * sin((S(i) + len)/2)
+                                 / sin((S(i) - len)/2);
+                    A(i+2) = 2 * atan(1/tmp); 
+                }
+                if (isKnown(S(i+1))) {
+                    double len = asin(sin(S(i+1)) * sin(A(i)) / sin(A(i+1)));
+                    assert(S(i+1) >= M_PI/2 or A(i+1) <= A(i)); // Otherwise, there are two solutions.
+                    double tmp = tan((A(i+1)-A(i))/2)
+                                 * sin((S(i+1) + len)/2)
+                                 / sin((S(i+1) - len)/2);
+                    A(i+2) = 2 * atan(1/tmp); 
+                }
+            }
+        }
+        
+        
+        if (isKnown({S(0), S(1), S(2)})) {
+            for (int i = 0; i < 3; i++) {
+                double tmp = (cos(S(i)) - cos(S(i+1))*cos(S(i+2)))
+                              /
+                             (sin(S(i+1)) * sin(S(i+2)));     
+                _angles[i] = acos(tmp);
+            }
+        }
+        
+        if (isKnown({A(0), A(1), A(2)})) {
+            for (int i = 0; i < 3; i++) {
+                double tmp = (cos(A(i)) + cos(A(i+1))*cos(A(i+2)))
+                              /
+                             (sin(A(i+1)) * sin(A(i+2)));     
+                _sides[i] = acos(tmp);
+            }
+        }
+        
+        assert(isKnown({S(0), S(1), S(2)}));
+        assert(isKnown({A(0), A(1), A(2)}));
+    }
+};
+
+
 #endif

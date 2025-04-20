@@ -449,6 +449,20 @@ bool NoSpecialHexagon(const DerivedOnceNet& A) {
     return true;
 }
 
+bool criterionHexagonQuadrilateral(const DerivedOnceNet& A) {
+    if (containsLongEdges(A)==true) return true;
+    for (Dart d:A.darts()) {
+        if (A.faceType(d)!=pair<int,int> {6,1}) continue;
+        Dart tour=d;
+        for (int i=0; i<6; i++) {
+            if (A.degree(tour.to)==2) break;
+            tour=A.phi(tour);
+        }
+        if (A.faceType(A.rev(tour))==pair<int,int> {4,0}) return false;
+    }
+    return true;
+}
+
 bool criterionMetrization(const DerivedOnceNet& A) {
     return MetricDerivedOnceNet(A).isConsistent();
 }
@@ -482,6 +496,7 @@ int main() {
         {"convex triangle + {n,1} face",criterionTriangleAndNonConvexMerge},
         {"pentagon 2 quadrilaterals",criterionPentagon2Quadrilaterals},
         {"special hexagon {6,2}\t",NoSpecialHexagon},
+        {"hexagon {6,1} and quadrilateral",criterionHexagonQuadrilateral},
     };
     
     map<string, vector<int>> excluded_by; 

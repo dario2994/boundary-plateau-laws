@@ -467,6 +467,41 @@ bool criterionMetrization(const DerivedOnceNet& A) {
     return MetricDerivedOnceNet(A).isConsistent();
 }
 
+bool criterionSpecialHeptagon(const DerivedOnceNet& A) {
+    if (containsLongEdges(A)==true) return true;
+    for (Dart d:A.darts()) {
+        if ((A.faceType(d)!=pair<int,int> {7,2}) or
+            (A.isConcaveAngle(d)==false)) continue;
+        Dart e=A.phi(A.phi((d)));
+        Dart f=A.phi(A.phi(A.phi(e)));
+        Dart g;
+        if (A.isConcaveAngle(e)==true) g=f;
+            else {
+                if (A.isConcaveAngle(f)==true) g=A.phi(e);
+                else return true;
+            }
+        Dart h=A.rev(g);
+        if (A.faceType(h)==pair<int,int> {5,0}) return false;
+        if ((A.faceType(h)==pair<int,int> {5,1}) and
+            (A.isConcaveAngle(A.phi(A.phi(h)))==false)) return false;
+    }
+    return true;   
+}
+
+bool criterionQuadrilateralHeptagon(const DerivedOnceNet &A) {
+    if (containsLongEdges(A)==true) return true;
+    for (Dart d:A.darts()) {
+        if ((A.faceType(d)!=pair<int,int> {7,1}) or
+            (A.isConcaveAngle(d)==false)) continue;
+        if (A.faceType(A.rev(d))!=pair<int,int> {4,0}) return true;
+        Dart h=A.rev(A.phi(A.phi(A.phi(A.phi(d)))));
+        if (A.faceType(h)==pair<int,int> {5,0}) return false;
+        if ((A.faceType(h)==pair<int,int> {5,1}) and
+            (A.isConcaveAngle(A.phi(A.phi(h)))==false)) return false;
+    }
+    return true;
+}
+
 int main() {
     vector<DerivedOnceNet> derived_once = 
         parseDerivedOnceNets("data/derived_once_computer.txt");
@@ -497,6 +532,8 @@ int main() {
         {"pentagon 2 quadrilaterals",criterionPentagon2Quadrilaterals},
         {"special hexagon {6,2}\t",NoSpecialHexagon},
         {"hexagon {6,1} and quadrilateral",criterionHexagonQuadrilateral},
+        {"special heptagon {7,2}\t",criterionSpecialHeptagon},
+        {"Heptagon {7,1} + quadrilateral",criterionQuadrilateralHeptagon},
     };
     
     map<string, vector<int>> excluded_by; 

@@ -474,16 +474,31 @@ bool criterionSpecialHeptagon(const DerivedOnceNet& A) {
             (A.isConcaveAngle(d)==false)) continue;
         Dart e=A.phi(A.phi((d)));
         Dart f=A.phi(A.phi(A.phi(e)));
-        Dart g;
-        if (A.isConcaveAngle(e)==true) g=f;
+        Dart g1;
+        Dart g2;
+        Dart g3;
+        if (A.isConcaveAngle(e)==true) {
+            g1=A.phi(A.phi(e));
+            g2=f;
+            g3=A.phi(g2);
+        }
             else {
-                if (A.isConcaveAngle(f)==true) g=A.phi(e);
+                if (A.isConcaveAngle(f)==true) 
+                { 
+                    g1=e;
+                    g2=A.phi(e);
+                    g3=A.phi(g2);
+                }
                 else return true;
             }
-        Dart h=A.rev(g);
-        if (A.faceType(h)==pair<int,int> {5,0}) return false;
-        if ((A.faceType(h)==pair<int,int> {5,1}) and
-            (A.isConcaveAngle(A.phi(A.phi(h)))==false)) return false;
+        if (A.faceType(A.rev(g2))==pair<int,int> {5,0}) return false;
+        if ((A.faceType(A.rev(g2))==pair<int,int> {5,1}) and
+            (A.isConcaveAngle(A.phi(A.phi(A.rev(g2))))==false)) return false;
+        if (A.faceType(A.rev(g1))==pair<int,int> {3,0}) return false;
+        if (A.faceType(A.rev(g3))==pair<int,int> {3,0}) return false;
+        if ((A.faceType(A.rev(g2))==pair<int,int> {4,0})
+            and (((A.faceType(A.rev(g1)))==pair<int,int> {4,0}) or
+                 ((A.faceType(A.rev(g1)))==pair<int,int> {4,0}))) return false;
     }
     return true;   
 }
@@ -494,10 +509,17 @@ bool criterionQuadrilateralHeptagon(const DerivedOnceNet &A) {
         if ((A.faceType(d)!=pair<int,int> {7,1}) or
             (A.isConcaveAngle(d)==false)) continue;
         if (A.faceType(A.rev(d))!=pair<int,int> {4,0}) return true;
-        Dart h=A.rev(A.phi(A.phi(A.phi(A.phi(d)))));
-        if (A.faceType(h)==pair<int,int> {5,0}) return false;
-        if ((A.faceType(h)==pair<int,int> {5,1}) and
-            (A.isConcaveAngle(A.phi(A.phi(h)))==false)) return false;
+        Dart g1 = A.phi(A.phi(A.phi(d)));
+        Dart g2=A.phi(g1);
+        Dart g3=A.phi(g2);
+        if (A.faceType(A.rev(g2))==pair<int,int> {5,0}) return false;
+        if ((A.faceType(A.rev(g2))==pair<int,int> {5,1}) and
+            (A.isConcaveAngle(A.phi(A.phi(A.rev(g2))))==false)) return false;
+        if (A.faceType(A.rev(g1))==pair<int,int> {3,0}) return false;
+        if (A.faceType(A.rev(g3))==pair<int,int> {3,0}) return false;
+        if ((A.faceType(A.rev(g2))==pair<int,int> {4,0})
+            and (((A.faceType(A.rev(g1)))==pair<int,int> {4,0}) or
+                 ((A.faceType(A.rev(g1)))==pair<int,int> {4,0}))) return false;
     }
     return true;
 }

@@ -415,6 +415,78 @@ bool containsHexagon61(const DerivedOnceNet& A) {
     return false;
 }
 
+bool containsHeptagon71(const DerivedOnceNet& A) {
+    for (auto face:A.faces()) {
+        if (A.faceType(face[0])==pair<int,int> {7,1}) return true;
+    }
+    return false;
+}
+
+bool containsHeptagon71Quadrilateral(const DerivedOnceNet& A) {
+    for (Dart d:A.darts()) {
+        if ((A.faceType(d)!=pair<int,int> {7,1}) or
+            (A.isConcaveAngle(d)==false)) continue;
+        if (A.faceType(A.rev(d))==pair<int,int> {4,0}) return true;
+    }
+    return false;
+}
+
+bool containsSpecialHeptagon(const DerivedOnceNet& A) {
+    for (Dart d:A.darts()) {
+        if ((A.faceType(d)!=pair<int,int> {7,2}) or
+            (A.isConcaveAngle(d)==false)) continue;
+        Dart e= A.phi(A.phi(d));
+        if ((A.isConcaveAngle(e)==true) or
+            (A.isConcaveAngle(A.phi(A.phi(A.phi(e))))==true))
+            return true;       
+    }
+    return false;
+}
+
+// Whether the associated net may contain an edge strictly longer than pi.
+bool containsLongEdges(const DerivedOnceNet& A) {
+    if (containsBiangle(A))
+        return false;
+
+    for (Dart d: A.darts()) {
+        Dart e = A.rev(d);
+        if (A.isConvexFace(d) or A.isConvexFace(e))
+            continue;
+        
+        if (A.faceArea(d) + A.faceArea(e) <= 
+                6 + pinContribution(A, d) + pinContribution(A, e))
+            continue;
+
+        //aggiunto da Camillo, vedi Lemma 4.7(iv)&(v)
+
+        if (((A.degree(d.to)==2) or (A.degree(d.from)==2))
+            and ((A.faceArea(d)<=pinContribution(A,d)+4) 
+                or (A.faceArea(e)<=pinContribution(A,e)+4)))
+            continue;
+
+        if ((A.degree((A.phi(d)).to)==2) and (A.faceArea(d)<=4))
+            continue;
+
+        if ((A.degree((A.phi(e)).to)==2) and (A.faceArea(e)<=4))
+            continue;
+        
+        Dart pred=d;
+        for (int i=0; i <(A.faceType(d)).first-1; i++) 
+            pred=A.phi(pred);
+        if ((A.degree(pred.from)==2) and (A.faceArea(d)<=4))
+                continue;
+        
+        pred=e;
+        for (int i=0; i <(A.faceType(d)).first-1; i++) 
+        pred=A.phi(pred);
+        if ((A.degree(pred.from)==2) and (A.faceArea(e)<=4))
+            continue;  
+        return true;
+        
+    }
+    return false;
+}
+
 int main() {
     vector<DerivedOnceNet> derived_once = 
         parseDerivedOnceNets("data/derived_once_computer.txt");
@@ -440,11 +512,11 @@ int main() {
     int cnt_interesting=0;
     for (int id: survivors) {
         const DerivedOnceNet& A = derived_once[id];
-        if (containsTriangle(A)==false) continue;
+        if (containsLongEdges(A)==false) continue;
         cout << id << endl;
         cnt_interesting++;
     }
     cout << endl;
-    cout << "Ci sono "<< cnt_interesting << " reti con un triangolo" << endl;
+    cout << "Ci sono "<< cnt_interesting << " reti con un edge >= pi greco" << endl;
 }
 

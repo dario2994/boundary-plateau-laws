@@ -498,7 +498,7 @@ bool criterionSpecialHeptagon(const DerivedOnceNet& A) {
         if (A.faceType(A.rev(g3))==pair<int,int> {3,0}) return false;
         if ((A.faceType(A.rev(g2))==pair<int,int> {4,0})
             and (((A.faceType(A.rev(g1)))==pair<int,int> {4,0}) or
-                 ((A.faceType(A.rev(g1)))==pair<int,int> {4,0}))) return false;
+                 ((A.faceType(A.rev(g3)))==pair<int,int> {4,0}))) return false;
     }
     return true;   
 }
@@ -519,7 +519,7 @@ bool criterionQuadrilateralHeptagon(const DerivedOnceNet &A) {
         if (A.faceType(A.rev(g3))==pair<int,int> {3,0}) return false;
         if ((A.faceType(A.rev(g2))==pair<int,int> {4,0})
             and (((A.faceType(A.rev(g1)))==pair<int,int> {4,0}) or
-                 ((A.faceType(A.rev(g1)))==pair<int,int> {4,0}))) return false;
+                 ((A.faceType(A.rev(g3)))==pair<int,int> {4,0}))) return false;
     }
     return true;
 }

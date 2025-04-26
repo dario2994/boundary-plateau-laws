@@ -443,6 +443,13 @@ bool containsSpecialHeptagon(const DerivedOnceNet& A) {
     return false;
 }
 
+bool containsNeighboringHeptagons(const DerivedOnceNet& A) {
+    for (Dart d:A.darts()) {
+        if (((A.faceType(d)).first==7) and ((A.faceType(A.rev(d))).first==7)) return true;
+    }
+    return false;
+}
+
 // Whether the associated net may contain an edge strictly longer than pi.
 bool containsLongEdges(const DerivedOnceNet& A) {
     if (containsBiangle(A))
@@ -512,11 +519,10 @@ int main() {
     int cnt_interesting=0;
     for (int id: survivors) {
         const DerivedOnceNet& A = derived_once[id];
-        if (containsLongEdges(A)==false) continue;
+        if (containsNeighboringHeptagons(A)==false) continue;
         cout << id << endl;
         cnt_interesting++;
     }
     cout << endl;
-    cout << "Ci sono "<< cnt_interesting << " reti con un edge >= pi greco" << endl;
+    cout << "Ci sono "<< cnt_interesting << " reti interessanti" << endl;
 }
-

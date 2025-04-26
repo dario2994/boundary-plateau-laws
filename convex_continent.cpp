@@ -96,8 +96,94 @@ Interval pentagon2Constraint(Interval I, Interval J) {
     return K; 
 }
 
+struct Quaternion{
+    double q[4];
+    Quaternion(): q{0,0,0,0} {}
+    Quaternion(double a, double b, double c, double d): q{a,b,c,d} {}
+    Quaternion(double r): q{r, 0, 0, 0} {}
+    
+    double& operator [](int i) { return q[i]; }
+    const double& operator [](int i) const { return q[i]; }
+};
+
+Quaternion operator +(const Quaternion& x, const Quaternion& y) {
+    Quaternion z;
+    for (int i = 0; i < 4; i++)
+        z[i] = x[i] + y[i];
+    return z; 
+}
+
+Quaternion operator -(const Quaternion& x, const Quaternion& y) {
+    Quaternion z;
+    for (int i = 0; i < 4; i++)
+        z[i] = x[i] - y[i];
+    return z; 
+}
+
+Quaternion operator *(const Quaternion& x, const Quaternion& y) {
+    Quaternion z;
+    z[0] = x[0]*y[0] - x[1]*y[1] - x[2]*y[2] - x[3]*y[3];
+    z[1] = x[0]*y[1] + x[1]*y[0] + x[2]*y[3] - x[3]*y[2];
+    z[2] = x[2]*y[0] + x[0]*y[2] + x[3]*y[1] - x[1]*y[3];
+    z[3] = x[3]*y[0] + x[0]*y[3] + x[1]*y[2] - x[2]*y[1];
+    return z;
+}
+
+Quaternion& operator *=(Quaternion& x, const Quaternion& y) {
+    x = x * y;
+    return x;
+}
+
+Quaternion conj(const Quaternion& z) {
+    return Quaternion(z[0], -z[1], -z[2], -z[3]);
+}
+
+double abs(const Quaternion& z) {
+    double res = 0;
+    for (int i = 0; i < 4; i++)
+        res += pow(z[i], 2);
+    return res;
+}
+
+
+ostream& operator <<(ostream& out, const Quaternion& q) {
+    out << q[0] << " + i" << q[1] << " + j" << q[2] << " + k" << q[3];
+    return out;
+}
+
+void checkGeneralizedPolygon(
+    const vector<double>& angles, const vector<double>& sides) {
+    int k = ssize(angles);
+    vector<double> theta(k+1);
+    theta[0] = 0;
+    for (int i = 0; i < k; i++) theta[i+1] = theta[i] + angles[i] - M_PI;
+    
+    Quaternion res = 1;
+    for (int i = 0; i < k; i++) {
+        Quaternion q(0, 0, -sin(theta[i]), cos(theta[i]));
+        res *= 1 + tan(sides[i]/2) * q;
+    }
+    cout << res << endl;
+    
+    cout << res[1]/res[0] << " " << tan(-theta[k]/2) << endl;
+}
+
+#include "spherical_geometry.cpp"
+
 
 int main() {
-    
+    double a120 = 2*M_PI / 3;
+    double a240 = 2*a120;
+    vector<double> angles = {a120, a120, a120, a120, a120, a240};
+    for (int _ = 0; _ < 100; _++) {
+        auto maybe = completeGeneralizedPolygon(angles, 
+            {(rand() % 100)/50.0, (rand() % 100)/50.0, (rand() % 100)/50.0, 0, 0, 0}, {3, 4, 5});
+        if (maybe.empty())
+            continue;
+        
+        vector<double> sides = maybe[0];
+        //~ cout << sides[0] << " " << sides[1] << " " << sides[2] << " " << sides[3] << endl;
+        checkGeneralizedPolygon(angles, sides);
+    }
 }
 

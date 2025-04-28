@@ -57,6 +57,16 @@ Interval operator-(Interval I) {
     return Interval(-I.r, -I.l);
 }
 
+void enforceTriangleConstraint(vector<Interval*> sides) {
+    assert(ssize(sides) == 3);
+    
+    static const double L = acos(-1.0/3);
+    static const Interval I(L-1e-9, L+1e-9); 
+    for (int i = 0; i < 3; i++) {
+        sides[i]->intersect(I);
+    }
+}
+
 // I is strictly inside [0, \pi].
 // One side of a quadrilateral belongs to I.
 // The other side belongs to the interval returned by this function.
@@ -262,10 +272,139 @@ void checkGeneralizedPolygon(
     //~ cout << res[1]/res[0] << " " << tan(-theta[k]/2) << endl;
 }
 
+#include "derived_once_nets.cpp"
+
+vector<DerivedOnceNet> parseDerivedOnceNets(string in_file) {
+    ifstream in(in_file);
+    int cnt;
+    in >> cnt;
+    vector<DerivedOnceNet> res;
+    for (int i = 0; i < cnt; i++) {
+        DerivedOnceNet A = parseDerivedOnceNet(in);
+        A.checkConsistency();
+        res.push_back(A);
+    }
+    return res;
+}
+
+
+// Determines using only convex faces.
+bool isDetermined(const DerivedOnceNet& A, vector<bool> determined) {
+    auto is_face_determined = [&](Dart d) {
+        if (!A.isConvexFace(d))
+            return false;
+        int missing = 0;
+        for (Dart e: A.face(d)) {
+            missing += !determined[e.id];
+        }
+        return 0 < missing and missing <= 3;
+    };
+    auto determine_face = [&](Dart d) {
+        for (Dart e: A.face(d)) {
+            determined[e.id] = 1;
+            determined[A.rev(e).id] = 1;
+        }
+    };
+    while (1) {
+        bool changed = false;
+        for (Dart d: A.darts()) {
+            if (is_face_determined(d)) {
+                changed = true;
+                determine_face(d);
+            }
+        }
+        if (!changed)
+            break;
+    }
+    int missing = 0;
+    for (Dart d: A.darts()) missing += A.isConvexFace(d) and !determined[d.id];
+    return missing == 0;
+}
+
+vector<int> dartsToFix(const DerivedOnceNet& A) {
+    int n = A.E();
+    if (isDetermined(A, vector<bool>(2*n, false)))
+        return {};
+        
+    for (int ans = 1; ans <= 6; ans++) {
+        long long bb = 0;
+        while (bb < (1ll<<n)) {
+            if (__builtin_popcount(bb) == ans) {
+                vector<bool> vec(2*n, false);
+                for (int i = 0; i < n; i++) {
+                    if (bb&(1ll<<i)) {
+                        vec[2*i] = 1;
+                        vec[2*i+1] = 1;
+                    }
+                }
+                if (isDetermined(A, vec)) {
+                    vector<int> res;
+                    for (int i = 0; i < n; i++)
+                        if (bb&(1ll<<i))
+                            res.push_back(2*i);
+                    return res;
+                }
+                bb += 1ll<<__builtin_ctzll(bb);
+            } else bb++;
+        }
+    }
+    assert(0);
+    return {-1};
+}
+
 #include "spherical_geometry.cpp"
+
+bool metrizeConvexContinent(const DerivedOnceNet& A, vector<Interval>& lengths) {
+    auto compute_len = [&]() {
+        double res = 0;
+        for (int i = 0; i < 2*A.E(); i++) {
+            if (lengths[i].empty())
+                return -1.0; // impossible
+            res += lengths[i].len();
+        }
+        return res;
+    };
+    double curr_len = compute_len();
+    while (curr_len >= 1e-8) {
+        for (auto f: A.faces()) {
+            if (!A.isConvexFace(f))
+                continue;
+            
+            vector<Interval*> sides;
+            for (const Dart& d: f)
+                sides.push_back(&lengths[d.id]);
+            if (ssize(f) == 3)
+                enforceTriangleConstraint(sides);
+            if (ssize(f) == 4)
+                enforceQuadrilateralConstraint(sides);    
+            if (ssize(f) == 5)
+                enforcePentagonConstraint(sides);
+            
+            for (const Dart& d: f) 
+                lengths[A.rev(d).id].intersect(lengths[d.id]);
+        }
+        double new_len = compute_len();
+        if (new_len > 0.99*curr_len)
+            break;
+        curr_len = new_len;
+    }
+    
+    return curr_len >= 0;
+}
 
 
 int main() {
+    auto net = parseDerivedOnceNets("data/derived_once_computer.txt")[2];
+    vector<int> dart_ids = dartsToFix(net);
+    for (int id: dart_ids) {
+        cout << net.dart(id) << endl;
+    }
+    
+    
+    
+    return 0;
+    
+    
     double a120 = 2*M_PI / 3;
     double a240 = 2*a120;
     vector<double> angles = {a120, a120, a120, a120, a120, a240};

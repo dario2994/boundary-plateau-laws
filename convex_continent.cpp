@@ -8,8 +8,9 @@ struct Interval {
     
     Interval(): l(-1e9), r(1e9) {}
     Interval(double _l, double _r): l(_l), r(_r) {}
+    Interval(double x): l(x-1e-10), r(x+1e-10) {}
     
-    bool empty() { return r < l; }
+    bool empty() const { return r < l; }
     
     void intersect(Interval I) {
         l = max(l, I.l);
@@ -17,7 +18,44 @@ struct Interval {
     }
     
     double len() { return empty() ? 0.0 : (r-l); }
+    bool containsZero() { return l <= 0 and 0 <= r; }
 };
+
+ostream& operator <<(ostream& out, const Interval& I) {
+    out << "[" << I.l << ", " << I.r << "]";
+    return out;
+}
+
+Interval hull(vector<double> vec) { 
+    return Interval(*min_element(vec.begin(), vec.end()), 
+                    *max_element(vec.begin(), vec.end()));
+}
+
+// Interval arithmetic.
+Interval operator +(const Interval& I, const Interval& J) {
+    if (I.empty() or J.empty())
+        return Interval(0, -1);
+    return Interval(I.l + J.l, I.r + J.r);
+}
+
+Interval operator -(const Interval& I, const Interval& J) {
+    if (I.empty() or J.empty())
+        return Interval(0, -1);
+    return Interval(I.l - J.r, I.r - J.l);
+}
+
+Interval operator *(const Interval& I, const Interval& J) {
+    if (I.empty() or J.empty())
+        return Interval(0, -1);
+    vector<double> vec = {I.l*J.l, I.l*J.r, I.r*J.l, I.r*J.r};
+    return hull(vec);
+}
+
+Interval operator-(Interval I) {
+    if (I.empty())
+        return Interval(0, -1);
+    return Interval(-I.r, -I.l);
+}
 
 // I is strictly inside [0, \pi].
 // One side of a quadrilateral belongs to I.
@@ -28,6 +66,24 @@ Interval quadrilateralConstraint(Interval I) {
     const static double eps = 1e-8;
     static auto f = [](double x) { return 2*atan(0.5 / tan(x/2)); };
     return Interval(f(I.r) - eps, f(I.l) + eps);
+}
+
+void enforceQuadrilateralConstraint(vector<Interval*> sides) {
+    assert(ssize(sides) == 4);
+    
+    sides[0]->intersect(*sides[2]);
+    sides[2]->intersect(*sides[0]);
+    
+    sides[1]->intersect(*sides[3]);
+    sides[3]->intersect(*sides[1]);
+    
+    Interval even = quadrilateralConstraint(*sides[1]);
+    Interval odd = quadrilateralConstraint(*sides[0]);
+    
+    sides[0]->intersect(odd);
+    sides[2]->intersect(odd);
+    sides[1]->intersect(even);
+    sides[3]->intersect(even);
 }
 
 // If cos(theta) \in I, then theta belongs to the returned interval.
@@ -49,7 +105,7 @@ Interval acos(Interval I) {
 // I, J are strictly inside [0, \ell_T].
 // If AB \in I, BC\in J, then DE belongs to the interval returned by 
 // this function.
-Interval pentagon1Constraint(Interval I, Interval J) {
+Interval pentagon1Constraint(const Interval& I, const Interval& J) {
     if (I.empty() or J.empty())
         return Interval(0, -1);
     
@@ -67,7 +123,7 @@ Interval pentagon1Constraint(Interval I, Interval J) {
 // I, J are strictly inside [0, \ell_T].
 // AB \in I, DE\in J.
 // Then BC belongs to the interval returned by this function.
-Interval pentagon2Constraint(Interval I, Interval J) {
+Interval pentagon2Constraint(const Interval& I, const Interval& J) {
     if (I.empty() or J.empty())
         return Interval(0, -1);
     
@@ -96,32 +152,63 @@ Interval pentagon2Constraint(Interval I, Interval J) {
     return K; 
 }
 
+void enforcePentagonConstraint(vector<Interval*> sides) {
+    auto s = [&](int id) {
+        return sides[id % 5];
+    };
+    auto compute_len = [&]() {
+        double res = 0;
+        for (int i = 0; i < 5; i++) {
+            if (s(i)->empty())
+                return -1.0;
+            res += sides[i]->len();
+        }
+        return res;
+    };
+    double curr_len = compute_len();
+    while (curr_len >= 1e-8) {
+        for (int i = 0; i < 5; i++) {
+            s(i+3)->intersect(pentagon1Constraint(*s(i), *s(i+1)));
+            s(i)->intersect(pentagon2Constraint(*s(i+1), *s(i+3)));
+        }
+        double new_len = compute_len();
+        if (new_len > 0.99*curr_len)
+            break;
+        curr_len = new_len;
+    }
+    return;
+}
+
+template<typename T>
 struct Quaternion{
-    double q[4];
-    Quaternion(): q{0,0,0,0} {}
-    Quaternion(double a, double b, double c, double d): q{a,b,c,d} {}
-    Quaternion(double r): q{r, 0, 0, 0} {}
+    T q[4];
+    Quaternion(): q{T(0),T(0),T(0),T(0)} {}
+    Quaternion(T a, T b, T c, T d): q{a,b,c,d} {}
+    Quaternion(T r): q{r, T(0), T(0), T(0)} {}
     
-    double& operator [](int i) { return q[i]; }
-    const double& operator [](int i) const { return q[i]; }
+    T& operator [](int i) { return q[i]; }
+    const T& operator [](int i) const { return q[i]; }
 };
 
-Quaternion operator +(const Quaternion& x, const Quaternion& y) {
-    Quaternion z;
+template<typename T>
+Quaternion<T> operator +(const Quaternion<T>& x, const Quaternion<T>& y) {
+    Quaternion<T> z;
     for (int i = 0; i < 4; i++)
         z[i] = x[i] + y[i];
     return z; 
 }
 
-Quaternion operator -(const Quaternion& x, const Quaternion& y) {
-    Quaternion z;
+template<typename T>
+Quaternion<T> operator -(const Quaternion<T>& x, const Quaternion<T>& y) {
+    Quaternion<T> z;
     for (int i = 0; i < 4; i++)
         z[i] = x[i] - y[i];
     return z; 
 }
 
-Quaternion operator *(const Quaternion& x, const Quaternion& y) {
-    Quaternion z;
+template<typename T>
+Quaternion<T> operator *(const Quaternion<T>& x, const Quaternion<T>& y) {
+    Quaternion<T> z;
     z[0] = x[0]*y[0] - x[1]*y[1] - x[2]*y[2] - x[3]*y[3];
     z[1] = x[0]*y[1] + x[1]*y[0] + x[2]*y[3] - x[3]*y[2];
     z[2] = x[2]*y[0] + x[0]*y[2] + x[3]*y[1] - x[1]*y[3];
@@ -129,24 +216,28 @@ Quaternion operator *(const Quaternion& x, const Quaternion& y) {
     return z;
 }
 
-Quaternion& operator *=(Quaternion& x, const Quaternion& y) {
+template<typename T>
+Quaternion<T>& operator *=(Quaternion<T>& x, const Quaternion<T>& y) {
     x = x * y;
     return x;
 }
 
-Quaternion conj(const Quaternion& z) {
-    return Quaternion(z[0], -z[1], -z[2], -z[3]);
+template<typename T>
+Quaternion<T> conj(const Quaternion<T>& z) {
+    return Quaternion<T>(z[0], -z[1], -z[2], -z[3]);
 }
 
-double abs(const Quaternion& z) {
-    double res = 0;
+template<typename T>
+T abs(const Quaternion<T>& z) {
+    T res = 0;
     for (int i = 0; i < 4; i++)
-        res += pow(z[i], 2);
+        res += z[i]*z[i];
     return res;
 }
 
 
-ostream& operator <<(ostream& out, const Quaternion& q) {
+template<typename T>
+ostream& operator <<(ostream& out, const Quaternion<T>& q) {
     out << q[0] << " + i" << q[1] << " + j" << q[2] << " + k" << q[3];
     return out;
 }
@@ -158,14 +249,17 @@ void checkGeneralizedPolygon(
     theta[0] = 0;
     for (int i = 0; i < k; i++) theta[i+1] = theta[i] + angles[i] - M_PI;
     
-    Quaternion res = 1;
+    Quaternion<Interval> res = Interval(1);
     for (int i = 0; i < k; i++) {
-        Quaternion q(0, 0, -sin(theta[i]), cos(theta[i]));
-        res *= 1 + tan(sides[i]/2) * q;
+        Quaternion<Interval> q(0, 0, -sin(theta[i]), cos(theta[i]));
+        double l = tan(sides[i]/2);
+        Interval Il(l-0.001, l+0.001);
+        res *= Quaternion<Interval>(1) + Quaternion<Interval>(Il) * q;
     }
     cout << res << endl;
     
-    cout << res[1]/res[0] << " " << tan(-theta[k]/2) << endl;
+    cout << res[1]*cos(-theta[k]/2)-res[0]*sin(-theta[k]/2) << endl;
+    //~ cout << res[1]/res[0] << " " << tan(-theta[k]/2) << endl;
 }
 
 #include "spherical_geometry.cpp"

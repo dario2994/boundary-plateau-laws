@@ -494,6 +494,26 @@ bool containsLongEdges(const DerivedOnceNet& A) {
     return false;
 }
 
+bool containsQuadPentPentQuad (const DerivedOnceNet& A) {
+    pair<int,int> quad={4,0};
+    pair<int,int> pent={5,0};
+    for (Dart d:A.darts()) {
+        if (((A.faceType(d)).second!=0) and ((A.faceType(A.rev(d))).second!=0))
+        return false; 
+    }
+    for (Dart d:A.darts()) {
+        if ((A.faceType(d)!=quad) or (A.faceType(A.rev(d))!=pent)) continue;
+        Dart e1=A.rev(A.phi(A.phi(d)));
+        Dart f1=A.rev(A.phi(A.phi(A.phi(e1))));
+        Dart e2=A.rev(A.phi(A.phi(A.phi(d))));
+        Dart f2=A.rev(A.phi(A.phi(e2)));
+        if (((A.faceType(e1)==pent) and (A.faceType(f1)==quad)) or
+            ((A.faceType(e2)==pent) and (A.faceType(f2)==quad)))
+            return true;
+    }
+    return false;
+}
+
 int main() {
     vector<DerivedOnceNet> derived_once = 
         parseDerivedOnceNets("data/derived_once_computer.txt");
@@ -519,7 +539,7 @@ int main() {
     int cnt_interesting=0;
     for (int id: survivors) {
         const DerivedOnceNet& A = derived_once[id];
-        if (containsNeighboringHeptagons(A)==false) continue;
+        if (containsQuadPentPentQuad(A)==false) continue;
         cout << id << endl;
         cnt_interesting++;
     }

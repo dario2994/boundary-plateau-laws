@@ -503,9 +503,9 @@ bool containsQuadPentPentQuad (const DerivedOnceNet& A) {
     }
     for (Dart d:A.darts()) {
         if ((A.faceType(d)!=quad) or (A.faceType(A.rev(d))!=pent)) continue;
-        Dart e1=A.rev(A.phi(A.phi(d)));
+        Dart e1=A.rev(A.phi(A.phi(A.rev(d))));
         Dart f1=A.rev(A.phi(A.phi(A.phi(e1))));
-        Dart e2=A.rev(A.phi(A.phi(A.phi(d))));
+        Dart e2=A.rev(A.phi(A.phi(A.phi(A.rev(d)))));
         Dart f2=A.rev(A.phi(A.phi(e2)));
         if (((A.faceType(e1)==pent) and (A.faceType(f1)==quad)) or
             ((A.faceType(e2)==pent) and (A.faceType(f2)==quad)))

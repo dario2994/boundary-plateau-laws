@@ -90,10 +90,10 @@ void enforceQuadrilateralConstraint(vector<Interval*> sides) {
     Interval even = quadrilateralConstraint(*sides[1]);
     Interval odd = quadrilateralConstraint(*sides[0]);
     
-    sides[0]->intersect(odd);
-    sides[2]->intersect(odd);
-    sides[1]->intersect(even);
-    sides[3]->intersect(even);
+    sides[0]->intersect(even);
+    sides[2]->intersect(even);
+    sides[1]->intersect(odd);
+    sides[3]->intersect(odd);
 }
 
 // If cos(theta) \in I, then theta belongs to the returned interval.
@@ -527,6 +527,13 @@ int boh_cnt = 0;
 void metrizeNet(const DerivedOnceNet& A, 
                 vector<int> fixed_darts, vector<Interval> fixed_lengths,
                 vector<Interval> lengths) {
+    auto print_status = [&]() {
+        cout << "State: " << endl;
+        for (int i = 0; i < ssize(lengths); i += 2)
+            cout << A.dart(i) << " " << lengths[i] << endl;
+        cout << endl;
+    };
+    
     assert(ssize(fixed_darts) == ssize(fixed_lengths));
     int q = ssize(fixed_darts);
     
@@ -544,8 +551,16 @@ void metrizeNet(const DerivedOnceNet& A,
         return;
     }
     
-    if (fixed_lengths[0].len() < 0.001) {
-        cout << (boh_cnt++) << endl;
+    if (fixed_lengths[0].len() < 0.01) {
+        boh_cnt++;
+        //~ if (boh_cnt % 100 == 0) {
+            cout << boh_cnt << endl;
+            print_status();
+        //~ }
+        
+        //~ for (int i = 0; i < q; i++)
+            //~ cout << fixed_lengths[i] << " ";
+        //~ cout << endl;
         return; // Too small.
     }
     

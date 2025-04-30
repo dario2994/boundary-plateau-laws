@@ -312,6 +312,8 @@ Interval atan(const Interval& I) {
 // intersects I x J x K. 
 Interval subproblemInterval(double x, double y, 
         const Interval& I, const Interval& J, const Interval& K) {
+    if (!(y*J - x*K).containsZero())
+        return Interval(0, -1);
     return Interval(0, 1e6); // TODO: Implement this function!
 }
 
@@ -320,6 +322,13 @@ Interval findGeneralizedPolygonMissingSide(const vector<double>& angles,
                                            vector<Interval> sides) {
     int k = ssize(angles);
     assert(ssize(sides) == k-1);
+    bool bad_situa = false;
+    for (Interval I: sides)
+        if (I.len() >= 0.3)
+            bad_situa = true;
+    
+    if (bad_situa)
+        return Interval(-10, 10);
     
     vector<double> theta(k+1);
     theta[0] = 0;
@@ -333,12 +342,16 @@ Interval findGeneralizedPolygonMissingSide(const vector<double>& angles,
         res *= Quaternion<Interval>(1) - Quaternion<Interval>(Il) * q;
     }
     // 1 + tan(len/2) * (0, 0, -sin(theta[k-1]), cos(theta[k-1]))
+    
+    if (bad_situa and !res[1].containsZero()) {
+        cout << "WTF" << endl;
+        cout << res[1] << endl;
+    }
+    
     if (!res[1].containsZero())
         return Interval(0, -1); // empty
     
     double x = -sin(theta[k-1]), y = cos(theta[k-1]);
-    if (!(res[2]*y - res[3]*x).containsZero())
-        return Interval(0, -1); // empty
     
     Interval I = subproblemInterval(x, y, res[0], res[2], res[3]);
     return atan(I) * 2;
@@ -427,31 +440,12 @@ vector<int> dartsToFix(const DerivedOnceNet& A) {
 #include "spherical_geometry.cpp"
 
 bool metrizeConvexContinent(const DerivedOnceNet& A, vector<Interval>& lengths) {
-    
     auto print_status = [&]() {
         cout << "State: " << endl;
         for (int i = 0; i < ssize(lengths); i += 2)
             cout << A.dart(i) << " " << lengths[i] << endl;
         cout << endl;
     };
-    //~ print_status();
-    
-    for (Dart d: A.darts()) {
-        // TODO: Shall be proven
-        Interval& I = lengths[d.id];
-        I.intersect(Interval(0.0001, M_PI-0.0001));
-        if (A.isConvexFace(d)) {
-            I.intersect(Interval(0.01, M_PI-0.001));
-            int q = ssize(A.face(d));
-            assert(q != 2);
-            if (q == 5)
-                I.intersect(Interval(0, acos(-1.0/3)-0.0001));
-        }
-    }
-    for (Dart d: A.darts())
-        lengths[d.id].intersect(lengths[A.rev(d).id]);
-    
-    //~ print_status();
     
     auto compute_len = [&]() {
         double res = 0;
@@ -489,14 +483,9 @@ bool metrizeConvexContinent(const DerivedOnceNet& A, vector<Interval>& lengths) 
         curr_len = new_len;
     }
     
-    //~ cout << curr_len << endl;
-    
-    //~ print_status();
-    
     if (curr_len < 0)
         return false;
     
-    //~ print_status();
     
     // Now, we check the non-convex faces.
     for (Dart d: A.darts()) {
@@ -517,8 +506,6 @@ bool metrizeConvexContinent(const DerivedOnceNet& A, vector<Interval>& lengths) 
             return false;
     }
     
-    //~ cout << "OK" << endl;
-    
     return true;
 }
 
@@ -528,6 +515,12 @@ void metrizeNet(const DerivedOnceNet& A,
                 vector<int> fixed_darts, vector<Interval> fixed_lengths,
                 vector<Interval> lengths) {
     auto print_status = [&]() {
+        cout << "Fixed: " << endl;
+        int q = ssize(fixed_darts);
+        for (int i = 0; i < q; i++)
+            cout << A.dart(fixed_darts[i]) << ": " 
+                 << fixed_lengths[i] << "; ";
+        cout << endl;
         cout << "State: " << endl;
         for (int i = 0; i < ssize(lengths); i += 2)
             cout << A.dart(i) << " " << lengths[i] << endl;
@@ -537,30 +530,20 @@ void metrizeNet(const DerivedOnceNet& A,
     assert(ssize(fixed_darts) == ssize(fixed_lengths));
     int q = ssize(fixed_darts);
     
-    //~ for (int i = 0; i < q; i++)
-        //~ cout << fixed_lengths[i] << " ";
-    //~ cout << endl;
-    
     for (int i = 0; i < q; i++)
         lengths[fixed_darts[i]].intersect(fixed_lengths[i]);
     
     bool works = metrizeConvexContinent(A, lengths);
     
-    if (!works) {
-        //~ cout << "OK" << endl;
+    if (!works) 
         return;
-    }
     
     if (fixed_lengths[0].len() < 0.01) {
         boh_cnt++;
-        //~ if (boh_cnt % 100 == 0) {
-            cout << boh_cnt << endl;
-            print_status();
-        //~ }
-        
-        //~ for (int i = 0; i < q; i++)
-            //~ cout << fixed_lengths[i] << " ";
-        //~ cout << endl;
+        cout << boh_cnt << endl;
+        print_status();
+        if (rand() % 1000 == 0)
+            exit(0);
         return; // Too small.
     }
     
@@ -580,14 +563,13 @@ void metrizeNet(const DerivedOnceNet& A,
 
 
 int main() {
-    //~ pentagon2Constraint(Interval(0.91, 0.92), Interval(0.8, 0.81));
-    //~ double a120 = 2*M_PI / 3;
-    //~ auto boh = completeGeneralizedPolygon({a120, a120, a120, a120, a120},
-                                //~ {0.91, 0, 0.8, 0, 0}, {1, 3, 4});
-    //~ for (int i = 0; i < 5; i++)
-        //~ cout << boh[0][i] << " ";
-    //~ cout << endl;
-    //~ return 0;
+    Interval I(1.81, 1.817);
+    Interval J(0.85, 0.97);
+    cout << pentagon2Constraint(I, J) << endl;
+    
+    return 0;
+    
+    
     auto net = parseDerivedOnceNets("data/derived_once_computer.txt")[2];
     vector<int> dart_ids = dartsToFix(net);
     for (int id: dart_ids) {
@@ -595,27 +577,24 @@ int main() {
     }
     
     vector<Interval> lengths(2*net.E(), Interval(0, M_PI));
+    
+    for (Dart d: net.darts()) {
+        // TODO: Shall be proven
+        Interval& I = lengths[d.id];
+        I.intersect(Interval(0.0001, M_PI-0.0001));
+        if (net.isConvexFace(d)) {
+            I.intersect(Interval(0.01, M_PI-0.001));
+            int q = ssize(net.face(d));
+            assert(q != 2);
+            if (q == 5)
+                I.intersect(Interval(0, acos(-1.0/3)-0.0001));
+        }
+    }
+    for (Dart d: net.darts())
+        lengths[d.id].intersect(lengths[net.rev(d).id]);
+    
     metrizeNet(net, 
             dart_ids, vector<Interval>(ssize(dart_ids), Interval(0, M_PI)),
             lengths);
-    
-    
-    
-    return 0;
-    
-    
-    //~ double a120 = 2*M_PI / 3;
-    //~ double a240 = 2*a120;
-    //~ vector<double> angles = {a120, a120, a120, a120, a120, a240};
-    //~ for (int _ = 0; _ < 100; _++) {
-        //~ auto maybe = completeGeneralizedPolygon(angles, 
-            //~ {(rand() % 100)/50.0, (rand() % 100)/50.0, (rand() % 100)/50.0, 0, 0, 0}, {3, 4, 5});
-        //~ if (maybe.empty())
-            //~ continue;
-        
-        //~ vector<double> sides = maybe[0];
-        //~ cout << sides[0] << " " << sides[1] << " " << sides[2] << " " << sides[3] << endl;
-        //~ checkGeneralizedPolygon(angles, sides);
-    //~ }
 }
 

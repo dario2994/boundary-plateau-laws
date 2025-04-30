@@ -136,28 +136,38 @@ Interval pentagon1Constraint(const Interval& I, const Interval& J) {
 Interval pentagon2Constraint(const Interval& I, const Interval& J) {
     if (I.empty() or J.empty())
         return Interval(0, -1);
+        
+    static auto get_theta = [](double x) {
+        return atan(2*sin(x) / (1+cos(x)));
+    };
     
-    static auto g = [](double x) {
-        double theta = atan(2*sin(x) / (1+cos(x)));
-        double lambda = 2*sin(x) / sin(theta);
-        return pair<double,double>{theta, lambda};
+    static auto get_lambda = [](double x) {
+        return 2*sin(x) / sin(get_theta(x));
     };
     
     static auto f = [&](double x, double z) {
-        auto pp = g(x);
-        double lambda = pp.second;
-        return (2*cos(z)-1.0/3-cos(x))/lambda;
+        return (2*cos(z)-1.0/3-cos(x))/get_lambda(x);
     };
     
-    double low = f(I.r, J.l);
-    double high = f(I.l, J.r);
+    double low = f(I.l, J.r);
+    double high = f(I.r, J.l);
     
-    Interval K = acos(Interval(low, high));
-    K.l -= g(I.l).first;
-    K.r -= g(I.r).first;
+    // Using acos on [low, high] is not necessarily correct here, hence
+    // we do the computation explicitly.
+    
+    if (low > 1 or high < -1)
+        return Interval(0, -1); // empty
+    
+    double l = (high < 1) ?  acos(high) : 0;
+    l -= get_theta(I.r);
+    double r = (low > -1) ? acos(low) : M_PI;
+    r -= get_theta(I.l);
+    Interval K(l, r);
     
     const static double ellT = acos(-1.0/3);
     K.intersect(Interval(0, ellT));
+    
+    //~ cout << I << " " << J << " " << K << endl;
     
     return K; 
 }
@@ -166,6 +176,16 @@ void enforcePentagonConstraint(vector<Interval*> sides) {
     auto s = [&](int id) {
         return sides[id % 5];
     };
+    
+    auto print_state = [&]() {
+        cout << "enforcePentagonConstraint" << endl;
+        for (int i = 0; i < 5; i++)
+            cout << *s(i) << " ";
+        cout << endl;
+    };
+    
+    //~ print_state();
+    
     auto compute_len = [&]() {
         double res = 0;
         for (int i = 0; i < 5; i++) {
@@ -181,6 +201,7 @@ void enforcePentagonConstraint(vector<Interval*> sides) {
             s(i+3)->intersect(pentagon1Constraint(*s(i), *s(i+1)));
             s(i)->intersect(pentagon2Constraint(*s(i+1), *s(i+3)));
         }
+        //~ print_state();
         double new_len = compute_len();
         if (new_len > 0.99*curr_len)
             break;
@@ -307,6 +328,7 @@ Interval findGeneralizedPolygonMissingSide(const vector<double>& angles,
     Quaternion<Interval> res(cos(theta[k]/2), -sin(theta[k]/2), 0, 0);
     for (int i = 0; i < k-1; i++) {
         Quaternion<Interval> q(0, 0, -sin(theta[i]), cos(theta[i]));
+        //~ cout << sides[i] << endl;
         Interval Il = tan(0.5 * sides[i]);
         res *= Quaternion<Interval>(1) - Quaternion<Interval>(Il) * q;
     }
@@ -406,10 +428,18 @@ vector<int> dartsToFix(const DerivedOnceNet& A) {
 
 bool metrizeConvexContinent(const DerivedOnceNet& A, vector<Interval>& lengths) {
     
+    auto print_status = [&]() {
+        cout << "State: " << endl;
+        for (int i = 0; i < ssize(lengths); i += 2)
+            cout << A.dart(i) << " " << lengths[i] << endl;
+        cout << endl;
+    };
+    //~ print_status();
+    
     for (Dart d: A.darts()) {
         // TODO: Shall be proven
         Interval& I = lengths[d.id];
-        I.intersect(Interval(0.00001, M_PI-0.000001));
+        I.intersect(Interval(0.0001, M_PI-0.0001));
         if (A.isConvexFace(d)) {
             I.intersect(Interval(0.01, M_PI-0.001));
             int q = ssize(A.face(d));
@@ -420,6 +450,8 @@ bool metrizeConvexContinent(const DerivedOnceNet& A, vector<Interval>& lengths) 
     }
     for (Dart d: A.darts())
         lengths[d.id].intersect(lengths[A.rev(d).id]);
+    
+    //~ print_status();
     
     auto compute_len = [&]() {
         double res = 0;
@@ -443,20 +475,28 @@ bool metrizeConvexContinent(const DerivedOnceNet& A, vector<Interval>& lengths) 
                 enforceTriangleConstraint(sides);
             if (ssize(f) == 4)
                 enforceQuadrilateralConstraint(sides);    
-            if (ssize(f) == 5)
+            if (ssize(f) == 5) {
                 enforcePentagonConstraint(sides);
+            }
             
             for (const Dart& d: f) 
                 lengths[A.rev(d).id].intersect(lengths[d.id]);
         }
+        //~ print_status();
         double new_len = compute_len();
         if (new_len > 0.99*curr_len)
             break;
         curr_len = new_len;
     }
     
+    //~ cout << curr_len << endl;
+    
+    //~ print_status();
+    
     if (curr_len < 0)
         return false;
+    
+    //~ print_status();
     
     // Now, we check the non-convex faces.
     for (Dart d: A.darts()) {
@@ -477,27 +517,37 @@ bool metrizeConvexContinent(const DerivedOnceNet& A, vector<Interval>& lengths) 
             return false;
     }
     
+    //~ cout << "OK" << endl;
+    
     return true;
 }
 
+int boh_cnt = 0;
+
 void metrizeNet(const DerivedOnceNet& A, 
-                vector<int> fixed_darts, vector<Interval> fixed_lengths) {
+                vector<int> fixed_darts, vector<Interval> fixed_lengths,
+                vector<Interval> lengths) {
     assert(ssize(fixed_darts) == ssize(fixed_lengths));
     int q = ssize(fixed_darts);
     
-    vector<Interval> lengths(2*A.E(), Interval(0, M_PI));
+    //~ for (int i = 0; i < q; i++)
+        //~ cout << fixed_lengths[i] << " ";
+    //~ cout << endl;
+    
     for (int i = 0; i < q; i++)
-        lengths[fixed_darts[i]] = fixed_lengths[i];
+        lengths[fixed_darts[i]].intersect(fixed_lengths[i]);
     
     bool works = metrizeConvexContinent(A, lengths);
     
-    cout << "CIAO" << endl;
-    if (!works)
+    if (!works) {
+        //~ cout << "OK" << endl;
         return;
-    cout << "CIAO" << endl;
+    }
     
-    if (fixed_lengths[0].len() < 0.001)
+    if (fixed_lengths[0].len() < 0.001) {
+        cout << (boh_cnt++) << endl;
         return; // Too small.
+    }
     
     for (int bb = 0; bb < (1<<q); bb++) {
         vector<Interval> new_lengths(q);
@@ -509,37 +559,48 @@ void metrizeNet(const DerivedOnceNet& A,
             else
                 new_lengths[i] = Interval(m, I.r);
         }
+        metrizeNet(A, fixed_darts, new_lengths, lengths);
     }
 }
 
 
 int main() {
+    //~ pentagon2Constraint(Interval(0.91, 0.92), Interval(0.8, 0.81));
+    //~ double a120 = 2*M_PI / 3;
+    //~ auto boh = completeGeneralizedPolygon({a120, a120, a120, a120, a120},
+                                //~ {0.91, 0, 0.8, 0, 0}, {1, 3, 4});
+    //~ for (int i = 0; i < 5; i++)
+        //~ cout << boh[0][i] << " ";
+    //~ cout << endl;
+    //~ return 0;
     auto net = parseDerivedOnceNets("data/derived_once_computer.txt")[2];
     vector<int> dart_ids = dartsToFix(net);
     for (int id: dart_ids) {
         cout << net.dart(id) << endl;
     }
     
+    vector<Interval> lengths(2*net.E(), Interval(0, M_PI));
     metrizeNet(net, 
-            dart_ids, vector<Interval>(ssize(dart_ids), Interval(0, M_PI)));
+            dart_ids, vector<Interval>(ssize(dart_ids), Interval(0, M_PI)),
+            lengths);
     
     
     
     return 0;
     
     
-    double a120 = 2*M_PI / 3;
-    double a240 = 2*a120;
-    vector<double> angles = {a120, a120, a120, a120, a120, a240};
-    for (int _ = 0; _ < 100; _++) {
-        auto maybe = completeGeneralizedPolygon(angles, 
-            {(rand() % 100)/50.0, (rand() % 100)/50.0, (rand() % 100)/50.0, 0, 0, 0}, {3, 4, 5});
-        if (maybe.empty())
-            continue;
+    //~ double a120 = 2*M_PI / 3;
+    //~ double a240 = 2*a120;
+    //~ vector<double> angles = {a120, a120, a120, a120, a120, a240};
+    //~ for (int _ = 0; _ < 100; _++) {
+        //~ auto maybe = completeGeneralizedPolygon(angles, 
+            //~ {(rand() % 100)/50.0, (rand() % 100)/50.0, (rand() % 100)/50.0, 0, 0, 0}, {3, 4, 5});
+        //~ if (maybe.empty())
+            //~ continue;
         
-        vector<double> sides = maybe[0];
+        //~ vector<double> sides = maybe[0];
         //~ cout << sides[0] << " " << sides[1] << " " << sides[2] << " " << sides[3] << endl;
-        checkGeneralizedPolygon(angles, sides);
-    }
+        //~ checkGeneralizedPolygon(angles, sides);
+    //~ }
 }
 

@@ -18,7 +18,7 @@ struct Interval {
     }
     
     double len() { return empty() ? 0.0 : (r-l); }
-    bool containsZero() { return l <= 0 and 0 <= r; }
+    bool containsZero() const { return l <= 0 and 0 <= r; }
 };
 
 ostream& operator <<(ostream& out, const Interval& I) {
@@ -29,6 +29,16 @@ ostream& operator <<(ostream& out, const Interval& I) {
 Interval hull(vector<double> vec) { 
     return Interval(*min_element(vec.begin(), vec.end()), 
                     *max_element(vec.begin(), vec.end()));
+}
+
+Interval intersection(Interval I, const Interval& J) {
+    I.intersect(J);
+    return I;
+}
+
+Interval inverse(const Interval I) {
+    assert(!I.containsZero());
+    return Interval(1.0 / I.r, 1.0 / I.l);
 }
 
 // Interval arithmetic.
@@ -315,11 +325,25 @@ Interval atan(const Interval& I) {
 // intersects I x J x K. 
 // Assumption:
 //      0 not in I
+//      x, y are not simultaneously 0
+//      x, y take discrete values (hence, if they are not zero, they are
+//                                 relatively large).
 Interval subproblemInterval(double x, double y, 
         const Interval& I, const Interval& J, const Interval& K) {
     if (!(y*J - x*K).containsZero() or I.empty())
         return Interval(0, -1);
-    return Interval(0, 1e6); // TODO: Implement this function!
+        
+    Interval ans;
+    if (abs(x) < 1e-5)
+        ans = (K * (1/y)) * inverse(I);
+    else if (abs(y) < 1e-5)
+        ans =  (J * (1/x)) * inverse(I);
+    else    
+        ans = intersection(J * (1/x), K * (1/y)) * inverse(I);
+    
+    ans.intersect(Interval(0, 1e9));
+    
+    return ans;
 }
 
 // We "find" the length of the last side.
@@ -466,6 +490,9 @@ bool metrizeConvexContinent(const DerivedOnceNet& A, vector<Interval>& lengths) 
             vector<Interval*> sides;
             for (const Dart& d: f)
                 sides.push_back(&lengths[d.id]);
+            
+            assert(3 <= ssize(f) and ssize(f) <= 5);    
+            
             if (ssize(f) == 3)
                 enforceTriangleConstraint(sides);
             if (ssize(f) == 4)
@@ -544,7 +571,7 @@ void metrizeNet(const DerivedOnceNet& A,
     if (!works) 
         return;
     
-    if (fixed_lengths[0].len() < 0.01) {
+    if (fixed_lengths[0].len() < 0.0001) {
         boh_cnt++;
         cout << boh_cnt << endl;
         print_status();
@@ -567,7 +594,7 @@ void metrizeNet(const DerivedOnceNet& A,
 
 
 int main() {
-    auto net = parseDerivedOnceNets("data/derived_once_computer.txt")[2];
+    auto net = parseDerivedOnceNets("data/derived_once_computer.txt")[8];
     vector<int> dart_ids = dartsToFix(net);
     for (int id: dart_ids) {
         cout << net.dart(id) << endl;

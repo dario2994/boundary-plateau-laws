@@ -1,1 +1,0 @@
-This is the net obtained from Heppes 5 removing the appropriate edges.

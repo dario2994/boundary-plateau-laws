@@ -330,9 +330,6 @@ Interval atan(const Interval& I) {
 //                                 relatively large).
 Interval subproblemInterval(double x, double y, 
         const Interval& I, const Interval& J, const Interval& K) {
-    if (!(y*J - x*K).containsZero() or I.empty())
-        return Interval(0, -1);
-        
     Interval ans;
     if (abs(x) < 1e-5)
         ans = (K * (1/y)) * inverse(I);
@@ -373,10 +370,13 @@ Interval findGeneralizedPolygonMissingSide(const vector<double>& angles,
     if (!res[1].containsZero())
         return Interval(0, -1); // empty
     
+    double x = -sin(theta[k-1]), y = cos(theta[k-1]);
+    
+    if (!(y*res[2] - x*res[3]).containsZero() or res[0].empty())
+        return Interval(0, -1);
+        
     if (res[0].containsZero())
         return Interval(-100, 100); // anything goes
-    
-    double x = -sin(theta[k-1]), y = cos(theta[k-1]);
     
     Interval I = subproblemInterval(x, y, res[0], res[2], res[3]);
     return atan(I) * 2;
@@ -594,7 +594,7 @@ void metrizeNet(const DerivedOnceNet& A,
 
 
 int main() {
-    auto net = parseDerivedOnceNets("data/derived_once_computer.txt")[8];
+    auto net = parseDerivedOnceNets("data/derived_once_computer.txt")[13];
     vector<int> dart_ids = dartsToFix(net);
     for (int id: dart_ids) {
         cout << net.dart(id) << endl;
@@ -603,9 +603,7 @@ int main() {
     vector<Interval> lengths(2*net.E(), Interval(0, M_PI));
     
     for (Dart d: net.darts()) {
-        // TODO: Shall be proven
         Interval& I = lengths[d.id];
-        //~ I.intersect(Interval(0.0001, M_PI-0.0001));
         if (net.isConvexFace(d)) {
             I.intersect(Interval(0.02, M_PI-0.01));
             int q = ssize(net.face(d));

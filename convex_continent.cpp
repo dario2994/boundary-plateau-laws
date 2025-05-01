@@ -277,25 +277,24 @@ ostream& operator <<(ostream& out, const Quaternion<T>& q) {
     return out;
 }
 
-void checkGeneralizedPolygon(
-    const vector<double>& angles, const vector<double>& sides) {
-    int k = ssize(angles);
-    vector<double> theta(k+1);
-    theta[0] = 0;
-    for (int i = 0; i < k; i++) theta[i+1] = theta[i] + angles[i] - M_PI;
+//~ void checkGeneralizedPolygon(
+    //~ const vector<double>& angles, const vector<double>& sides) {
+    //~ int k = ssize(angles);
+    //~ vector<double> theta(k+1);
+    //~ theta[0] = 0;
+    //~ for (int i = 0; i < k; i++) theta[i+1] = theta[i] + angles[i] - M_PI;
     
-    Quaternion<Interval> res = Interval(1);
-    for (int i = 0; i < k; i++) {
-        Quaternion<Interval> q(0, 0, -sin(theta[i]), cos(theta[i]));
-        double l = tan(sides[i]/2);
-        Interval Il(l-0.001, l+0.001);
-        res *= Quaternion<Interval>(1) + Quaternion<Interval>(Il) * q;
-    }
-    cout << res << endl;
+    //~ Quaternion<Interval> res = Interval(1);
+    //~ for (int i = 0; i < k; i++) {
+        //~ Quaternion<Interval> q(0, 0, -sin(theta[i]), cos(theta[i]));
+        //~ double l = tan(sides[i]/2);
+        //~ Interval Il(l-0.001, l+0.001);
+        //~ res *= Quaternion<Interval>(1) + Quaternion<Interval>(Il) * q;
+    //~ }
+    //~ cout << res << endl;
     
-    cout << res[1]*cos(-theta[k]/2)-res[0]*sin(-theta[k]/2) << endl;
-    //~ cout << res[1]/res[0] << " " << tan(-theta[k]/2) << endl;
-}
+    //~ cout << res[1]*cos(-theta[k]/2)-res[0]*sin(-theta[k]/2) << endl;
+//~ }
 
 Interval tan(const Interval& I) {
     if (I.empty())
@@ -314,9 +313,11 @@ Interval atan(const Interval& I) {
 
 // Returns the range of positive t such that line(1, tx, ty)
 // intersects I x J x K. 
+// Assumption:
+//      0 not in I
 Interval subproblemInterval(double x, double y, 
         const Interval& I, const Interval& J, const Interval& K) {
-    if (!(y*J - x*K).containsZero())
+    if (!(y*J - x*K).containsZero() or I.empty())
         return Interval(0, -1);
     return Interval(0, 1e6); // TODO: Implement this function!
 }
@@ -326,14 +327,12 @@ Interval findGeneralizedPolygonMissingSide(const vector<double>& angles,
                                            vector<Interval> sides) {
     int k = ssize(angles);
     assert(ssize(sides) == k-1);
-    //~ bool bad_situa = false;
-    //~ for (Interval I: sides)
-        //~ if (I.len() >= 0.3)
-            //~ bad_situa = true;
     
-    //~ if (bad_situa)
-        //~ return Interval(-10, 10);
-    
+    // To avoid issues related to tan(pi/2).
+    for (Interval I: sides)
+        if (I.r >= M_PI-0.0001)
+            return Interval(-100, 100);
+        
     vector<double> theta(k+1);
     theta[0] = 0;
     for (int i = 0; i < k; i++) theta[i+1] = theta[i] + angles[i] - M_PI;
@@ -347,13 +346,11 @@ Interval findGeneralizedPolygonMissingSide(const vector<double>& angles,
     }
     // 1 + tan(len/2) * (0, 0, -sin(theta[k-1]), cos(theta[k-1]))
     
-    //~ if (bad_situa and !res[1].containsZero()) {
-        //~ cout << "WTF" << endl;
-        //~ cout << res[1] << endl;
-    //~ }
-    
     if (!res[1].containsZero())
         return Interval(0, -1); // empty
+    
+    if (res[0].containsZero())
+        return Interval(-100, 100); // anything goes
     
     double x = -sin(theta[k-1]), y = cos(theta[k-1]);
     
@@ -570,13 +567,6 @@ void metrizeNet(const DerivedOnceNet& A,
 
 
 int main() {
-    //~ Interval I(1.81, 1.817);
-    //~ Interval J(0.85, 0.97);
-    //~ cout << pentagon2Constraint(I, J) << endl;
-    
-    //~ return 0;
-    
-    
     auto net = parseDerivedOnceNets("data/derived_once_computer.txt")[2];
     vector<int> dart_ids = dartsToFix(net);
     for (int id: dart_ids) {
@@ -588,9 +578,9 @@ int main() {
     for (Dart d: net.darts()) {
         // TODO: Shall be proven
         Interval& I = lengths[d.id];
-        I.intersect(Interval(0.0001, M_PI-0.0001));
+        //~ I.intersect(Interval(0.0001, M_PI-0.0001));
         if (net.isConvexFace(d)) {
-            I.intersect(Interval(0.01, M_PI-0.001));
+            I.intersect(Interval(0.02, M_PI-0.01));
             int q = ssize(net.face(d));
             assert(q != 2);
             if (q == 5)

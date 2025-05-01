@@ -152,6 +152,8 @@ Interval pentagon2Constraint(const Interval& I, const Interval& J) {
     double low = f(I.l, J.r);
     double high = f(I.r, J.l);
     
+    //~ cout << low << " " << high << endl;
+    
     // Using acos on [low, high] is not necessarily correct here, hence
     // we do the computation explicitly.
     
@@ -162,6 +164,7 @@ Interval pentagon2Constraint(const Interval& I, const Interval& J) {
     l -= get_theta(I.r);
     double r = (low > -1) ? acos(low) : M_PI;
     r -= get_theta(I.l);
+    //~ cout << l << " " << r << endl;
     Interval K(l, r);
     
     const static double ellT = acos(-1.0/3);
@@ -200,6 +203,7 @@ void enforcePentagonConstraint(vector<Interval*> sides) {
         for (int i = 0; i < 5; i++) {
             s(i+3)->intersect(pentagon1Constraint(*s(i), *s(i+1)));
             s(i)->intersect(pentagon2Constraint(*s(i+1), *s(i+3)));
+            s(i)->intersect(pentagon2Constraint(*s(i+4), *s(i+2)));
         }
         //~ print_state();
         double new_len = compute_len();
@@ -322,13 +326,13 @@ Interval findGeneralizedPolygonMissingSide(const vector<double>& angles,
                                            vector<Interval> sides) {
     int k = ssize(angles);
     assert(ssize(sides) == k-1);
-    bool bad_situa = false;
-    for (Interval I: sides)
-        if (I.len() >= 0.3)
-            bad_situa = true;
+    //~ bool bad_situa = false;
+    //~ for (Interval I: sides)
+        //~ if (I.len() >= 0.3)
+            //~ bad_situa = true;
     
-    if (bad_situa)
-        return Interval(-10, 10);
+    //~ if (bad_situa)
+        //~ return Interval(-10, 10);
     
     vector<double> theta(k+1);
     theta[0] = 0;
@@ -343,10 +347,10 @@ Interval findGeneralizedPolygonMissingSide(const vector<double>& angles,
     }
     // 1 + tan(len/2) * (0, 0, -sin(theta[k-1]), cos(theta[k-1]))
     
-    if (bad_situa and !res[1].containsZero()) {
-        cout << "WTF" << endl;
-        cout << res[1] << endl;
-    }
+    //~ if (bad_situa and !res[1].containsZero()) {
+        //~ cout << "WTF" << endl;
+        //~ cout << res[1] << endl;
+    //~ }
     
     if (!res[1].containsZero())
         return Interval(0, -1); // empty
@@ -500,8 +504,10 @@ bool metrizeConvexContinent(const DerivedOnceNet& A, vector<Interval>& lengths) 
             if (i < q-1)
                 sides.push_back(lengths[e.id]);
         }
-        Interval& I = lengths[A.phi(d, q-1).id];
+        Dart e = A.phi(d, q-1);
+        Interval& I = lengths[e.id];
         I.intersect(findGeneralizedPolygonMissingSide(angles, sides));
+        lengths[A.rev(e).id].intersect(I);
         if (I.empty())
             return false;
     }
@@ -533,6 +539,9 @@ void metrizeNet(const DerivedOnceNet& A,
     for (int i = 0; i < q; i++)
         lengths[fixed_darts[i]].intersect(fixed_lengths[i]);
     
+    for (Dart d: A.darts())
+        lengths[A.rev(d).id].intersect(lengths[d.id]);
+    
     bool works = metrizeConvexContinent(A, lengths);
     
     if (!works) 
@@ -542,8 +551,6 @@ void metrizeNet(const DerivedOnceNet& A,
         boh_cnt++;
         cout << boh_cnt << endl;
         print_status();
-        if (rand() % 1000 == 0)
-            exit(0);
         return; // Too small.
     }
     
@@ -563,11 +570,11 @@ void metrizeNet(const DerivedOnceNet& A,
 
 
 int main() {
-    Interval I(1.81, 1.817);
-    Interval J(0.85, 0.97);
-    cout << pentagon2Constraint(I, J) << endl;
+    //~ Interval I(1.81, 1.817);
+    //~ Interval J(0.85, 0.97);
+    //~ cout << pentagon2Constraint(I, J) << endl;
     
-    return 0;
+    //~ return 0;
     
     
     auto net = parseDerivedOnceNets("data/derived_once_computer.txt")[2];

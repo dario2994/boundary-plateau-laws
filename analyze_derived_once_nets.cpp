@@ -514,6 +514,23 @@ bool containsQuadPentPentQuad (const DerivedOnceNet& A) {
     return false;
 }
 
+int commonEdgesOfConcaveFaces(const DerivedOnceNet& A) {
+    Dart d;
+    int sides;
+    for (auto face:A.faces()) {
+        if ((A.faceType(face[0])).second!=0) {
+            d=face[0];
+            sides=(A.faceType(face[0])).first;
+        }
+    }
+    int answer=0;
+    for (int i=0; i<sides; i++) {
+        if ((A.faceType(A.rev(d))).second!=0) answer++;
+        d=A.phi(d);
+    }
+    return answer;
+}
+
 int main() {
     vector<DerivedOnceNet> derived_once = 
         parseDerivedOnceNets("data/derived_once_computer.txt");
@@ -536,13 +553,15 @@ int main() {
     
     //~ return 0;        
     
-    int cnt_interesting=0;
+    vector<int> count={0,0,0,0,0};
     for (int id: survivors) {
         const DerivedOnceNet& A = derived_once[id];
-        if (containsQuadPentPentQuad(A)==false) continue;
-        cout << id << endl;
-        cnt_interesting++;
+        int n=commonEdgesOfConcaveFaces(A);
+        if (n<=3) count[n]++;
+        if (n>3) count[4]++; 
     }
     cout << endl;
-    cout << "Ci sono "<< cnt_interesting << " reti interessanti" << endl;
+    for (int i=0; i<4; i++) 
+        cout << "Ci sono " << count[i] << " reti in cui le facce nonconvesse hanno " << i << " lati in comune" << endl;
+    cout << "Ci sono " << count[4] << " reti in cui le facce nonconvesse hanno piu' di tre lati in comune " << endl;
 }

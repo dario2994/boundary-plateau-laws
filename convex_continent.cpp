@@ -358,13 +358,13 @@ Interval findGeneralizedPolygonMissingSide(const vector<double>& angles,
     theta[0] = 0;
     for (int i = 0; i < k; i++) theta[i+1] = theta[i] + angles[i] - M_PI;
     
-    Quaternion<Interval> res(cos(theta[k]/2), -sin(theta[k]/2), 0, 0);
-    for (int i = 0; i < k-1; i++) {
+    Quaternion<Interval> res(1);
+    for (int i = k-2; i >= 0; i--) {
         Quaternion<Interval> q(0, 0, -sin(theta[i]), cos(theta[i]));
-        //~ cout << sides[i] << endl;
         Interval Il = tan(0.5 * sides[i]);
         res *= Quaternion<Interval>(1) - Quaternion<Interval>(Il) * q;
     }
+    res *= Quaternion<Interval>(cos(theta[k]/2), -sin(theta[k]/2), 0, 0);
     // 1 + tan(len/2) * (0, 0, -sin(theta[k-1]), cos(theta[k-1]))
     
     if (!res[1].containsZero())
@@ -514,7 +514,6 @@ bool metrizeConvexContinent(const DerivedOnceNet& A, vector<Interval>& lengths) 
     if (curr_len < 0)
         return false;
     
-    
     // Now, we check the non-convex faces.
     for (Dart d: A.darts()) {
         if (A.isConvexFace(d))
@@ -551,10 +550,10 @@ void metrizeNet(const DerivedOnceNet& A,
             cout << A.dart(fixed_darts[i]) << ": " 
                  << fixed_lengths[i] << "; ";
         cout << endl;
-        cout << "State: " << endl;
-        for (int i = 0; i < ssize(lengths); i += 2)
-            cout << A.dart(i) << " " << lengths[i] << endl;
-        cout << endl;
+        //~ cout << "State: " << endl;
+        //~ for (int i = 0; i < ssize(lengths); i += 2)
+            //~ cout << A.dart(i) << " " << lengths[i] << endl;
+        //~ cout << endl;
     };
     
     assert(ssize(fixed_darts) == ssize(fixed_lengths));
@@ -594,7 +593,7 @@ void metrizeNet(const DerivedOnceNet& A,
 
 
 int main() {
-    auto net = parseDerivedOnceNets("data/derived_once_computer.txt")[13];
+    auto net = parseDerivedOnceNets("data/derived_once_computer.txt")[8];
     vector<int> dart_ids = dartsToFix(net);
     for (int id: dart_ids) {
         cout << net.dart(id) << endl;

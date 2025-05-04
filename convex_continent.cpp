@@ -746,7 +746,7 @@ bool isApproximateMetrizationPossible(const DerivedOnceNet& A) {
     for (Dart d: A.darts())
         if (A.isConcaveAngle(d))
             cnt++;
-    if (cnt >= 5 or (cnt == 4 and ssize(fixed_darts) >= 4)) { // slow and non-effective
+    if (ssize(fixed_darts) >= 5 or (cnt == 4 and ssize(fixed_darts) >= 4)) { // slow and non-effective
         cout << "SKIPPED";
         return false;
     }
@@ -785,6 +785,8 @@ int main() {
     in.close();
     
     for (int id: survivors) {
+        //~ if (id < 600)
+            //~ continue;
         cout << id << " ";
         auto net = parseDerivedOnceNets("data/derived_once_computer.txt")[id];
         bool possible = isApproximateMetrizationPossible(net);

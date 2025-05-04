@@ -748,7 +748,7 @@ bool isApproximateMetrizationPossible(const DerivedOnceNet& A) {
             cnt++;
     if (ssize(fixed_darts) >= 5 or (cnt == 4 and ssize(fixed_darts) >= 4)) { // slow and non-effective
         cout << "SKIPPED";
-        return false;
+        return true;
     }
     
     vector<Interval> lengths(2*A.E(), Interval(0, M_PI));

@@ -734,12 +734,22 @@ bool searchApproximateMetrization(const DerivedOnceNet& A,
 bool isApproximateMetrizationPossible(const DerivedOnceNet& A) {
     vector<Dart> fixed_darts = findFreeParameters(A);
     
-    cout << "The " << ssize(fixed_darts) << " fixed darts are: ";
-    for (Dart d: fixed_darts) {
-        cout << d << " ";
-    }
-    cout << endl;
+    //~ cout << "The " << ssize(fixed_darts) << " fixed darts are: ";
+    //~ for (Dart d: fixed_darts) {
+        //~ cout << d << " ";
+    //~ }
+    //~ cout << endl;
+    cout << ssize(fixed_darts) << " ";
+    cout.flush();
     
+    int cnt = 0;
+    for (Dart d: A.darts())
+        if (A.isConcaveAngle(d))
+            cnt++;
+    if (cnt >= 5 or (cnt == 4 and ssize(fixed_darts) >= 4)) { // slow and non-effective
+        cout << "SKIPPED";
+        return false;
+    }
     
     vector<Interval> lengths(2*A.E(), Interval(0, M_PI));
     
@@ -765,10 +775,21 @@ bool isApproximateMetrizationPossible(const DerivedOnceNet& A) {
 int main() {
     // 1s with the tangent implementation
     // 2, 3, 5, 8, 12, 19, 31, 83
-    for (int id: {2, 3, 5, 7, 8, 12, 13, 19, 28, 31, 33, 83}) {
-        cout << id << endl;
+    
+    ifstream in("data/derived_once_survivors.txt");
+    int cnt_survivors;
+    in >> cnt_survivors;
+    vector<int> survivors(cnt_survivors);
+    for (int i = 0; i < cnt_survivors; i++)
+        in >> survivors[i];
+    in.close();
+    
+    for (int id: survivors) {
+        cout << id << " ";
         auto net = parseDerivedOnceNets("data/derived_once_computer.txt")[id];
-        cout << isApproximateMetrizationPossible(net) << endl;
+        bool possible = isApproximateMetrizationPossible(net);
+        if (possible) cout << "POSSIBLE";
+        cout << endl;
     }
 }
 

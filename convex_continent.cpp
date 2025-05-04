@@ -18,7 +18,8 @@ struct Interval {
     }
     
     double len() { return empty() ? 0.0 : (r-l); }
-    bool containsZero() const { return l <= 0 and 0 <= r; }
+    bool contains(double x) const { return l <= x and x <= r; }
+    bool containsZero() const { return l <= 0 and 0 <= r; } // TODO: Remove.
 };
 
 ostream& operator <<(ostream& out, const Interval& I) {
@@ -313,6 +314,42 @@ Interval tan(const Interval& I) {
     return Interval(tan(I.l), tan(I.r));
 }
 
+
+// 0 <= x < 2pi.
+bool containsMod2pi(Interval I, double x) {
+    if (I.empty())
+        return false;
+    double lower = (I.l - x) / (2*M_PI);
+    double upper = (I.r - x) / (2*M_PI);
+
+    int k_min = static_cast<int>(ceil(lower));
+    int k_max = static_cast<int>(floor(upper));
+
+    return k_min <= k_max;
+}
+
+Interval sin(const Interval& I) {
+    if (I.empty())
+        return Interval(0, -1);
+    double sl = sin(I.l), sr = sin(I.r);
+    
+    double l = containsMod2pi(I, 3*M_PI/2) ? -1 : min(sl, sr);
+    double r = containsMod2pi(I, M_PI/2) ? 1 : max(sl, sr);
+    
+    return Interval(l, r);
+}
+
+Interval cos(const Interval& I) {
+    if (I.empty())
+        return Interval(0, -1);
+    double sl = cos(I.l), sr = cos(I.r);
+    
+    double l = containsMod2pi(I, M_PI) ? -1 : min(sl, sr);
+    double r = containsMod2pi(I, 0) ? 1 : max(sl, sr);
+    
+    return Interval(l, r);
+}
+
 Interval atan(const Interval& I) {
     if (I.empty())
         return Interval(0, -1);
@@ -358,6 +395,11 @@ Interval findGeneralizedPolygonMissingSide(const vector<double>& angles,
     theta[0] = 0;
     for (int i = 0; i < k; i++) theta[i+1] = theta[i] + angles[i] - M_PI;
     
+    // Should we avoid tangents maybe?
+    // We shall prepare something to test it and check what seems to
+    // be better.
+    // Avoiding tan would allow us to consider also edges longer than pi
+    // without suffering.
     Quaternion<Interval> res(1);
     for (int i = k-2; i >= 0; i--) {
         Quaternion<Interval> q(0, 0, -sin(theta[i]), cos(theta[i]));
@@ -380,6 +422,75 @@ Interval findGeneralizedPolygonMissingSide(const vector<double>& angles,
     
     Interval I = subproblemInterval(x, y, res[0], res[2], res[3]);
     return atan(I) * 2;
+}
+
+
+Interval findGeneralizedPolygonMissingSide2(const vector<double>& angles,
+                                           vector<Interval> sides) {
+    int k = ssize(angles);
+    assert(ssize(sides) == k-1);
+        
+    vector<double> theta(k+1);
+    theta[0] = 0;
+    for (int i = 0; i < k; i++) theta[i+1] = theta[i] + angles[i] - M_PI;
+    
+    // Should we avoid tangents maybe?
+    // We shall prepare something to test it and check what seems to
+    // be better.
+    // Avoiding tan would allow us to consider also edges longer than pi
+    // without suffering.
+    Quaternion<Interval> res(1);
+    for (int i = k-2; i >= 0; i--) {
+        Quaternion<Interval> q(0, 0, -sin(theta[i]), cos(theta[i]));
+        Interval angle = 0.5 * sides[i];
+        res *= Quaternion<Interval>(cos(angle)) - Quaternion<Interval>(sin(angle)) * q;
+    }
+    res *= Quaternion<Interval>(cos(theta[k]/2), -sin(theta[k]/2), 0, 0);
+    // Up to sign, this is:
+    // cos(len/2) + sin(len/2) * (0, 0, -sin(theta[k-1]), cos(theta[k-1]))
+    
+    if (!res[1].containsZero())
+        return Interval(0, -1); // empty
+    
+    double x = -sin(theta[k-1]), y = cos(theta[k-1]);
+    
+    Interval I = res[0];
+    Interval J(-2, 2);
+    if (abs(x) > 0.01)
+        J.intersect(res[2] * (1/x));
+    else if (!res[2].containsZero())
+        return Interval(0, -1);
+    
+    if (abs(y) > 0.01)
+        J.intersect(res[3] * (1/y));
+    else if (!res[3].containsZero())
+        return Interval(0, -1);
+             
+    if (I.empty() or J.empty())
+        return Interval(0, -1);
+    
+    if (I.len() > 0.9 or J.len() > 0.9)
+        return Interval(0, 10);
+        
+    // (cos l/2, sin l/2) belongs to IxJ or -(IxJ).
+    // With 0 <= l < pi.
+    
+    auto intersectWithCircleQuadrant = [](Interval X, Interval Y) {
+        X.intersect(Interval(0, 1));
+        Y.intersect(Interval(0, 1));
+        if (X.empty() or Y.empty())
+            return Interval(0, -1);
+        return intersection(Interval(acos(X.r), acos(X.l)),
+                            Interval(asin(Y.l), asin(Y.r)));
+    };
+    
+    Interval inter1 = intersectWithCircleQuadrant(I, J);
+    Interval inter2 = intersectWithCircleQuadrant((-1)*I, (-1)*J);
+    
+    assert(inter1.empty() or inter2.empty());
+    Interval inter = inter1.empty() ? inter2 : inter1;
+    
+    return 2 * inter;
 }
 
 #include "derived_once_nets.cpp"
@@ -431,7 +542,10 @@ bool isDetermined(const DerivedOnceNet& A, vector<bool> determined) {
     return missing == 0;
 }
 
-vector<int> dartsToFix(const DerivedOnceNet& A) {
+// Returns the smallest possible set of darts such that once their 
+// length is chosen, the lengths of all the sides of convex faces
+// can be uniquely determined through simple rules.
+vector<Dart> findFreeParametersConvex(const DerivedOnceNet& A) {
     int n = A.E();
     if (isDetermined(A, vector<bool>(2*n, false)))
         return {};
@@ -448,10 +562,10 @@ vector<int> dartsToFix(const DerivedOnceNet& A) {
                     }
                 }
                 if (isDetermined(A, vec)) {
-                    vector<int> res;
+                    vector<Dart> res;
                     for (int i = 0; i < n; i++)
                         if (bb&(1ll<<i))
-                            res.push_back(2*i);
+                            res.push_back(A.dart(2*i));
                     return res;
                 }
                 bb += 1ll<<__builtin_ctzll(bb);
@@ -459,12 +573,40 @@ vector<int> dartsToFix(const DerivedOnceNet& A) {
         }
     }
     assert(0);
-    return {-1};
+    return {};
+}
+
+vector<Dart> findFreeParametersNonConvex(const DerivedOnceNet& A) {
+    vector<Dart> res;
+    for (auto f: A.faces()) {
+        if (A.isConvexFace(f))
+            continue;
+        for (Dart d: f) {
+            if (!A.isConvexFace(A.rev(d)))
+                res.push_back(d);
+        }
+        break;
+    }
+    
+    if (!res.empty())
+        res.pop_back();
+
+    return res;
+}
+
+vector<Dart> findFreeParameters(const DerivedOnceNet& A) {
+    vector<Dart> convex = findFreeParametersConvex(A);
+    vector<Dart> non_convex = findFreeParametersNonConvex(A);
+    
+    vector<Dart> joined = convex;
+    for (Dart d: non_convex)
+        joined.push_back(d);
+    return joined;
 }
 
 #include "spherical_geometry.cpp"
 
-bool metrizeConvexContinent(const DerivedOnceNet& A, vector<Interval>& lengths) {
+bool refineMetrization(const DerivedOnceNet& A, vector<Interval>& lengths) {
     auto print_status = [&]() {
         cout << "State: " << endl;
         for (int i = 0; i < ssize(lengths); i += 2)
@@ -504,7 +646,6 @@ bool metrizeConvexContinent(const DerivedOnceNet& A, vector<Interval>& lengths) 
             for (const Dart& d: f) 
                 lengths[A.rev(d).id].intersect(lengths[d.id]);
         }
-        //~ print_status();
         double new_len = compute_len();
         if (new_len > 0.99*curr_len)
             break;
@@ -515,24 +656,26 @@ bool metrizeConvexContinent(const DerivedOnceNet& A, vector<Interval>& lengths) 
         return false;
     
     // Now, we check the non-convex faces.
-    for (Dart d: A.darts()) {
-        if (A.isConvexFace(d))
-            continue;
-        int q = ssize(A.face(d));
-        vector<double> angles;
-        vector<Interval> sides;
-        for (int i = 0; i < q; i++) {
-            Dart e = A.phi(d, i);
-            angles.push_back(A.isConcaveAngle(e) ? 4*M_PI/3 : 2*M_PI/3);
-            if (i < q-1)
-                sides.push_back(lengths[e.id]);
+    for (int _ = 0; _ < 2; _++) { // We run it twice.
+        for (Dart d: A.darts()) {
+            if (A.isConvexFace(d))
+                continue;
+            int q = ssize(A.face(d));
+            vector<double> angles;
+            vector<Interval> sides;
+            for (int i = 0; i < q; i++) {
+                Dart e = A.phi(d, i);
+                angles.push_back(A.isConcaveAngle(e) ? 4*M_PI/3 : 2*M_PI/3);
+                if (i < q-1)
+                    sides.push_back(lengths[e.id]);
+            }
+            Dart e = A.phi(d, q-1);
+            Interval& I = lengths[e.id];
+            I.intersect(findGeneralizedPolygonMissingSide2(angles, sides));
+            lengths[A.rev(e).id].intersect(I);
+            if (I.empty())
+                return false;
         }
-        Dart e = A.phi(d, q-1);
-        Interval& I = lengths[e.id];
-        I.intersect(findGeneralizedPolygonMissingSide(angles, sides));
-        lengths[A.rev(e).id].intersect(I);
-        if (I.empty())
-            return false;
     }
     
     return true;
@@ -540,14 +683,14 @@ bool metrizeConvexContinent(const DerivedOnceNet& A, vector<Interval>& lengths) 
 
 int boh_cnt = 0;
 
-void metrizeNet(const DerivedOnceNet& A, 
-                vector<int> fixed_darts, vector<Interval> fixed_lengths,
+bool searchApproximateMetrization(const DerivedOnceNet& A, 
+                const vector<Dart>& fixed_darts, vector<Interval> fixed_lengths,
                 vector<Interval> lengths) {
     auto print_status = [&]() {
         cout << "Fixed: " << endl;
         int q = ssize(fixed_darts);
         for (int i = 0; i < q; i++)
-            cout << A.dart(fixed_darts[i]) << ": " 
+            cout << fixed_darts[i] << ": " 
                  << fixed_lengths[i] << "; ";
         cout << endl;
         //~ cout << "State: " << endl;
@@ -560,22 +703,16 @@ void metrizeNet(const DerivedOnceNet& A,
     int q = ssize(fixed_darts);
     
     for (int i = 0; i < q; i++)
-        lengths[fixed_darts[i]].intersect(fixed_lengths[i]);
+        lengths[fixed_darts[i].id].intersect(fixed_lengths[i]);
     
     for (Dart d: A.darts())
         lengths[A.rev(d).id].intersect(lengths[d.id]);
     
-    bool works = metrizeConvexContinent(A, lengths);
+    if (!refineMetrization(A, lengths))
+        return false;
     
-    if (!works) 
-        return;
-    
-    if (fixed_lengths[0].len() < 0.0001) {
-        boh_cnt++;
-        cout << boh_cnt << endl;
-        print_status();
-        return; // Too small.
-    }
+    if (fixed_lengths[0].len() < 0.001) 
+        return true; // We found a valid approximate metrization.
     
     for (int bb = 0; bb < (1<<q); bb++) {
         vector<Interval> new_lengths(q);
@@ -587,35 +724,51 @@ void metrizeNet(const DerivedOnceNet& A,
             else
                 new_lengths[i] = Interval(m, I.r);
         }
-        metrizeNet(A, fixed_darts, new_lengths, lengths);
+        if (searchApproximateMetrization(A, fixed_darts, new_lengths, lengths))
+            return true;
     }
+    
+    return false;
 }
 
-
-int main() {
-    auto net = parseDerivedOnceNets("data/derived_once_computer.txt")[8];
-    vector<int> dart_ids = dartsToFix(net);
-    for (int id: dart_ids) {
-        cout << net.dart(id) << endl;
+bool isApproximateMetrizationPossible(const DerivedOnceNet& A) {
+    vector<Dart> fixed_darts = findFreeParameters(A);
+    
+    cout << "The " << ssize(fixed_darts) << " fixed darts are: ";
+    for (Dart d: fixed_darts) {
+        cout << d << " ";
     }
+    cout << endl;
     
-    vector<Interval> lengths(2*net.E(), Interval(0, M_PI));
     
-    for (Dart d: net.darts()) {
+    vector<Interval> lengths(2*A.E(), Interval(0, M_PI));
+    
+    for (Dart d: A.darts()) {
         Interval& I = lengths[d.id];
-        if (net.isConvexFace(d)) {
+        if (A.isConvexFace(d)) {
             I.intersect(Interval(0.02, M_PI-0.01));
-            int q = ssize(net.face(d));
+            int q = ssize(A.face(d));
             assert(q != 2);
             if (q == 5)
                 I.intersect(Interval(0, acos(-1.0/3)-0.0001));
         }
     }
-    for (Dart d: net.darts())
-        lengths[d.id].intersect(lengths[net.rev(d).id]);
-    
-    metrizeNet(net, 
-            dart_ids, vector<Interval>(ssize(dart_ids), Interval(0, M_PI)),
+    for (Dart d: A.darts())
+        lengths[d.id].intersect(lengths[A.rev(d).id]);
+        
+    return  searchApproximateMetrization(A, fixed_darts, 
+            vector<Interval>(ssize(fixed_darts), Interval(0, M_PI)),
             lengths);
+}
+
+
+int main() {
+    // 1s with the tangent implementation
+    // 2, 3, 5, 8, 12, 19, 31, 83
+    for (int id: {2, 3, 5, 7, 8, 12, 13, 19, 28, 31, 33, 83}) {
+        cout << id << endl;
+        auto net = parseDerivedOnceNets("data/derived_once_computer.txt")[id];
+        cout << isApproximateMetrizationPossible(net) << endl;
+    }
 }
 

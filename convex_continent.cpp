@@ -163,8 +163,6 @@ Interval pentagon2Constraint(const Interval& I, const Interval& J) {
     double low = f(I.l, J.r);
     double high = f(I.r, J.l);
     
-    //~ cout << low << " " << high << endl;
-    
     // Using acos on [low, high] is not necessarily correct here, hence
     // we do the computation explicitly.
     
@@ -175,13 +173,10 @@ Interval pentagon2Constraint(const Interval& I, const Interval& J) {
     l -= get_theta(I.r);
     double r = (low > -1) ? acos(low) : M_PI;
     r -= get_theta(I.l);
-    //~ cout << l << " " << r << endl;
     Interval K(l, r);
     
     const static double ellT = acos(-1.0/3);
     K.intersect(Interval(0, ellT));
-    
-    //~ cout << I << " " << J << " " << K << endl;
     
     return K; 
 }
@@ -424,6 +419,24 @@ Interval findGeneralizedPolygonMissingSide(const vector<double>& angles,
     return atan(I) * 2;
 }
 
+// We employ the identification R^3 \cong <i, j, k> \subseteq Quaternions.
+// Then, any quaternion q with |q|=1 induces an isometry via v -> qv\bar q.
+ 
+// Set v = (e_1, e_2).
+// This function returns R(v, theta).
+template<typename T> 
+Quaternion<T> basicRotation(T theta) {
+    T theta2 = 0.5 * theta;
+    return Quaternion<T>(cos(theta2), sin(theta2), 0, 0);
+}
+
+// This function returns E(\rot_\theta v, len)
+template<typename T> 
+Quaternion<T> basicIsometry(T theta, T len) {
+    T len2 = 0.5 * len;
+    return Quaternion<T>(cos(len2), 0, 
+            -sin(theta) * sin(len2), cos(theta) * sin(len2)); 
+}
 
 Interval findGeneralizedPolygonMissingSide2(const vector<double>& angles,
                                            vector<Interval> sides) {
@@ -434,19 +447,16 @@ Interval findGeneralizedPolygonMissingSide2(const vector<double>& angles,
     theta[0] = 0;
     for (int i = 0; i < k; i++) theta[i+1] = theta[i] + angles[i] - M_PI;
     
-    // Should we avoid tangents maybe?
-    // We shall prepare something to test it and check what seems to
-    // be better.
-    // Avoiding tan would allow us to consider also edges longer than pi
-    // without suffering.
     Quaternion<Interval> res(1);
     for (int i = k-2; i >= 0; i--) {
-        Quaternion<Interval> q(0, 0, -sin(theta[i]), cos(theta[i]));
-        Interval angle = 0.5 * sides[i];
-        res *= Quaternion<Interval>(cos(angle)) - Quaternion<Interval>(sin(angle)) * q;
+        Quaternion<Interval> isom = basicIsometry<Interval>(theta[i], sides[i]);
+        res *= conj(isom);
+        //~ Quaternion<Interval> q(0, 0, -sin(theta[i]), cos(theta[i]));
+        //~ Interval angle = 0.5 * sides[i];
+        //~ res *= Quaternion<Interval>(cos(angle)) - Quaternion<Interval>(sin(angle)) * q;
     }
-    res *= Quaternion<Interval>(cos(theta[k]/2), -sin(theta[k]/2), 0, 0);
-    // Up to sign, this is:
+    res *= basicRotation<Interval>(-theta[k]);
+    // Up to sign, this is basicIsometry(theta[k-1], len) =
     // cos(len/2) + sin(len/2) * (0, 0, -sin(theta[k-1]), cos(theta[k-1]))
     
     if (!res[1].containsZero())
@@ -794,4 +804,19 @@ int main() {
         cout << endl;
     }
 }
+
+
+// Correct output.
+//~ 2 3 
+//~ 5 2 
+//~ 7 4 SKIPPEDPOSSIBLE
+//~ 8 3 
+//~ 13 3 
+//~ 19 3 POSSIBLE
+//~ 31 2 
+//~ 33 4 SKIPPEDPOSSIBLE
+//~ 49 3 
+//~ 54 3 
+//~ 57 1 
+//~ 62 3 POSSIBLE
 

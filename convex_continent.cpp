@@ -283,32 +283,6 @@ ostream& operator <<(ostream& out, const Quaternion<T>& q) {
     return out;
 }
 
-//~ void checkGeneralizedPolygon(
-    //~ const vector<double>& angles, const vector<double>& sides) {
-    //~ int k = ssize(angles);
-    //~ vector<double> theta(k+1);
-    //~ theta[0] = 0;
-    //~ for (int i = 0; i < k; i++) theta[i+1] = theta[i] + angles[i] - M_PI;
-    
-    //~ Quaternion<Interval> res = Interval(1);
-    //~ for (int i = 0; i < k; i++) {
-        //~ Quaternion<Interval> q(0, 0, -sin(theta[i]), cos(theta[i]));
-        //~ double l = tan(sides[i]/2);
-        //~ Interval Il(l-0.001, l+0.001);
-        //~ res *= Quaternion<Interval>(1) + Quaternion<Interval>(Il) * q;
-    //~ }
-    //~ cout << res << endl;
-    
-    //~ cout << res[1]*cos(-theta[k]/2)-res[0]*sin(-theta[k]/2) << endl;
-//~ }
-
-Interval tan(const Interval& I) {
-    if (I.empty())
-        return Interval(0, -1);
-    assert(-M_PI/2+1e-5 < I.l and I.r < M_PI/2-1e-5);
-    return Interval(tan(I.l), tan(I.r));
-}
-
 
 // 0 <= x < 2pi.
 bool containsMod2pi(Interval I, double x) {
@@ -343,80 +317,6 @@ Interval cos(const Interval& I) {
     double r = containsMod2pi(I, 0) ? 1 : max(sl, sr);
     
     return Interval(l, r);
-}
-
-Interval atan(const Interval& I) {
-    if (I.empty())
-        return Interval(0, -1);
-    assert(0 <= I.l);
-    return Interval(atan(I.l), atan(I.r));
-}
-
-
-// Returns the range of positive t such that line(1, tx, ty)
-// intersects I x J x K. 
-// Assumption:
-//      0 not in I
-//      x, y are not simultaneously 0
-//      x, y take discrete values (hence, if they are not zero, they are
-//                                 relatively large).
-Interval subproblemInterval(double x, double y, 
-        const Interval& I, const Interval& J, const Interval& K) {
-    Interval ans;
-    if (abs(x) < 1e-5)
-        ans = (K * (1/y)) * inverse(I);
-    else if (abs(y) < 1e-5)
-        ans =  (J * (1/x)) * inverse(I);
-    else    
-        ans = intersection(J * (1/x), K * (1/y)) * inverse(I);
-    
-    ans.intersect(Interval(0, 1e9));
-    
-    return ans;
-}
-
-// We "find" the length of the last side.
-Interval findGeneralizedPolygonMissingSide(const vector<double>& angles,
-                                           vector<Interval> sides) {
-    int k = ssize(angles);
-    assert(ssize(sides) == k-1);
-    
-    // To avoid issues related to tan(pi/2).
-    for (Interval I: sides)
-        if (I.r >= M_PI-0.0001)
-            return Interval(-100, 100);
-        
-    vector<double> theta(k+1);
-    theta[0] = 0;
-    for (int i = 0; i < k; i++) theta[i+1] = theta[i] + angles[i] - M_PI;
-    
-    // Should we avoid tangents maybe?
-    // We shall prepare something to test it and check what seems to
-    // be better.
-    // Avoiding tan would allow us to consider also edges longer than pi
-    // without suffering.
-    Quaternion<Interval> res(1);
-    for (int i = k-2; i >= 0; i--) {
-        Quaternion<Interval> q(0, 0, -sin(theta[i]), cos(theta[i]));
-        Interval Il = tan(0.5 * sides[i]);
-        res *= Quaternion<Interval>(1) - Quaternion<Interval>(Il) * q;
-    }
-    res *= Quaternion<Interval>(cos(theta[k]/2), -sin(theta[k]/2), 0, 0);
-    // 1 + tan(len/2) * (0, 0, -sin(theta[k-1]), cos(theta[k-1]))
-    
-    if (!res[1].containsZero())
-        return Interval(0, -1); // empty
-    
-    double x = -sin(theta[k-1]), y = cos(theta[k-1]);
-    
-    if (!(y*res[2] - x*res[3]).containsZero() or res[0].empty())
-        return Interval(0, -1);
-        
-    if (res[0].containsZero())
-        return Interval(-100, 100); // anything goes
-    
-    Interval I = subproblemInterval(x, y, res[0], res[2], res[3]);
-    return atan(I) * 2;
 }
 
 // We employ the identification R^3 \cong <i, j, k> \subseteq Quaternions.
@@ -615,6 +515,28 @@ vector<Dart> findFreeParameters(const DerivedOnceNet& A) {
 }
 
 #include "spherical_geometry.cpp"
+
+// Given a sequence of operations, it returns the quaternion representing
+// the isometry that maps (e_1, e_2) into the result of the operations 
+// starting from (e_1, e_2).
+//
+// The operations can be:
+//  - {'R', \theta}: Apply \rot_\theta.
+//  - {'E', l}: Apply \exp_l.
+template<typename T>
+Quaternion<T> isometryFromOperations(vector<pair<char, T>> ops) {
+    T sum_theta = 0;
+    Quaternion<T> res = 1;
+    for (auto op: ops) {
+        if (op.first == 'R')
+            sum_theta += op.second;
+        if (op.first == 'E')
+            res *= basicIsometry(sum_theta, op.second);
+    }
+    res *= basicRotation(sum_theta);
+    
+    return res;
+}
 
 bool refineMetrization(const DerivedOnceNet& A, vector<Interval>& lengths) {
     auto print_status = [&]() {

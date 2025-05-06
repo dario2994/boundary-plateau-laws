@@ -20,6 +20,10 @@ struct Dart {
     }
 };
 
+bool operator <(const Dart& d, const Dart& e) {
+    return d.id < e.id;
+}
+
 ostream& operator<<(ostream& out, const Dart& d) {
     out << "(" << d.id << ": " << d.from << "->" << d.to << ")";
     return out;

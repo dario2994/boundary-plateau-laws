@@ -539,8 +539,7 @@ Quaternion<T> isometryFromOperations(vector<pair<char, T>> ops) {
 }
 
 
-template <typename T>
-vector<vector<pair<char, T>>> pathToConcaveAngles(
+vector<vector<pair<char, Interval>>> pathToConcaveAngles(
         const DerivedOnceNet& A, const vector<Interval>& lengths) {
     // Step 0: Find the vertices with concave angles.
     vector<int> concave_angles;
@@ -564,10 +563,11 @@ vector<vector<pair<char, T>>> pathToConcaveAngles(
             root = d;
     using pdd = pair<double, Dart>;
     vector<double> distance(2*A.E(), 1e9);
+    vector<char> father(2*A.E(), '-'); // n = next, r = rev
     priority_queue<pdd, vector<pdd>, greater<pdd>> q;
     
     distance[root.id] = 0;
-    q.push({0, root});
+    q.push(pdd{0.0, root});
     while (!q.empty()) {
         auto pp = q.top();
         q.pop();
@@ -577,17 +577,53 @@ vector<vector<pair<char, T>>> pathToConcaveAngles(
             continue;
         
         vector<pdd> adj = {{dist + 1e-10, A.next(d)}, 
-                           {dist + lengths[d.id].len() + 1e-10, A.phi(d)}};
+                           {dist + lengths[d.id].len() + 1e-10, A.rev(d)}};
         for (auto [dist2, d2]: adj) {
             if (dist2 >= distance[d2.id]) 
                 continue;
             distance[d2.id] = dist2;
+            father[d2.id] = (d2.from == d2.from) ? 'n' : 'r';
             q.push({dist2, d2});
         }
     }
     
     // Step 3: Reconstruct the paths from the chosen dart to the edges
     //         going into the pin.
+    vector<vector<pair<char, Interval>>> res;
+    for (int goal: concave_angles) {
+        double cost = 1e9;
+        Dart last_dart;
+        for (Dart d: A.darts()) {
+            if (d.from == goal and cost > distance[d.id]) {
+                cost = distance[d.id];
+                last_dart = d;
+            }
+        }
+        Dart curr = last_dart;
+        vector<pair<char, Interval>> ops;
+        
+        // Rotation to go in the direction of the pin.
+        double angle_to_pin = A.isConcaveAngle(A.rev(curr)) ? 2*M_PI/3 : M_PI/3;
+        ops.emplace_back('R', angle_to_pin);
+        // We go from last_dart to root.
+        while (father[curr.id] != '-') {
+            if (father[curr.id] == 'n') { // Rotation by 120 or 240.
+                double angle = A.isConcaveAngle(A.rev(A.prev(curr))) ? -2*M_PI/3 : 2*M_PI/3;
+                ops.emplace_back('R', angle);
+                curr = A.prev(curr);
+            }
+            else if (father[curr.id] == 'r') { // Exponential + Rotation by 180.
+                ops.emplace_back('R', M_PI);
+                curr = A.rev(curr);
+                ops.emplace_back('E', lengths[curr.id]);
+            }
+            else assert(0);
+        }
+        reverse(ops.begin(), ops.end());
+        res.push_back(ops);
+    }
+    
+    return res;
 }
 
 bool refineMetrization(const DerivedOnceNet& A, vector<Interval>& lengths) {

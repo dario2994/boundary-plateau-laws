@@ -684,6 +684,9 @@ bool canPinsBeAntipodal(const DerivedOnceNet& A, vector<Interval>& lengths) {
     return areContainedInPlane(equators);
 }
 
+
+
+
 bool refineMetrization(const DerivedOnceNet& A, vector<Interval>& lengths) {
     auto print_status = [&]() {
         cout << "State: " << endl;
@@ -759,7 +762,14 @@ bool refineMetrization(const DerivedOnceNet& A, vector<Interval>& lengths) {
     return true;
 }
 
-int boh_cnt = 0;
+typedef long long LL;
+// Returns the time elapsed in nanoseconds from 1 January 1970, at 00:00:00.
+LL get_time() {
+    return chrono::duration_cast<chrono::nanoseconds>(
+        chrono::steady_clock::now().time_since_epoch())
+        .count();
+}
+LL begin_time;
 
 bool searchApproximateMetrization(const DerivedOnceNet& A, 
                 const vector<Dart>& fixed_darts, vector<Interval> fixed_lengths,
@@ -776,6 +786,13 @@ bool searchApproximateMetrization(const DerivedOnceNet& A,
             cout << A.dart(i) << " " << lengths[i] << endl;
         cout << endl;
     };
+    
+    
+    LL diff = get_time() - begin_time;
+    if (diff > 60ll * 1ll<<30) {
+        cout << "SKIPPED ";
+        return true;
+    }
     //~ if (fixed_lengths[0].len() > 0.3)
         //~ print_status();
     
@@ -829,6 +846,7 @@ bool searchApproximateMetrization(const DerivedOnceNet& A,
 }
 
 bool isApproximateMetrizationPossible(const DerivedOnceNet& A) {
+    begin_time = get_time();
     vector<Dart> fixed_darts = findFreeParameters(A);
     
     //~ cout << "The " << ssize(fixed_darts) << " fixed darts are: ";
@@ -882,10 +900,10 @@ int main() {
     in.close();
     
     for (int id: survivors) {
-        if (id == 33 or id == 111)
-            continue;
-        if (id <= 111)
-            continue;
+        //~ if (id == 33 or id == 111)
+            //~ continue;
+        //~ if (id <= 111)
+            //~ continue;
         //~ if (id < 600)
             //~ continue;
         cout << id << " ";

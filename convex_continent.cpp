@@ -49,6 +49,11 @@ Interval operator +(const Interval& I, const Interval& J) {
     return Interval(I.l + J.l, I.r + J.r);
 }
 
+Interval& operator +=(Interval& I, const Interval& J) {
+    I = I + J;
+    return I;
+}
+
 Interval operator -(const Interval& I, const Interval& J) {
     if (I.empty() or J.empty())
         return Interval(0, -1);
@@ -516,18 +521,18 @@ vector<Dart> findFreeParameters(const DerivedOnceNet& A) {
 
 #include "spherical_geometry.cpp"
 
-// Given a sequence of operations, it returns the quaternion representing
-// the isometry that maps (e_1, e_2) into the result of the operations 
-// starting from (e_1, e_2).
+// Given a sequence of operations (i.e., a path), it returns the 
+// quaternion representing the isometry that maps (e_1, e_2) into the 
+// result of the operations starting from (e_1, e_2).
 //
 // The operations can be:
 //  - {'R', \theta}: Apply \rot_\theta.
 //  - {'E', l}: Apply \exp_l.
 template<typename T>
-Quaternion<T> isometryFromOperations(vector<pair<char, T>> ops) {
+Quaternion<T> isometryFromPath(vector<pair<char, T>> path) {
     T sum_theta = 0;
-    Quaternion<T> res = 1;
-    for (auto op: ops) {
+    Quaternion<T> res(T(1));
+    for (auto op: path) {
         if (op.first == 'R')
             sum_theta += op.second;
         if (op.first == 'E')
@@ -624,6 +629,26 @@ vector<vector<pair<char, Interval>>> pathToConcaveAngles(
     }
     
     return res;
+}
+
+bool areContainedInHalfSpace(vector<array<Interval, 3>> cubes) {
+    return false;
+}
+
+bool canPinsBeAntipodal(const DerivedOnceNet& A, vector<Interval>& lengths) {
+    vector<vector<pair<char, Interval>>> paths = pathToConcaveAngles(A, lengths);
+    vector<Quaternion<Interval>> isometries;
+    for (auto path: paths)
+        isometries.push_back(isometryFromPath<Interval>(path));
+    
+    vector<array<Interval, 3>> equators;
+    for (auto q: isometries) {
+        Quaternion<Interval> v(0, 0, 0, 1);
+        Quaternion<Interval> equator = q * v * conj(q);
+        equators.push_back({equator[1], equator[2], equator[3]});
+    }
+    
+    return !areContainedInHalfSpace(equators);
 }
 
 bool refineMetrization(const DerivedOnceNet& A, vector<Interval>& lengths) {

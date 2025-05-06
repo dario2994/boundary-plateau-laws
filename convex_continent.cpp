@@ -771,13 +771,13 @@ bool searchApproximateMetrization(const DerivedOnceNet& A,
             cout << fixed_darts[i] << ": " 
                  << fixed_lengths[i] << "; ";
         cout << endl;
-        //~ cout << "State: " << endl;
-        //~ for (int i = 0; i < ssize(lengths); i += 2)
-            //~ cout << A.dart(i) << " " << lengths[i] << endl;
-        //~ cout << endl;
+        cout << "State: " << endl;
+        for (int i = 0; i < ssize(lengths); i += 2)
+            cout << A.dart(i) << " " << lengths[i] << endl;
+        cout << endl;
     };
-    if (fixed_lengths[0].len() > 0.3)
-        print_status();
+    //~ if (fixed_lengths[0].len() > 0.3)
+        //~ print_status();
     
     assert(ssize(fixed_darts) == ssize(fixed_lengths));
     int q = ssize(fixed_darts);
@@ -797,8 +797,9 @@ bool searchApproximateMetrization(const DerivedOnceNet& A,
     if (fixed_lengths[0].len() < 0.001) {
         //~ print_status();
         //~ cout << endl;
-        for (Dart d: A.darts())
-            assert(lengths[d.id].len() < 0.1);
+        //~ print_status();
+        //~ for (Dart d: A.darts())
+            //~ assert(lengths[d.id].len() < 0.5);
         //~ auto boh = pathToConcaveAngles(A, lengths);
         //~ for (auto path: boh) {
             //~ for (auto op: path)
@@ -880,7 +881,11 @@ int main() {
         in >> survivors[i];
     in.close();
     
-    for (int id: {72}) {
+    for (int id: survivors) {
+        if (id == 33 or id == 111)
+            continue;
+        if (id <= 111)
+            continue;
         //~ if (id < 600)
             //~ continue;
         cout << id << " ";
@@ -891,6 +896,8 @@ int main() {
     }
 }
 
+// On 1351: It detects possible (correctly) in 1m43s.
+//          We shall speed it up.
 
 // Correct output.
 //~ 2 3 

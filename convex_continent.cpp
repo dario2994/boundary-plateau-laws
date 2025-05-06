@@ -17,7 +17,7 @@ struct Interval {
         r = min(r, I.r);
     }
     
-    double len() { return empty() ? 0.0 : (r-l); }
+    double len() const { return empty() ? 0.0 : (r-l); }
     bool contains(double x) const { return l <= x and x <= r; }
     bool containsZero() const { return l <= 0 and 0 <= r; } // TODO: Remove.
 };
@@ -536,6 +536,58 @@ Quaternion<T> isometryFromOperations(vector<pair<char, T>> ops) {
     res *= basicRotation(sum_theta);
     
     return res;
+}
+
+
+template <typename T>
+vector<vector<pair<char, T>>> pathToConcaveAngles(
+        const DerivedOnceNet& A, const vector<Interval>& lengths) {
+    // Step 0: Find the vertices with concave angles.
+    vector<int> concave_angles;
+    for (Dart d: A.darts())
+        if (A.isConcaveAngle(d))
+            concave_angles.push_back(d.to);
+            
+    if (concave_angles.empty())
+        return {};
+    
+    
+    // Step 1: Find the best "center".
+    //         TODO: Now we just select arbitrarily one of the 
+    //               concave angles.
+    int v = concave_angles[0];
+        
+    // Step 2: Run Dijkstra from the chosen dart to the concave angles.
+    Dart root;
+    for (Dart d: A.darts())
+        if (d.from == v)
+            root = d;
+    using pdd = pair<double, Dart>;
+    vector<double> distance(2*A.E(), 1e9);
+    priority_queue<pdd, vector<pdd>, greater<pdd>> q;
+    
+    distance[root.id] = 0;
+    q.push({0, root});
+    while (!q.empty()) {
+        auto pp = q.top();
+        q.pop();
+        Dart d = pp.second;
+        double dist = pp.first;
+        if (dist > distance[d.id])
+            continue;
+        
+        vector<pdd> adj = {{dist + 1e-10, A.next(d)}, 
+                           {dist + lengths[d.id].len() + 1e-10, A.phi(d)}};
+        for (auto [dist2, d2]: adj) {
+            if (dist2 >= distance[d2.id]) 
+                continue;
+            distance[d2.id] = dist2;
+            q.push({dist2, d2});
+        }
+    }
+    
+    // Step 3: Reconstruct the paths from the chosen dart to the edges
+    //         going into the pin.
 }
 
 bool refineMetrization(const DerivedOnceNet& A, vector<Interval>& lengths) {

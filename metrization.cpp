@@ -13,7 +13,7 @@ static const vector<double> REGULAR_SIDES = {-1, -1,
     M_PI, // biangle
     acos(-1.0/3), // triangle
     2*atan(sqrt(0.5)), // quadrilateral
-    acos(sqrt(5)/3)}; // pentagon
+    acos(sqrt(5)/3)}; // pentagon, 0.72972765622696...
     
 // The length a = 58.25684287.. given by Taylor at page 502.
 // If x = tan(a/2), then 8x^6+39x^4-4=0. 

@@ -519,8 +519,6 @@ vector<Dart> findFreeParameters(const DerivedOnceNet& A) {
     return joined;
 }
 
-#include "spherical_geometry.cpp"
-
 // Given a sequence of operations (i.e., a path), it returns the 
 // quaternion representing the isometry that maps (e_1, e_2) into the 
 // result of the operations starting from (e_1, e_2).
@@ -554,6 +552,9 @@ vector<vector<pair<char, Interval>>> pathToConcaveAngles(
             
     if (concave_angles.empty())
         return {};
+        
+    //~ if (ssize(concave_angles) <= 2)
+        //~ return {}; // We save some time.
     
     
     // Step 1: Find the best "center".
@@ -566,6 +567,8 @@ vector<vector<pair<char, Interval>>> pathToConcaveAngles(
     for (Dart d: A.darts())
         if (d.from == v)
             root = d;
+    //~ cout << "root: " << root << endl;
+    
     using pdd = pair<double, Dart>;
     vector<double> distance(2*A.E(), 1e9);
     vector<char> father(2*A.E(), '-'); // n = next, r = rev
@@ -587,10 +590,11 @@ vector<vector<pair<char, Interval>>> pathToConcaveAngles(
             if (dist2 >= distance[d2.id]) 
                 continue;
             distance[d2.id] = dist2;
-            father[d2.id] = (d2.from == d2.from) ? 'n' : 'r';
+            father[d2.id] = (d.from == d2.from) ? 'n' : 'r';
             q.push({dist2, d2});
         }
     }
+    assert(father[root.id] == '-');
     
     // Step 3: Reconstruct the paths from the chosen dart to the edges
     //         going into the pin.
@@ -612,18 +616,20 @@ vector<vector<pair<char, Interval>>> pathToConcaveAngles(
         ops.emplace_back('R', angle_to_pin);
         // We go from last_dart to root.
         while (father[curr.id] != '-') {
+            //~ cout << "curr: " << curr << endl;
+            //~ char asafa;
+            //~ cin >> asafa;
             if (father[curr.id] == 'n') { // Rotation by 120 or 240.
                 double angle = A.isConcaveAngle(A.rev(A.prev(curr))) ? -2*M_PI/3 : 2*M_PI/3;
                 ops.emplace_back('R', angle);
                 curr = A.prev(curr);
-            }
-            else if (father[curr.id] == 'r') { // Exponential + Rotation by 180.
+            } else if (father[curr.id] == 'r') { // Exponential + Rotation by 180.
                 ops.emplace_back('R', M_PI);
                 curr = A.rev(curr);
                 ops.emplace_back('E', lengths[curr.id]);
-            }
-            else assert(0);
+            } else assert(0);
         }
+        //~ cout << "Finished" << endl;
         reverse(ops.begin(), ops.end());
         res.push_back(ops);
     }
@@ -631,8 +637,35 @@ vector<vector<pair<char, Interval>>> pathToConcaveAngles(
     return res;
 }
 
-bool areContainedInHalfSpace(vector<array<Interval, 3>> cubes) {
-    return false;
+Interval operator *(const array<Interval, 3>& P, const array<Interval, 3>& Q) {
+    return P[0]*Q[0] + P[1]*Q[1] + P[2]*Q[2];
+}
+
+array<Interval, 3> operator ^(const array<Interval, 3>& P, 
+                    const array<Interval, 3>& Q) {
+    return {P[1]*Q[2] - P[2]*Q[1],
+            P[2]*Q[0] - P[0]*Q[2],
+            P[0]*Q[1] - P[1]*Q[0]};
+}
+
+// If this returns false, then there is nonzero vector that is 
+// orthogonal to at least one vector in each of the cubes.
+bool areContainedInPlane(vector<array<Interval, 3>> cubes) {
+    //~ for (auto cube: cubes) {
+        //~ cout << cube[0] << " " << cube[1] << " " << cube[2] << endl;
+    //~ }
+    sort(cubes.begin(), cubes.end(), [&](auto X, auto Y) {
+        return X[0].len() + X[1].len() + X[2].len() <
+               Y[0].len() + Y[1].len() + Y[2].len();
+    });
+    array<Interval, 3> Z = cubes[0] ^ cubes[1];
+    //~ cout << Z[0] << " " << Z[1] << " " << Z[2] << endl;
+    
+    for (auto cube: cubes) {
+        if (!(cube * Z).containsZero())
+            return false;
+    }
+    return true;
 }
 
 bool canPinsBeAntipodal(const DerivedOnceNet& A, vector<Interval>& lengths) {
@@ -648,7 +681,7 @@ bool canPinsBeAntipodal(const DerivedOnceNet& A, vector<Interval>& lengths) {
         equators.push_back({equator[1], equator[2], equator[3]});
     }
     
-    return !areContainedInHalfSpace(equators);
+    return areContainedInPlane(equators);
 }
 
 bool refineMetrization(const DerivedOnceNet& A, vector<Interval>& lengths) {
@@ -743,6 +776,8 @@ bool searchApproximateMetrization(const DerivedOnceNet& A,
             //~ cout << A.dart(i) << " " << lengths[i] << endl;
         //~ cout << endl;
     };
+    if (fixed_lengths[0].len() > 0.3)
+        print_status();
     
     assert(ssize(fixed_darts) == ssize(fixed_lengths));
     int q = ssize(fixed_darts);
@@ -756,8 +791,24 @@ bool searchApproximateMetrization(const DerivedOnceNet& A,
     if (!refineMetrization(A, lengths))
         return false;
     
-    if (fixed_lengths[0].len() < 0.001) 
+    if (!canPinsBeAntipodal(A, lengths))
+        return false;
+    
+    if (fixed_lengths[0].len() < 0.001) {
+        //~ print_status();
+        //~ cout << endl;
+        for (Dart d: A.darts())
+            assert(lengths[d.id].len() < 0.1);
+        //~ auto boh = pathToConcaveAngles(A, lengths);
+        //~ for (auto path: boh) {
+            //~ for (auto op: path)
+                //~ cout << op.first << " " << op.second << endl;
+            //~ cout << endl;
+        //~ }
+        
+        //~ canPinsBeAntipodal(A, lengths);
         return true; // We found a valid approximate metrization.
+    }
     
     for (int bb = 0; bb < (1<<q); bb++) {
         vector<Interval> new_lengths(q);
@@ -791,10 +842,10 @@ bool isApproximateMetrizationPossible(const DerivedOnceNet& A) {
     for (Dart d: A.darts())
         if (A.isConcaveAngle(d))
             cnt++;
-    if (ssize(fixed_darts) >= 5 or (cnt == 4 and ssize(fixed_darts) >= 4)) { // slow and non-effective
-        cout << "SKIPPED";
-        return true;
-    }
+    //~ if (ssize(fixed_darts) >= 5 or (cnt == 4 and ssize(fixed_darts) >= 4)) { // slow and non-effective
+        //~ cout << "SKIPPED";
+        //~ return true;
+    //~ }
     
     vector<Interval> lengths(2*A.E(), Interval(0, M_PI));
     
@@ -829,7 +880,7 @@ int main() {
         in >> survivors[i];
     in.close();
     
-    for (int id: survivors) {
+    for (int id: {72}) {
         //~ if (id < 600)
             //~ continue;
         cout << id << " ";

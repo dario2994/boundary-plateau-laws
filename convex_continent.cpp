@@ -526,6 +526,10 @@ struct PathStep {
     
     PathStep(double _rotation): type('R'), rotation(_rotation) {}
     PathStep(Dart _d): type('E'), d(_d) {}
+    
+    double cost(const vector<Interval>& lengths) {
+        return 1e-10 + ((type == 'R') ? 0.0 : lengths[d.id].len());
+    }
 };
 
 // Given a sequence of operations (i.e., a path), it returns the 
@@ -649,41 +653,43 @@ vector<vector<PathStep>> pathToConcaveAngles(
     return res;
 }
 
-Interval operator *(const array<Interval, 3>& P, const array<Interval, 3>& Q) {
-    return P[0]*Q[0] + P[1]*Q[1] + P[2]*Q[2];
+//~ Interval operator *(const array<Interval, 3>& P, const array<Interval, 3>& Q) {
+    //~ return P[0]*Q[0] + P[1]*Q[1] + P[2]*Q[2];
+//~ }
+
+//~ array<Interval, 3> operator ^(const array<Interval, 3>& P, 
+                    //~ const array<Interval, 3>& Q) {
+    //~ return {P[1]*Q[2] - P[2]*Q[1],
+            //~ P[2]*Q[0] - P[0]*Q[2],
+            //~ P[0]*Q[1] - P[1]*Q[0]};
+//~ }
+
+template <typename T>
+T det(const array<T, 3>& A, const array<T, 3>& B, const array<T, 3>& C) {
+    return A[0]*(B[1]*C[2] - B[2]*C[1])
+         + A[1]*(B[2]*C[0] - B[0]*C[2])
+         + A[2]*(B[0]*C[1] - B[1]*C[0]);
 }
 
-array<Interval, 3> operator ^(const array<Interval, 3>& P, 
-                    const array<Interval, 3>& Q) {
-    return {P[1]*Q[2] - P[2]*Q[1],
-            P[2]*Q[0] - P[0]*Q[2],
-            P[0]*Q[1] - P[1]*Q[0]};
-}
-
-// If this returns false, then there is nonzero vector that is 
-// orthogonal to at least one vector in each of the cubes.
-//
-// TODO: This function can be made more precise.
+// If this returns false, then there is not a plane that intersects all 
+// the given cubes.
 bool areContainedInPlane(vector<array<Interval, 3>> cubes) {
-    //~ for (auto cube: cubes) {
-        //~ cout << cube[0] << " " << cube[1] << " " << cube[2] << endl;
-    //~ }
-    sort(cubes.begin(), cubes.end(), [&](auto X, auto Y) {
-        return X[0].len() + X[1].len() + X[2].len() <
-               Y[0].len() + Y[1].len() + Y[2].len();
-    });
-    array<Interval, 3> Z = cubes[0] ^ cubes[1];
-    //~ cout << Z[0] << " " << Z[1] << " " << Z[2] << endl;
-    
-    for (auto cube: cubes) {
-        if (!(cube * Z).containsZero())
-            return false;
-    }
+    int q = ssize(cubes);
+    for (int i = 0; i < q; i++) 
+        for (int j = 0; j < q; j++)
+            for (int k = j+1; k < q; k++) {
+                if (i == j or i == k)
+                    continue;
+                if (!det(cubes[i], cubes[j], cubes[k]).containsZero())
+                    return false;
+            }
     return true;
 }
 
 bool canPinsBeAntipodal(const DerivedOnceNet& A, 
                         const vector<Interval>& lengths) {
+    //~ static int boh = 0;
+    //~ cout << (boh++) << endl;
     vector<vector<PathStep>> paths = pathToConcaveAngles(A, lengths);
     vector<Quaternion<Interval>> isometries;
     for (auto path: paths)
@@ -699,6 +705,18 @@ bool canPinsBeAntipodal(const DerivedOnceNet& A,
     return areContainedInPlane(equators);
 }
 
+typedef long long LL;
+// Returns the time elapsed in nanoseconds from 1 January 1970, at 00:00:00.
+LL get_time() {
+    return chrono::duration_cast<chrono::nanoseconds>(
+        chrono::steady_clock::now().time_since_epoch())
+        .count();
+}
+
+LL begin_time;
+LL total_pins_time;
+LL total_refine_time;
+LL total_convex_time;
 
 
 
@@ -721,7 +739,7 @@ bool refineMetrization(const DerivedOnceNet& A, vector<Interval>& lengths) {
     };
     double curr_len = compute_len();
     while (curr_len >= 1e-8) {
-        for (auto f: A.faces()) {
+        for (const vector<Dart>& f: A.faces()) {
             if (!A.isConvexFace(f))
                 continue;
             
@@ -736,7 +754,10 @@ bool refineMetrization(const DerivedOnceNet& A, vector<Interval>& lengths) {
             if (ssize(f) == 4)
                 enforceQuadrilateralConstraint(sides);    
             if (ssize(f) == 5) {
-                enforcePentagonConstraint(sides);
+                LL local_convex_time = -get_time();
+                enforcePentagonConstraint(sides);                
+                local_convex_time += get_time();
+                total_convex_time += local_convex_time;
             }
             
             for (const Dart& d: f) 
@@ -777,21 +798,17 @@ bool refineMetrization(const DerivedOnceNet& A, vector<Interval>& lengths) {
     return true;
 }
 
-typedef long long LL;
-// Returns the time elapsed in nanoseconds from 1 January 1970, at 00:00:00.
-LL get_time() {
-    return chrono::duration_cast<chrono::nanoseconds>(
-        chrono::steady_clock::now().time_since_epoch())
-        .count();
-}
-
-LL begin_time;
 bool searchApproximateMetrization(const DerivedOnceNet& A, 
                 const vector<Dart>& fixed_darts, 
                 vector<Interval> fixed_lengths,
                 vector<Interval> lengths) {
+    //~ double prec = 0;
+        //~ for (Dart d: A.darts())
+            //~ prec = max(prec, lengths[d.id].len());
+        //~ cout << "(" << fixed_lengths[0].len() << ", " << prec << ") ";
+        //~ cout.flush();
     auto print_status = [&]() {
-        cout << "Fixed: " << endl;
+        cout << "Fixed (" << fixed_lengths[0].len() << "): " << endl;
         int q = ssize(fixed_darts);
         for (int i = 0; i < q; i++)
             cout << fixed_darts[i] << ": " 
@@ -802,10 +819,12 @@ bool searchApproximateMetrization(const DerivedOnceNet& A,
             cout << A.dart(i) << " " << lengths[i] << endl;
         cout << endl;
     };
+    //~ if (fixed_lengths[0].len() >= 0.2)
+        //~ print_status();
     
     
     LL diff = get_time() - begin_time;
-    if (diff > 2ll * 60ll * 1ll<<30) {
+    if (diff > 5*60ll * 1ll<<30) {
         cout << "skipped, ";
         return true;
     }
@@ -819,13 +838,22 @@ bool searchApproximateMetrization(const DerivedOnceNet& A,
     for (Dart d: A.darts())
         lengths[A.rev(d).id].intersect(lengths[d.id]);
     
-    if (!refineMetrization(A, lengths))
+    long long local_refine_time = -get_time();
+    bool refine_outcome = refineMetrization(A, lengths);
+    local_refine_time += get_time();
+    total_refine_time += local_refine_time;
+    if (!refine_outcome)
         return false;
     
-    if (!canPinsBeAntipodal(A, lengths))
+    long long local_pins_time = -get_time();
+    bool pins_outcome = canPinsBeAntipodal(A, lengths);
+    local_pins_time += get_time();
+    total_pins_time += local_pins_time;
+    if (!pins_outcome) 
         return false;
     
-    if (fixed_lengths[0].len() < 0.0001) {
+    if (fixed_lengths[0].len() < 0.000001) {
+        //~ print_status();
         double prec = 0;
         for (Dart d: A.darts())
             prec = max(prec, lengths[d.id].len());
@@ -854,6 +882,18 @@ bool searchApproximateMetrization(const DerivedOnceNet& A,
 
 bool isApproximateMetrizationPossible(const DerivedOnceNet& A) {
     vector<Dart> fixed_darts = findFreeParameters(A);
+    //~ fixed_darts.clear();
+    //~ for (Dart d: A.darts()) {
+        //~ if (d.from == 6 and d.to == 7)
+            //~ fixed_darts.push_back(d);
+        //~ if (d.from == 7 and d.to == 12)
+            //~ fixed_darts.push_back(d);
+        //~ if (d.from == 1 and d.to == 14)
+            //~ fixed_darts.push_back(d);
+    //~ }
+    //~ for (Dart d: fixed_darts)
+        //~ cout << d << endl;
+    //~ return true;
     
     cout << "# of parameters = " << ssize(fixed_darts) << ", ";
     cout.flush();
@@ -901,10 +941,19 @@ int main() {
         auto net = parseDerivedOnceNets("data/derived_once_computer.txt")[id];
         
         begin_time = get_time();
+        total_pins_time = 0;
+        total_refine_time = 0;
+        total_convex_time = 0;
         bool possible = isApproximateMetrizationPossible(net);
         double duration_s = (get_time() - begin_time) / 1e9;
+        double pins_s = total_pins_time / 1e9;
+        double refine_s = total_refine_time / 1e9;
+        double convex_s = total_convex_time / 1e9;
+        
         if (possible) cout << "POSSIBLE";
-        cout << " (time = " << duration_s << ")";
+        cout << " (time = " << duration_s << ", pins = " << pins_s 
+             << ", refine = " << refine_s
+             << ", convex = " << convex_s << ")";
         cout << endl;
     }
 }

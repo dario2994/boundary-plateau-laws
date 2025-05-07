@@ -519,6 +519,15 @@ vector<Dart> findFreeParameters(const DerivedOnceNet& A) {
     return joined;
 }
 
+struct PathStep {
+    char type;
+    double rotation;
+    Dart d;
+    
+    PathStep(double _rotation): type('R'), rotation(_rotation) {}
+    PathStep(Dart _d): type('E'), d(_d) {}
+};
+
 // Given a sequence of operations (i.e., a path), it returns the 
 // quaternion representing the isometry that maps (e_1, e_2) into the 
 // result of the operations starting from (e_1, e_2).
@@ -526,23 +535,22 @@ vector<Dart> findFreeParameters(const DerivedOnceNet& A) {
 // The operations can be:
 //  - {'R', \theta}: Apply \rot_\theta.
 //  - {'E', l}: Apply \exp_l.
-template<typename T>
-Quaternion<T> isometryFromPath(vector<pair<char, T>> path) {
-    T sum_theta = 0;
-    Quaternion<T> res(T(1));
+Quaternion<Interval> isometryFromPath(const vector<PathStep>& path, 
+                                      const vector<Interval>& lengths) {
+    double sum_theta = 0;
+    Quaternion<Interval> res(1);
     for (auto op: path) {
-        if (op.first == 'R')
-            sum_theta += op.second;
-        if (op.first == 'E')
-            res *= basicIsometry(sum_theta, op.second);
+        if (op.type == 'R')
+            sum_theta += op.rotation;
+        if (op.type == 'E')
+            res *= basicIsometry<Interval>(sum_theta, lengths[op.d.id]);
     }
-    res *= basicRotation(sum_theta);
+    res *= basicRotation<Interval>(sum_theta);
     
     return res;
 }
 
-
-vector<vector<pair<char, Interval>>> pathToConcaveAngles(
+vector<vector<PathStep>> pathToConcaveAngles(
         const DerivedOnceNet& A, const vector<Interval>& lengths) {
     // Step 0: Find the vertices with concave angles.
     vector<int> concave_angles;
@@ -598,7 +606,7 @@ vector<vector<pair<char, Interval>>> pathToConcaveAngles(
     
     // Step 3: Reconstruct the paths from the chosen dart to the edges
     //         going into the pin.
-    vector<vector<pair<char, Interval>>> res;
+    vector<vector<PathStep>> res;
     for (int goal: concave_angles) {
         double cost = 1e9;
         Dart last_dart;
@@ -609,29 +617,33 @@ vector<vector<pair<char, Interval>>> pathToConcaveAngles(
             }
         }
         Dart curr = last_dart;
-        vector<pair<char, Interval>> ops;
+        vector<PathStep> path;
+        
+        // To compress consecutive rotations in a single one.
+        auto append_to_path = [&](PathStep op) {
+            if (!path.empty() and path.back().type == 'R' and op.type == 'R')
+                path.back().rotation += op.rotation;
+            else
+                path.push_back(op);
+        };
         
         // Rotation to go in the direction of the pin.
         double angle_to_pin = A.isConcaveAngle(A.rev(curr)) ? 2*M_PI/3 : M_PI/3;
-        ops.emplace_back('R', angle_to_pin);
+        append_to_path(angle_to_pin);
         // We go from last_dart to root.
         while (father[curr.id] != '-') {
-            //~ cout << "curr: " << curr << endl;
-            //~ char asafa;
-            //~ cin >> asafa;
             if (father[curr.id] == 'n') { // Rotation by 120 or 240.
                 double angle = A.isConcaveAngle(A.rev(A.prev(curr))) ? -2*M_PI/3 : 2*M_PI/3;
-                ops.emplace_back('R', angle);
+                append_to_path(angle);
                 curr = A.prev(curr);
             } else if (father[curr.id] == 'r') { // Exponential + Rotation by 180.
-                ops.emplace_back('R', M_PI);
+                append_to_path(M_PI);
                 curr = A.rev(curr);
-                ops.emplace_back('E', lengths[curr.id]);
+                append_to_path(curr);
             } else assert(0);
         }
-        //~ cout << "Finished" << endl;
-        reverse(ops.begin(), ops.end());
-        res.push_back(ops);
+        reverse(path.begin(), path.end());
+        res.push_back(path);
     }
     
     return res;
@@ -650,6 +662,8 @@ array<Interval, 3> operator ^(const array<Interval, 3>& P,
 
 // If this returns false, then there is nonzero vector that is 
 // orthogonal to at least one vector in each of the cubes.
+//
+// TODO: This function can be made more precise.
 bool areContainedInPlane(vector<array<Interval, 3>> cubes) {
     //~ for (auto cube: cubes) {
         //~ cout << cube[0] << " " << cube[1] << " " << cube[2] << endl;
@@ -668,11 +682,12 @@ bool areContainedInPlane(vector<array<Interval, 3>> cubes) {
     return true;
 }
 
-bool canPinsBeAntipodal(const DerivedOnceNet& A, vector<Interval>& lengths) {
-    vector<vector<pair<char, Interval>>> paths = pathToConcaveAngles(A, lengths);
+bool canPinsBeAntipodal(const DerivedOnceNet& A, 
+                        const vector<Interval>& lengths) {
+    vector<vector<PathStep>> paths = pathToConcaveAngles(A, lengths);
     vector<Quaternion<Interval>> isometries;
     for (auto path: paths)
-        isometries.push_back(isometryFromPath<Interval>(path));
+        isometries.push_back(isometryFromPath(path, lengths));
     
     vector<array<Interval, 3>> equators;
     for (auto q: isometries) {
@@ -769,10 +784,11 @@ LL get_time() {
         chrono::steady_clock::now().time_since_epoch())
         .count();
 }
-LL begin_time;
 
+LL begin_time;
 bool searchApproximateMetrization(const DerivedOnceNet& A, 
-                const vector<Dart>& fixed_darts, vector<Interval> fixed_lengths,
+                const vector<Dart>& fixed_darts, 
+                vector<Interval> fixed_lengths,
                 vector<Interval> lengths) {
     auto print_status = [&]() {
         cout << "Fixed: " << endl;
@@ -789,12 +805,10 @@ bool searchApproximateMetrization(const DerivedOnceNet& A,
     
     
     LL diff = get_time() - begin_time;
-    if (diff > 60ll * 1ll<<30) {
-        cout << "SKIPPED ";
+    if (diff > 2ll * 60ll * 1ll<<30) {
+        cout << "skipped, ";
         return true;
     }
-    //~ if (fixed_lengths[0].len() > 0.3)
-        //~ print_status();
     
     assert(ssize(fixed_darts) == ssize(fixed_lengths));
     int q = ssize(fixed_darts);
@@ -811,20 +825,13 @@ bool searchApproximateMetrization(const DerivedOnceNet& A,
     if (!canPinsBeAntipodal(A, lengths))
         return false;
     
-    if (fixed_lengths[0].len() < 0.001) {
-        //~ print_status();
-        //~ cout << endl;
-        //~ print_status();
-        //~ for (Dart d: A.darts())
-            //~ assert(lengths[d.id].len() < 0.5);
-        //~ auto boh = pathToConcaveAngles(A, lengths);
-        //~ for (auto path: boh) {
-            //~ for (auto op: path)
-                //~ cout << op.first << " " << op.second << endl;
-            //~ cout << endl;
-        //~ }
-        
-        //~ canPinsBeAntipodal(A, lengths);
+    if (fixed_lengths[0].len() < 0.0001) {
+        double prec = 0;
+        for (Dart d: A.darts())
+            prec = max(prec, lengths[d.id].len());
+        cout << "precision = " << prec << ", ";
+        cout.flush();
+
         return true; // We found a valid approximate metrization.
     }
     
@@ -846,25 +853,15 @@ bool searchApproximateMetrization(const DerivedOnceNet& A,
 }
 
 bool isApproximateMetrizationPossible(const DerivedOnceNet& A) {
-    begin_time = get_time();
     vector<Dart> fixed_darts = findFreeParameters(A);
     
-    //~ cout << "The " << ssize(fixed_darts) << " fixed darts are: ";
-    //~ for (Dart d: fixed_darts) {
-        //~ cout << d << " ";
-    //~ }
-    //~ cout << endl;
-    cout << ssize(fixed_darts) << " ";
+    cout << "# of parameters = " << ssize(fixed_darts) << ", ";
     cout.flush();
     
     int cnt = 0;
     for (Dart d: A.darts())
         if (A.isConcaveAngle(d))
             cnt++;
-    //~ if (ssize(fixed_darts) >= 5 or (cnt == 4 and ssize(fixed_darts) >= 4)) { // slow and non-effective
-        //~ cout << "SKIPPED";
-        //~ return true;
-    //~ }
     
     vector<Interval> lengths(2*A.E(), Interval(0, M_PI));
     
@@ -900,16 +897,14 @@ int main() {
     in.close();
     
     for (int id: survivors) {
-        //~ if (id == 33 or id == 111)
-            //~ continue;
-        //~ if (id <= 111)
-            //~ continue;
-        //~ if (id < 600)
-            //~ continue;
-        cout << id << " ";
+        cout << "net id = " << id << ", ";
         auto net = parseDerivedOnceNets("data/derived_once_computer.txt")[id];
+        
+        begin_time = get_time();
         bool possible = isApproximateMetrizationPossible(net);
+        double duration_s = (get_time() - begin_time) / 1e9;
         if (possible) cout << "POSSIBLE";
+        cout << " (time = " << duration_s << ")";
         cout << endl;
     }
 }

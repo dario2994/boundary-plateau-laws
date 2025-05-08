@@ -1,78 +1,13 @@
 #define _USE_MATH_DEFINES
 #include <bits/stdc++.h>
 using namespace std;
-typedef unsigned long long ULL;
 
-struct Interval {
-    double l, r;
-    
-    Interval(): l(-1e9), r(1e9) {}
-    Interval(double _l, double _r): l(_l), r(_r) {}
-    Interval(double x): l(x-1e-10), r(x+1e-10) {}
-    
-    bool empty() const { return r < l; }
-    
-    void intersect(Interval I) {
-        l = max(l, I.l);
-        r = min(r, I.r);
-    }
-    
-    double len() const { return empty() ? 0.0 : (r-l); }
-    bool contains(double x) const { return l <= x and x <= r; }
-    bool containsZero() const { return l <= 0 and 0 <= r; } // TODO: Remove.
-};
+#include "interval_arithmetic.cpp"
+#include "quaternions.cpp"
 
-ostream& operator <<(ostream& out, const Interval& I) {
-    out << "[" << I.l << ", " << I.r << "]";
-    return out;
-}
 
-Interval hull(vector<double> vec) { 
-    return Interval(*min_element(vec.begin(), vec.end()), 
-                    *max_element(vec.begin(), vec.end()));
-}
-
-Interval intersection(Interval I, const Interval& J) {
-    I.intersect(J);
-    return I;
-}
-
-Interval inverse(const Interval I) {
-    assert(!I.containsZero());
-    return Interval(1.0 / I.r, 1.0 / I.l);
-}
-
-// Interval arithmetic.
-Interval operator +(const Interval& I, const Interval& J) {
-    if (I.empty() or J.empty())
-        return Interval(0, -1);
-    return Interval(I.l + J.l, I.r + J.r);
-}
-
-Interval& operator +=(Interval& I, const Interval& J) {
-    I = I + J;
-    return I;
-}
-
-Interval operator -(const Interval& I, const Interval& J) {
-    if (I.empty() or J.empty())
-        return Interval(0, -1);
-    return Interval(I.l - J.r, I.r - J.l);
-}
-
-Interval operator *(const Interval& I, const Interval& J) {
-    if (I.empty() or J.empty())
-        return Interval(0, -1);
-    vector<double> vec = {I.l*J.l, I.l*J.r, I.r*J.l, I.r*J.r};
-    return hull(vec);
-}
-
-Interval operator-(Interval I) {
-    if (I.empty())
-        return Interval(0, -1);
-    return Interval(-I.r, -I.l);
-}
-
+// Enforces the constraint that the three numbers in sides correspond
+// to the three sides of a spherical triangle with angles 120.
 void enforceTriangleConstraint(vector<Interval*> sides) {
     assert(ssize(sides) == 3);
     
@@ -83,17 +18,24 @@ void enforceTriangleConstraint(vector<Interval*> sides) {
     }
 }
 
+// Utility function to enforce the constraint on the sides of a 
+// quadrilateral.
+// 
 // I is strictly inside [0, \pi].
 // One side of a quadrilateral belongs to I.
 // The other side belongs to the interval returned by this function.
 Interval quadrilateralConstraint(Interval I) {
     if (I.empty())
         return Interval(0, -1);
-    const static double eps = 1e-8;
+    const static double eps = 1e-10;
     static auto f = [](double x) { return 2*atan(0.5 / tan(x/2)); };
     return Interval(f(I.r) - eps, f(I.l) + eps);
 }
 
+// Enforces the constraint that the four numbers in sides correspond
+// to the four sides of a spherical triangle with angles 120.
+//
+// Assumption: all sides are subsets of [0, pi].
 void enforceQuadrilateralConstraint(vector<Interval*> sides) {
     assert(ssize(sides) == 4);
     
@@ -112,23 +54,12 @@ void enforceQuadrilateralConstraint(vector<Interval*> sides) {
     sides[3]->intersect(odd);
 }
 
-// If cos(theta) \in I, then theta belongs to the returned interval.
-// Returned interval is a subset of [0, pi]
-Interval acos(Interval I) {
-    I.intersect(Interval(-1, 1));
-    if (I.empty())
-        return Interval(0, -1); // empty
-    double l = acos(I.r);
-    double r = acos(I.l);
-    
-    const static double eps = 1e-7;
-    Interval J(l-eps, r+eps);
-    J.intersect(Interval(0, M_PI));
-    return J;
-}
 
-
+// Utility function to enforce the constraint on the sides of a 
+// pentagon.
+// 
 // I, J are strictly inside [0, \ell_T].
+// Let ABCDE be a spherical pentagon with angles 120.
 // If AB \in I, BC\in J, then DE belongs to the interval returned by 
 // this function.
 Interval pentagon1Constraint(const Interval& I, const Interval& J) {
@@ -146,7 +77,11 @@ Interval pentagon1Constraint(const Interval& I, const Interval& J) {
     return acos(Interval(low, high)); 
 }
 
+// Utility function to enforce the constraint on the sides of a 
+// pentagon.
+// 
 // I, J are strictly inside [0, \ell_T].
+// Let ABCDE be a spherical pentagon with angles 120.
 // AB \in I, DE\in J.
 // Then BC belongs to the interval returned by this function.
 Interval pentagon2Constraint(const Interval& I, const Interval& J) {
@@ -186,20 +121,16 @@ Interval pentagon2Constraint(const Interval& I, const Interval& J) {
     return K; 
 }
 
+
+// Enforces the constraint that the five numbers in sides correspond
+// to the five sides of a spherical triangle with angles 120.
+//
+// Assumption: all sides are subsets of [0, \ell_T].
 void enforcePentagonConstraint(vector<Interval*> sides) {
-    auto s = [&](int id) {
-        return sides[id % 5];
-    };
+    assert(ssize(sides) == 5);
     
-    auto print_state = [&]() {
-        cout << "enforcePentagonConstraint" << endl;
-        for (int i = 0; i < 5; i++)
-            cout << *s(i) << " ";
-        cout << endl;
-    };
-    
-    //~ print_state();
-    
+    auto s = [&](int id) { return sides[id % 5]; };
+        
     auto compute_len = [&]() {
         double res = 0;
         for (int i = 0; i < 5; i++) {
@@ -209,6 +140,7 @@ void enforcePentagonConstraint(vector<Interval*> sides) {
         }
         return res;
     };
+    
     double curr_len = compute_len();
     while (curr_len >= 1e-8) {
         for (int i = 0; i < 5; i++) {
@@ -216,135 +148,15 @@ void enforcePentagonConstraint(vector<Interval*> sides) {
             s(i)->intersect(pentagon2Constraint(*s(i+1), *s(i+3)));
             s(i)->intersect(pentagon2Constraint(*s(i+4), *s(i+2)));
         }
-        //~ print_state();
         double new_len = compute_len();
         if (new_len > 0.99*curr_len)
             break;
         curr_len = new_len;
     }
-    return;
-}
-
-template<typename T>
-struct Quaternion{
-    T q[4];
-    Quaternion(): q{T(0),T(0),T(0),T(0)} {}
-    Quaternion(T a, T b, T c, T d): q{a,b,c,d} {}
-    Quaternion(T r): q{r, T(0), T(0), T(0)} {}
-    
-    T& operator [](int i) { return q[i]; }
-    const T& operator [](int i) const { return q[i]; }
-};
-
-template<typename T>
-Quaternion<T> operator +(const Quaternion<T>& x, const Quaternion<T>& y) {
-    Quaternion<T> z;
-    for (int i = 0; i < 4; i++)
-        z[i] = x[i] + y[i];
-    return z; 
-}
-
-template<typename T>
-Quaternion<T> operator -(const Quaternion<T>& x, const Quaternion<T>& y) {
-    Quaternion<T> z;
-    for (int i = 0; i < 4; i++)
-        z[i] = x[i] - y[i];
-    return z; 
-}
-
-template<typename T>
-Quaternion<T> operator *(const Quaternion<T>& x, const Quaternion<T>& y) {
-    Quaternion<T> z;
-    z[0] = x[0]*y[0] - x[1]*y[1] - x[2]*y[2] - x[3]*y[3];
-    z[1] = x[0]*y[1] + x[1]*y[0] + x[2]*y[3] - x[3]*y[2];
-    z[2] = x[2]*y[0] + x[0]*y[2] + x[3]*y[1] - x[1]*y[3];
-    z[3] = x[3]*y[0] + x[0]*y[3] + x[1]*y[2] - x[2]*y[1];
-    return z;
-}
-
-template<typename T>
-Quaternion<T>& operator *=(Quaternion<T>& x, const Quaternion<T>& y) {
-    x = x * y;
-    return x;
-}
-
-template<typename T>
-Quaternion<T> conj(const Quaternion<T>& z) {
-    return Quaternion<T>(z[0], -z[1], -z[2], -z[3]);
-}
-
-template<typename T>
-T abs(const Quaternion<T>& z) {
-    T res = 0;
-    for (int i = 0; i < 4; i++)
-        res += z[i]*z[i];
-    return res;
-}
-
-
-template<typename T>
-ostream& operator <<(ostream& out, const Quaternion<T>& q) {
-    out << q[0] << " + i" << q[1] << " + j" << q[2] << " + k" << q[3];
-    return out;
-}
-
-
-// 0 <= x < 2pi.
-bool containsMod2pi(Interval I, double x) {
-    if (I.empty())
-        return false;
-    double lower = (I.l - x) / (2*M_PI);
-    double upper = (I.r - x) / (2*M_PI);
-
-    int k_min = static_cast<int>(ceil(lower));
-    int k_max = static_cast<int>(floor(upper));
-
-    return k_min <= k_max;
-}
-
-Interval sin(const Interval& I) {
-    if (I.empty())
-        return Interval(0, -1);
-    double sl = sin(I.l), sr = sin(I.r);
-    
-    double l = containsMod2pi(I, 3*M_PI/2) ? -1 : min(sl, sr);
-    double r = containsMod2pi(I, M_PI/2) ? 1 : max(sl, sr);
-    
-    return Interval(l, r);
-}
-
-Interval cos(const Interval& I) {
-    if (I.empty())
-        return Interval(0, -1);
-    double sl = cos(I.l), sr = cos(I.r);
-    
-    double l = containsMod2pi(I, M_PI) ? -1 : min(sl, sr);
-    double r = containsMod2pi(I, 0) ? 1 : max(sl, sr);
-    
-    return Interval(l, r);
-}
-
-// We employ the identification R^3 \cong <i, j, k> \subseteq Quaternions.
-// Then, any quaternion q with |q|=1 induces an isometry via v -> qv\bar q.
- 
-// Set v = (e_1, e_2).
-// This function returns R(v, theta).
-template<typename T> 
-Quaternion<T> basicRotation(T theta) {
-    T theta2 = 0.5 * theta;
-    return Quaternion<T>(cos(theta2), sin(theta2), 0, 0);
-}
-
-// This function returns E(\rot_\theta v, len)
-template<typename T> 
-Quaternion<T> basicIsometry(T theta, T len) {
-    T len2 = 0.5 * len;
-    return Quaternion<T>(cos(len2), 0, 
-            -sin(theta) * sin(len2), cos(theta) * sin(len2)); 
 }
 
 Interval findGeneralizedPolygonMissingSide2(const vector<double>& angles,
-                                           vector<Interval> sides) {
+                                            vector<Interval> sides) {
     int k = ssize(angles);
     assert(ssize(sides) == k-1);
         
@@ -356,9 +168,6 @@ Interval findGeneralizedPolygonMissingSide2(const vector<double>& angles,
     for (int i = k-2; i >= 0; i--) {
         Quaternion<Interval> isom = basicIsometry<Interval>(theta[i], sides[i]);
         res *= conj(isom);
-        //~ Quaternion<Interval> q(0, 0, -sin(theta[i]), cos(theta[i]));
-        //~ Interval angle = 0.5 * sides[i];
-        //~ res *= Quaternion<Interval>(cos(angle)) - Quaternion<Interval>(sin(angle)) * q;
     }
     res *= basicRotation<Interval>(-theta[k]);
     // Up to sign, this is basicIsometry(theta[k-1], len) =
@@ -387,9 +196,8 @@ Interval findGeneralizedPolygonMissingSide2(const vector<double>& angles,
     if (I.len() > 0.9 or J.len() > 0.9)
         return Interval(0, 10);
         
+    // We shall return the interval of 0 <= l < pi such that:
     // (cos l/2, sin l/2) belongs to IxJ or -(IxJ).
-    // With 0 <= l < pi.
-    
     auto intersectWithCircleQuadrant = [](Interval X, Interval Y) {
         X.intersect(Interval(0, 1));
         Y.intersect(Interval(0, 1));
@@ -579,7 +387,6 @@ vector<vector<PathStep>> pathToConcaveAngles(
     for (Dart d: A.darts())
         if (d.from == v)
             root = d;
-    //~ cout << "root: " << root << endl;
     
     using pdd = pair<double, Dart>;
     vector<double> distance(2*A.E(), 1e9);
@@ -653,17 +460,6 @@ vector<vector<PathStep>> pathToConcaveAngles(
     return res;
 }
 
-//~ Interval operator *(const array<Interval, 3>& P, const array<Interval, 3>& Q) {
-    //~ return P[0]*Q[0] + P[1]*Q[1] + P[2]*Q[2];
-//~ }
-
-//~ array<Interval, 3> operator ^(const array<Interval, 3>& P, 
-                    //~ const array<Interval, 3>& Q) {
-    //~ return {P[1]*Q[2] - P[2]*Q[1],
-            //~ P[2]*Q[0] - P[0]*Q[2],
-            //~ P[0]*Q[1] - P[1]*Q[0]};
-//~ }
-
 template <typename T>
 T det(const array<T, 3>& A, const array<T, 3>& B, const array<T, 3>& C) {
     return A[0]*(B[1]*C[2] - B[2]*C[1])
@@ -671,8 +467,14 @@ T det(const array<T, 3>& A, const array<T, 3>& B, const array<T, 3>& C) {
          + A[2]*(B[0]*C[1] - B[1]*C[0]);
 }
 
-// If this returns false, then there is not a plane that intersects all 
-// the given cubes.
+// Determines, approximately, whether there exists a plane that
+// intersects all the given cubes.
+// If it returns false, than it cannot. If it returns yes, it could
+// be a false positive. 
+//
+// Implementing a precise check (without false positives) would most
+// likely require some linear programming. It would be demanding to
+// implement and possibly very slow.
 bool areContainedInPlane(vector<array<Interval, 3>> cubes) {
     int q = ssize(cubes);
     for (int i = 0; i < q; i++) 
@@ -688,8 +490,6 @@ bool areContainedInPlane(vector<array<Interval, 3>> cubes) {
 
 bool canPinsBeAntipodal(const DerivedOnceNet& A, 
                         const vector<Interval>& lengths) {
-    //~ static int boh = 0;
-    //~ cout << (boh++) << endl;
     vector<vector<PathStep>> paths = pathToConcaveAngles(A, lengths);
     vector<Quaternion<Interval>> isometries;
     for (auto path: paths)
@@ -705,40 +505,19 @@ bool canPinsBeAntipodal(const DerivedOnceNet& A,
     return areContainedInPlane(equators);
 }
 
-typedef long long LL;
 // Returns the time elapsed in nanoseconds from 1 January 1970, at 00:00:00.
-LL get_time() {
+long long get_time() {
     return chrono::duration_cast<chrono::nanoseconds>(
         chrono::steady_clock::now().time_since_epoch())
         .count();
 }
-
-LL begin_time;
-LL total_pins_time;
-LL total_refine_time;
-LL total_convex_time;
+long long begin_time;
 
 
-
-bool refineMetrization(const DerivedOnceNet& A, vector<Interval>& lengths) {
-    auto print_status = [&]() {
-        cout << "State: " << endl;
-        for (int i = 0; i < ssize(lengths); i += 2)
-            cout << A.dart(i) << " " << lengths[i] << endl;
-        cout << endl;
-    };
-    
-    auto compute_len = [&]() {
-        double res = 0;
-        for (int i = 0; i < 2*A.E(); i++) {
-            if (lengths[i].empty())
-                return -1.0; // impossible
-            res += lengths[i].len();
-        }
-        return res;
-    };
-    double curr_len = compute_len();
-    while (curr_len >= 1e-8) {
+bool refineMetrizationConvexContinent(const DerivedOnceNet& A, 
+                                      vector<Interval>& lengths) {
+    while (totalLen(lengths) >= 1e-8) {
+        double len_before = totalLen(lengths);
         for (const vector<Dart>& f: A.faces()) {
             if (!A.isConvexFace(f))
                 continue;
@@ -753,27 +532,22 @@ bool refineMetrization(const DerivedOnceNet& A, vector<Interval>& lengths) {
                 enforceTriangleConstraint(sides);
             if (ssize(f) == 4)
                 enforceQuadrilateralConstraint(sides);    
-            if (ssize(f) == 5) {
-                LL local_convex_time = -get_time();
-                enforcePentagonConstraint(sides);                
-                local_convex_time += get_time();
-                total_convex_time += local_convex_time;
-            }
+            if (ssize(f) == 5) 
+                enforcePentagonConstraint(sides);
             
             for (const Dart& d: f) 
                 lengths[A.rev(d).id].intersect(lengths[d.id]);
         }
-        double new_len = compute_len();
-        if (new_len > 0.99*curr_len)
+        if (totalLen(lengths) > 0.99 * len_before)
             break;
-        curr_len = new_len;
     }
     
-    if (curr_len < 0)
-        return false;
-    
-    // Now, we check the non-convex faces.
-    for (int _ = 0; _ < 2; _++) { // We run it twice.
+    return totalLen(lengths) >= 0;
+}
+
+bool refineMetrizationNonConvexFaces(const DerivedOnceNet& A, 
+                                     vector<Interval>& lengths) {
+    for (int _ = 0; _ < 2; _++) { // We run it twice without a reason.
         for (Dart d: A.darts()) {
             if (A.isConvexFace(d))
                 continue;
@@ -794,86 +568,56 @@ bool refineMetrization(const DerivedOnceNet& A, vector<Interval>& lengths) {
                 return false;
         }
     }
-    
     return true;
 }
 
+
 bool searchApproximateMetrization(const DerivedOnceNet& A, 
-                const vector<Dart>& fixed_darts, 
-                vector<Interval> fixed_lengths,
-                vector<Interval> lengths) {
-    //~ double prec = 0;
-        //~ for (Dart d: A.darts())
-            //~ prec = max(prec, lengths[d.id].len());
-        //~ cout << "(" << fixed_lengths[0].len() << ", " << prec << ") ";
-        //~ cout.flush();
+                                  const vector<Dart>& fixed_darts, 
+                                  vector<Interval> lengths) {
+    // If the computation takes too long, we skip.
+    if (get_time() - begin_time > 5*60ll * 1e9) {
+        cout << "skipped, ";
+        return true;
+    }
+    
+    // If we reached the desired precision of the metrization, we 
+    // return.
+    if (totalLen(lengths) < 1e-3) 
+        return true;
+    
     auto print_status = [&]() {
-        cout << "Fixed (" << fixed_lengths[0].len() << "): " << endl;
-        int q = ssize(fixed_darts);
-        for (int i = 0; i < q; i++)
-            cout << fixed_darts[i] << ": " 
-                 << fixed_lengths[i] << "; ";
-        cout << endl;
         cout << "State: " << endl;
         for (int i = 0; i < ssize(lengths); i += 2)
             cout << A.dart(i) << " " << lengths[i] << endl;
         cout << endl;
     };
-    //~ if (fixed_lengths[0].len() >= 0.2)
-        //~ print_status();
     
-    
-    LL diff = get_time() - begin_time;
-    if (diff > 5*60ll * 1ll<<30) {
-        cout << "skipped, ";
-        return true;
-    }
-    
-    assert(ssize(fixed_darts) == ssize(fixed_lengths));
-    int q = ssize(fixed_darts);
-    
-    for (int i = 0; i < q; i++)
-        lengths[fixed_darts[i].id].intersect(fixed_lengths[i]);
     
     for (Dart d: A.darts())
         lengths[A.rev(d).id].intersect(lengths[d.id]);
     
-    long long local_refine_time = -get_time();
-    bool refine_outcome = refineMetrization(A, lengths);
-    local_refine_time += get_time();
-    total_refine_time += local_refine_time;
-    if (!refine_outcome)
+    if (!refineMetrizationConvexContinent(A, lengths))
         return false;
     
-    long long local_pins_time = -get_time();
-    bool pins_outcome = canPinsBeAntipodal(A, lengths);
-    local_pins_time += get_time();
-    total_pins_time += local_pins_time;
-    if (!pins_outcome) 
+    if (!refineMetrizationNonConvexFaces(A, lengths))
         return false;
     
-    if (fixed_lengths[0].len() < 0.000001) {
-        //~ print_status();
-        double prec = 0;
-        for (Dart d: A.darts())
-            prec = max(prec, lengths[d.id].len());
-        cout << "precision = " << prec << ", ";
-        cout.flush();
-
-        return true; // We found a valid approximate metrization.
-    }
+    if (!canPinsBeAntipodal(A, lengths)) 
+        return false;
     
+    int q = ssize(fixed_darts);
     for (int bb = 0; bb < (1<<q); bb++) {
-        vector<Interval> new_lengths(q);
+        vector<Interval> new_lengths = lengths;
         for (int i = 0; i < q; i++) {
-            const Interval& I = fixed_lengths[i];
+            Interval& I = new_lengths[fixed_darts[i].id];
             double m = (I.l + I.r)/2;
             if (bb&(1<<i))
-                new_lengths[i] = Interval(I.l, m);
+                I = Interval(I.l, m);
             else
-                new_lengths[i] = Interval(m, I.r);
+                I = Interval(m, I.r);
         }
-        if (searchApproximateMetrization(A, fixed_darts, new_lengths, lengths))
+        if (searchApproximateMetrization(A, fixed_darts, new_lengths))
             return true;
     }
     
@@ -882,18 +626,6 @@ bool searchApproximateMetrization(const DerivedOnceNet& A,
 
 bool isApproximateMetrizationPossible(const DerivedOnceNet& A) {
     vector<Dart> fixed_darts = findFreeParameters(A);
-    //~ fixed_darts.clear();
-    //~ for (Dart d: A.darts()) {
-        //~ if (d.from == 6 and d.to == 7)
-            //~ fixed_darts.push_back(d);
-        //~ if (d.from == 7 and d.to == 12)
-            //~ fixed_darts.push_back(d);
-        //~ if (d.from == 1 and d.to == 14)
-            //~ fixed_darts.push_back(d);
-    //~ }
-    //~ for (Dart d: fixed_darts)
-        //~ cout << d << endl;
-    //~ return true;
     
     cout << "# of parameters = " << ssize(fixed_darts) << ", ";
     cout.flush();
@@ -918,9 +650,7 @@ bool isApproximateMetrizationPossible(const DerivedOnceNet& A) {
     for (Dart d: A.darts())
         lengths[d.id].intersect(lengths[A.rev(d).id]);
         
-    return  searchApproximateMetrization(A, fixed_darts, 
-            vector<Interval>(ssize(fixed_darts), Interval(0, M_PI)),
-            lengths);
+    return  searchApproximateMetrization(A, fixed_darts, lengths);
 }
 
 
@@ -941,37 +671,15 @@ int main() {
         auto net = parseDerivedOnceNets("data/derived_once_computer.txt")[id];
         
         begin_time = get_time();
-        total_pins_time = 0;
-        total_refine_time = 0;
-        total_convex_time = 0;
         bool possible = isApproximateMetrizationPossible(net);
         double duration_s = (get_time() - begin_time) / 1e9;
-        double pins_s = total_pins_time / 1e9;
-        double refine_s = total_refine_time / 1e9;
-        double convex_s = total_convex_time / 1e9;
         
         if (possible) cout << "POSSIBLE";
-        cout << " (time = " << duration_s << ", pins = " << pins_s 
-             << ", refine = " << refine_s
-             << ", convex = " << convex_s << ")";
+        cout << " (time = " << duration_s << ")";
         cout << endl;
     }
 }
 
 // On 1351: It detects possible (correctly) in 1m43s.
 //          We shall speed it up.
-
-// Correct output.
-//~ 2 3 
-//~ 5 2 
-//~ 7 4 SKIPPEDPOSSIBLE
-//~ 8 3 
-//~ 13 3 
-//~ 19 3 POSSIBLE
-//~ 31 2 
-//~ 33 4 SKIPPEDPOSSIBLE
-//~ 49 3 
-//~ 54 3 
-//~ 57 1 
-//~ 62 3 POSSIBLE
 

@@ -155,11 +155,12 @@ void enforcePentagonConstraint(vector<Interval*> sides) {
     }
 }
 
-Interval findGeneralizedPolygonMissingSide2(const vector<double>& angles,
-                                            vector<Interval> sides) {
+Interval findGeneralizedPolygonMissingSide(const vector<double>& angles,
+                                           vector<Interval> sides) {
     int k = ssize(angles);
     assert(ssize(sides) == k-1);
         
+    // TODO: Shall we use isometryFromPath?
     vector<double> theta(k+1);
     theta[0] = 0;
     for (int i = 0; i < k; i++) theta[i+1] = theta[i] + angles[i] - M_PI;
@@ -238,9 +239,8 @@ bool isDetermined(const DerivedOnceNet& A, vector<bool> determined) {
         if (!A.isConvexFace(d))
             return false;
         int missing = 0;
-        for (Dart e: A.face(d)) {
+        for (Dart e: A.face(d))
             missing += !determined[e.id];
-        }
         return 0 < missing and missing <= 3;
     };
     auto determine_face = [&](Dart d) {
@@ -261,7 +261,8 @@ bool isDetermined(const DerivedOnceNet& A, vector<bool> determined) {
             break;
     }
     int missing = 0;
-    for (Dart d: A.darts()) missing += A.isConvexFace(d) and !determined[d.id];
+    for (Dart d: A.darts()) 
+        missing += A.isConvexFace(d) and !determined[d.id];
     return missing == 0;
 }
 
@@ -562,7 +563,7 @@ bool refineMetrizationNonConvexFaces(const DerivedOnceNet& A,
             }
             Dart e = A.phi(d, q-1);
             Interval& I = lengths[e.id];
-            I.intersect(findGeneralizedPolygonMissingSide2(angles, sides));
+            I.intersect(findGeneralizedPolygonMissingSide(angles, sides));
             lengths[A.rev(e).id].intersect(I);
             if (I.empty())
                 return false;
@@ -580,7 +581,6 @@ bool searchApproximateMetrization(const DerivedOnceNet& A,
         cout << "skipped, ";
         return true;
     }
-    
     // If we reached the desired precision of the metrization, we 
     // return.
     if (totalLen(lengths) < 1e-3) 

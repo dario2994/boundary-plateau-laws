@@ -489,6 +489,13 @@ bool areContainedInPlane(vector<array<Interval, 3>> cubes) {
     return true;
 }
 
+array<Interval, 3> applyIsometry(const Quaternion<Interval>& T, 
+                                 const array<Interval, 3>& vec) {
+    Quaternion<Interval> vec2(0, vec[0], vec[1], vec[2]);
+    Quaternion<Interval> res = T*vec2*conj(T);
+    return {res[1], res[2], res[3]};
+}
+
 bool canPinsBeAntipodal(const DerivedOnceNet& A, 
                         const vector<Interval>& lengths) {
     vector<vector<PathStep>> paths = pathToConcaveAngles(A, lengths);
@@ -497,13 +504,43 @@ bool canPinsBeAntipodal(const DerivedOnceNet& A,
         isometries.push_back(isometryFromPath(path, lengths));
     
     vector<array<Interval, 3>> equators;
-    for (auto q: isometries) {
-        Quaternion<Interval> v(0, 0, 0, 1);
-        Quaternion<Interval> equator = q * v * conj(q);
-        equators.push_back({equator[1], equator[2], equator[3]});
-    }
+    for (auto q: isometries)
+        equators.push_back(applyIsometry(q, {0, 0, 1}));
     
     return areContainedInPlane(equators);
+}
+
+
+bool checkPinAngles(const DerivedOnceNet& A,
+                    const vector<Interval>& lengths) {
+    for (const auto& f: A.faces()) {
+        if (A.faceType(f).second != 2) // Two pins
+            continue;
+        
+        vector<int> concave_angles;
+        for (int i = 0; i < ssize(f); i++) {
+            if (A.isConcaveAngle(f[i]))
+                concave_angles.push_back(i);
+        }
+        assert(ssize(concave_angles) == 2);
+        vector<PathStep> path;
+        path.emplace_back(2*M_PI/3);
+        for (int i = concave_angles[0]+1; i <= concave_angles[1]; i++) {
+            path.emplace_back(f[i]);
+            path.emplace_back(-M_PI/3);
+        }
+        // T transforms the (directed) edge to one pin to the directed 
+        // edge to the other pin.
+        Quaternion<Interval> T = isometryFromPath(path, lengths);
+        array<Interval, 3> pin_edge = applyIsometry(T, {0, 0, 1});
+        
+        // scal_prod <= -1/2 is equivalent to the condition on
+        // the angle at the pin.
+        Interval scal_prod = pin_edge[2];
+        if (scal_prod.l > -0.5 + 1e-8)
+            return false;
+    }
+    return true;
 }
 
 // Returns the time elapsed in nanoseconds from 1 January 1970, at 00:00:00.
@@ -606,6 +643,9 @@ bool searchApproximateMetrization(const DerivedOnceNet& A,
     if (!canPinsBeAntipodal(A, lengths)) 
         return false;
     
+    if (!checkPinAngles(A, lengths))
+        return false;
+    
     int q = ssize(fixed_darts);
     for (int bb = 0; bb < (1<<q); bb++) {
         vector<Interval> new_lengths = lengths;
@@ -666,7 +706,7 @@ int main() {
         in >> survivors[i];
     in.close();
     
-    for (int id: survivors) {
+    for (int id: {105,111,140,160,223,253,256,279,283,289,343,385,410}) {//{19,62,113,121,247,278,292,312,330,331}) {
         cout << "net id = " << id << ", ";
         auto net = parseDerivedOnceNets("data/derived_once_computer.txt")[id];
         

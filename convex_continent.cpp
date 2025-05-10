@@ -135,7 +135,7 @@ bool searchApproximateMetrization(const DerivedOnceNet& A,
     }
     // If we reached the desired precision of the metrization, we 
     // return.
-    if (totalLen(lengths) < 1e-3) 
+    if (totalLen(lengths) < 1e-5) 
         return true;
     
     auto print_status = [&]() {
@@ -165,6 +165,9 @@ bool searchApproximateMetrization(const DerivedOnceNet& A,
         return false;
     
     if (!checkPinAngles(A, lengths))
+        return false;
+        
+    if (!checkNonIntersection(A, lengths))
         return false;
     
     int q = ssize(fixed_darts);
@@ -224,7 +227,7 @@ int main() {
         in >> survivors[i];
     in.close();
     
-    for (int id: survivors) {//{19,62,113,121,247,278,292,312,330,331}) {
+    for (int id: {113}) {//{19,62,113,121,247,278,292,312,330,331}) {
         cout << "net id = " << id << ", ";
         auto net = parseDerivedOnceNets("data/derived_once_computer.txt")[id];
         

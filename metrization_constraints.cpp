@@ -463,4 +463,81 @@ bool refineMetrizationNonConvexFaces(const DerivedOnceNet& A,
     return true;
 }
 
+// T is an approximate isometry.
+// Consider the directed geodesic a starting from (e_1, e_2) and the 
+// directed geodesic b starting from (Te_1, Te_2).
+// 
+// This function checks whether the first intersection of a and b
+// happens after less then pi distance from both starting points.
+// If this is the case, it returns the maximum distance of the 
+// intersection point along a. Otherwise it returns a large number.
+double farthestIntersection(Quaternion<Interval> T) {
+    // sign1 determines on which side of a is Te_1.
+    Interval sign1 = applyIsometry(T, {1, 0, 0})[2];
+    // sign2 determines on which side of b is e_1.
+    Interval sign2 = applyIsometry(T, {0, 0, 1})[0];
+    
+    // The first intersection happens in less than pi on both geodesics
+    // if and only if sign1 and sign2 have different signs.
+    if (sign1.containsZero() or sign2.containsZero())
+        return 10;
+    if (sign1.l > 0 and sign2.l > 0)
+        return 10;
+    if (sign1.l < 0 and sign2.l < 0)
+        return 10;
+    
+    // Te_3^e_3 is, up to scaling, the intersection between a and b.
+    // Notice that Te_3^e_3 = (X, Y, 0).
+    Interval X = applyIsometry(T, {0, 0, 1})[1];
+    Interval Y = -applyIsometry(T, {0, 0, 1})[0];
+    
+    if (Y.containsZero())
+        return 10;
+        
+    // We identify the *first* intersection.
+    if (Y.l < 0) X = -X, Y = -Y;
+    
+    double theta = max(atan2(Y.l, X.l), atan2(Y.r, X.l));
+    return theta;
+}
+
+bool checkNonIntersection(Quaternion<Interval> T, Interval& I, Interval& J) {
+    double lenI = farthestIntersection(T);
+    double lenJ = farthestIntersection(conj(T));
+    
+    if (I.l >= lenI)
+        J.intersect(Interval(0, lenJ));
+    if (J.l >= lenJ)
+        I.intersect(Interval(0, lenI));
+        
+    return !I.empty() and !J.empty();
+}
+
+// Checks that non-convex faces have are not self-intersecting.
+bool checkNonIntersection(const DerivedOnceNet& A, vector<Interval>& lengths) {
+    for (Dart d: A.darts()) {
+        if (A.isConvexFace(d))
+            continue;
+        vector<PathStep> path;
+        path.emplace_back(M_PI);
+        int q = ssize(A.face(d));
+        for (int i = 0; i < q-2; i++) {
+            path.emplace_back(A.isConcaveAngle(A.phi(d, i)) ? M_PI/3 : -M_PI/3);
+            if (i != 0) {
+                Dart e = A.phi(d, i+1);
+                bool ans = checkNonIntersection(
+                        isometryFromPath(path, lengths),
+                        lengths[d.id],
+                        lengths[e.id]);
+                lengths[A.rev(d).id].intersect(lengths[d.id]);
+                lengths[A.rev(e).id].intersect(lengths[e.id]);
+                if (!ans)
+                    return false;
+            }
+            path.emplace_back(A.phi(d, i+1));
+        }
+    }
+    return true;
+}
+
 #endif

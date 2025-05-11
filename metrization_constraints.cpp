@@ -345,10 +345,11 @@ bool areContainedInPlane(vector<array<Interval, 3>> cubes) {
     return true;
 }
 
-array<Interval, 3> applyIsometry(const Quaternion<Interval>& T, 
-                                 const array<Interval, 3>& vec) {
-    Quaternion<Interval> vec2(0, vec[0], vec[1], vec[2]);
-    Quaternion<Interval> res = T*vec2*conj(T);
+template<typename T>
+array<T, 3> applyIsometry(const Quaternion<T>& S, 
+                          const array<T, 3>& vec) {
+    Quaternion<T> vec2(0, vec[0], vec[1], vec[2]);
+    Quaternion<T> res = S*vec2*conj(S);
     return {res[1], res[2], res[3]};
 }
 
@@ -444,7 +445,7 @@ bool refineMetrizationNonConvexFaces(const DerivedOnceNet& A,
                 Dart e = A.phi(d, i);
                 if (i > 0)
                     path.emplace_back(e);
-                path.emplace_back(A.isConcaveAngle(e) ? M_PI/3 : -M_PI/3);
+                path.emplace_back(A.phiAngle(e));
             }
             Quaternion<Interval> T = isometryFromPath(path, lengths);
             // T is, up to sign, (cos(l/2), 0, 0, -sin(l/2)), where
@@ -505,6 +506,9 @@ bool checkNonIntersection(Quaternion<Interval> T, Interval& I, Interval& J) {
     double lenI = farthestIntersection(T);
     double lenJ = farthestIntersection(conj(T));
     
+    //~ if (lenI <= 5 and lenJ <= 5)
+        //~ cout << lenI << " " << lenJ << endl;
+    
     if (I.l >= lenI)
         J.intersect(Interval(0, lenJ));
     if (J.l >= lenJ)
@@ -522,7 +526,7 @@ bool checkNonIntersection(const DerivedOnceNet& A, vector<Interval>& lengths) {
         path.emplace_back(M_PI);
         int q = ssize(A.face(d));
         for (int i = 0; i < q-2; i++) {
-            path.emplace_back(A.isConcaveAngle(A.phi(d, i)) ? M_PI/3 : -M_PI/3);
+            path.emplace_back(A.phiAngle(A.phi(d, i)));
             if (i != 0) {
                 Dart e = A.phi(d, i+1);
                 bool ans = checkNonIntersection(

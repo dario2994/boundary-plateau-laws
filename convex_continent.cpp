@@ -8,6 +8,57 @@ using namespace std;
 #include "metrization_constraints.cpp"
 
 
+#include "spherical_geometry.cpp"
+
+void savePicture(vector<pair<pt, string>> vertices, 
+                 vector<GeodesicSegment> edges, string out_file) {
+    ofstream out(out_file);
+    out << ssize(vertices) << " " << ssize(edges) << endl;
+    for (auto pp: vertices) {
+        pp.first.serialize(out);
+        out << " " << pp.second << endl;
+    }
+    for (const GeodesicSegment& side: edges) {
+        side.serialize(out);
+        out << endl;
+    }
+    out.close();
+}
+
+pair<vector<pair<pt, string>>, vector<GeodesicSegment>> 
+        embedNet(const DerivedOnceNet& A, 
+                 const vector<Interval>& lengths) {
+    int n = ssize(lengths);
+    vector<GeodesicSegment> embedding(n);
+    vector<bool> visited(n, false);
+    function<void(Dart)> dfs = [&](Dart d) {
+        GeodesicSegment& curr = embedding[d.id];
+        double len = lengths[d.id].mid();
+        curr.len = len;
+        visited[d.id] = true;
+        // Assuming that rev != next. True if there are no self-loops.
+        if (!visited[A.next(d).id]) {
+            embedding[A.next(d).id] = GeodesicSegment(curr.rot(A.nextAngle(d)), 0);
+            dfs(A.next(d));
+        }
+        if (!visited[A.rev(d).id]) {
+            embedding[A.rev(d).id] = GeodesicSegment(curr.exp(len).rot(M_PI), 0);
+            dfs(A.rev(d));
+        }
+    };
+    embedding[0] = GeodesicSegment(TangentVector(), 0);
+    dfs(A.dart(0));
+    
+    vector<pair<pt, string>> vertices(A.V());
+    for (Dart d: A.darts()) {
+        vertices[d.from] = {embedding[d.id].P, to_string(d.from)};
+    }
+    
+    return {vertices, embedding};
+}
+
+
+
 vector<DerivedOnceNet> parseDerivedOnceNets(string in_file) {
     ifstream in(in_file);
     int cnt;
@@ -135,8 +186,11 @@ bool searchApproximateMetrization(const DerivedOnceNet& A,
     }
     // If we reached the desired precision of the metrization, we 
     // return.
-    if (totalLen(lengths) < 1e-5) 
+    if (totalLen(lengths) < 1e-5) {
+        //~ auto pp = embedNet(A, lengths);
+        //~ savePicture(pp.first, pp.second, "data/embedded.txt");
         return true;
+    }
     
     auto print_status = [&]() {
         cout << "State: " << endl;
@@ -217,7 +271,6 @@ bool isApproximateMetrizationPossible(const DerivedOnceNet& A) {
     return  searchApproximateMetrization(A, fixed_darts, lengths);
 }
 
-
 int main() {
     ifstream in("data/derived_once_survivors.txt");
     int cnt_survivors;
@@ -227,7 +280,7 @@ int main() {
         in >> survivors[i];
     in.close();
     
-    for (int id: {113}) {//{19,62,113,121,247,278,292,312,330,331}) {
+    for (int id: {354}) {//{19,62,113,121,247,278,292,312,330,331}) {
         cout << "net id = " << id << ", ";
         auto net = parseDerivedOnceNets("data/derived_once_computer.txt")[id];
         

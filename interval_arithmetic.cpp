@@ -5,6 +5,8 @@
 #include <bits/stdc++.h>
 using namespace std;
 
+// Struct maintaining a closed interval [l, r].
+// In many of our applications, the interval is a subset of [0, pi].
 struct Interval {
     double l, r;
     
@@ -20,6 +22,10 @@ struct Interval {
     }
     
     double len() const { return empty() ? 0.0 : (r-l); }
+    double mid() const { 
+        assert(!empty());
+        return (l + r) / 2;
+    }
     bool contains(double x) const { return l <= x and x <= r; }
     bool containsZero() const { return l <= 0 and 0 <= r; } // TODO: Remove.
 };
@@ -29,6 +35,7 @@ ostream& operator <<(ostream& out, const Interval& I) {
     return out;
 }
 
+// Returns the smallest interval containing all the given intervals.
 Interval hull(vector<double> vec) { 
     return Interval(*min_element(vec.begin(), vec.end()), 
                     *max_element(vec.begin(), vec.end()));
@@ -39,12 +46,13 @@ Interval intersection(Interval I, const Interval& J) {
     return I;
 }
 
+// If 0 does not belong to I, returns 1/I.
 Interval inverse(const Interval I) {
     assert(!I.containsZero());
     return Interval(1.0 / I.r, 1.0 / I.l);
 }
 
-// Interval arithmetic.
+// I+J
 Interval operator +(const Interval& I, const Interval& J) {
     if (I.empty() or J.empty())
         return Interval(0, -1);
@@ -56,12 +64,15 @@ Interval& operator +=(Interval& I, const Interval& J) {
     return I;
 }
 
+
+// I-J
 Interval operator -(const Interval& I, const Interval& J) {
     if (I.empty() or J.empty())
         return Interval(0, -1);
     return Interval(I.l - J.r, I.r - J.l);
 }
 
+// I*J
 Interval operator *(const Interval& I, const Interval& J) {
     if (I.empty() or J.empty())
         return Interval(0, -1);
@@ -69,6 +80,7 @@ Interval operator *(const Interval& I, const Interval& J) {
     return hull(vec);
 }
 
+// -I
 Interval operator-(Interval I) {
     if (I.empty())
         return Interval(0, -1);
@@ -91,6 +103,8 @@ Interval acos(Interval I) {
     return J;
 }
 
+
+// Returns whether x+2pik belongs to I for some integer k.
 // 0 <= x < 2pi.
 bool containsMod2pi(Interval I, double x) {
     if (I.empty())
@@ -104,6 +118,7 @@ bool containsMod2pi(Interval I, double x) {
     return k_min <= k_max;
 }
 
+// sin(I)
 Interval sin(const Interval& I) {
     if (I.empty())
         return Interval(0, -1);
@@ -115,6 +130,7 @@ Interval sin(const Interval& I) {
     return Interval(l, r);
 }
 
+// cos(I)
 Interval cos(const Interval& I) {
     if (I.empty())
         return Interval(0, -1);

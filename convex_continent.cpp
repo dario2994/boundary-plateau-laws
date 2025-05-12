@@ -176,20 +176,25 @@ long long get_time() {
 }
 long long begin_time;
 
-bool searchApproximateMetrization(const DerivedOnceNet& A, 
+int current_net_id;
+
+
+// Return values:
+// 0 no
+// 1 yes
+// 2 maybe
+int searchApproximateMetrization(const DerivedOnceNet& A, 
                                   const vector<Dart>& fixed_darts, 
                                   vector<Interval> lengths) {
     // If the computation takes too long, we skip.
-    if (get_time() - begin_time > 7*60*60ll * 1e9) {
-        cout << "skipped, ";
-        return true;
-    }
+    if (get_time() - begin_time > 10*60ll * 1e9) 
+        return 2;
     // If we reached the desired precision of the metrization, we 
     // return.
     if (totalLen(lengths) < 1e-5) {
-        //~ auto pp = embedNet(A, lengths);
-        //~ savePicture(pp.first, pp.second, "data/embedded.txt");
-        return true;
+        auto pp = embedNet(A, lengths);
+        savePicture(pp.first, pp.second, "data/metrization/" + to_string(current_net_id) + ".txt");
+        return 1;
     }
     
     auto print_status = [&]() {
@@ -210,19 +215,19 @@ bool searchApproximateMetrization(const DerivedOnceNet& A,
         lengths[A.rev(d).id].intersect(lengths[d.id]);
     
     if (!refineMetrizationConvexContinent(A, lengths))
-        return false;
+        return 0;
     
     if (!refineMetrizationNonConvexFaces(A, lengths))
-        return false;
+        return 0;
     
     if (!canPinsBeAntipodal(A, lengths)) 
-        return false;
+        return 0;
     
     if (!checkPinAngles(A, lengths))
-        return false;
+        return 0;
         
     if (!checkNonIntersection(A, lengths))
-        return false;
+        return 0;
     
     int q = ssize(fixed_darts);
     for (int bb = 0; bb < (1<<q); bb++) {
@@ -235,14 +240,20 @@ bool searchApproximateMetrization(const DerivedOnceNet& A,
             else
                 I = Interval(m, I.r);
         }
-        if (searchApproximateMetrization(A, fixed_darts, new_lengths))
-            return true;
+        int outcome = searchApproximateMetrization(
+                A, fixed_darts, new_lengths);
+        if (outcome > 0)
+            return outcome;
     }
     
-    return false;
+    return 0;
 }
 
-bool isApproximateMetrizationPossible(const DerivedOnceNet& A) {
+// Return values:
+// 0 no
+// 1 yes
+// 2 maybe
+int isApproximateMetrizationPossible(const DerivedOnceNet& A) {
     vector<Dart> fixed_darts = findFreeParameters(A);
     
     cout << "# of parameters = " << ssize(fixed_darts) << ", ";
@@ -268,7 +279,7 @@ bool isApproximateMetrizationPossible(const DerivedOnceNet& A) {
     for (Dart d: A.darts())
         lengths[d.id].intersect(lengths[A.rev(d).id]);
         
-    return  searchApproximateMetrization(A, fixed_darts, lengths);
+    return searchApproximateMetrization(A, fixed_darts, lengths);
 }
 
 int main() {
@@ -280,20 +291,31 @@ int main() {
         in >> survivors[i];
     in.close();
     
-    for (int id: {354}) {//{19,62,113,121,247,278,292,312,330,331}) {
-        cout << "net id = " << id << ", ";
+    
+    vector<int> new_survivors;
+    for (int id: survivors) {//{19,62,113,121,247,278,292,312,330,331}) {
+        cout << "net id = " << setw(4) << id << ":\t";
+        current_net_id = id;
         auto net = parseDerivedOnceNets("data/derived_once_computer.txt")[id];
         
         begin_time = get_time();
-        bool possible = isApproximateMetrizationPossible(net);
+        int outcome = isApproximateMetrizationPossible(net);
         double duration_s = (get_time() - begin_time) / 1e9;
         
-        if (possible) cout << "POSSIBLE";
-        cout << " (time = " << duration_s << ")";
+        cout.precision(2);
+        cout << "(time = " << fixed << setw(6) << duration_s << ") ";
+        if (outcome == 1) cout << "POSSIBLE";
+        if (outcome == 2) cout << "SKIPPED";
+        if (outcome != 0)
+            new_survivors.push_back(id);
         cout << endl;
     }
+    
+    ofstream out("data/derived_once_survivors.txt");
+    out << new_survivors.size() << endl;
+    for (int id: new_survivors)
+        out << id << " ";
+    out << endl;
+    out.close();
 }
-
-// On 1351: It detects possible (correctly) in 1m43s.
-//          We shall speed it up.
 

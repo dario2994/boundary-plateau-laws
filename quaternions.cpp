@@ -90,4 +90,12 @@ Quaternion<T> basicIsometry(T theta, T len) {
             -sin(theta) * sin(len2), cos(theta) * sin(len2)); 
 }
 
+template<typename T>
+array<T, 3> applyIsometry(const Quaternion<T>& S, 
+                          const array<T, 3>& vec) {
+    Quaternion<T> vec2(0, vec[0], vec[1], vec[2]);
+    Quaternion<T> res = S*vec2*conj(S);
+    return {res[1], res[2], res[3]};
+}
+
 #endif

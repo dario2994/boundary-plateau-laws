@@ -6,6 +6,7 @@ using namespace std;
 #include "quaternions.cpp"
 #include "derived_once_nets.cpp"
 #include "metrization_constraints.cpp"
+#include "metrized_nets.cpp"
 
 
 #include "spherical_geometry.cpp"
@@ -26,8 +27,10 @@ void savePicture(vector<pair<pt, string>> vertices,
 }
 
 pair<vector<pair<pt, string>>, vector<GeodesicSegment>> 
-        embedNet(const DerivedOnceNet& A, 
-                 const vector<Interval>& lengths) {
+        embedNet(const MetrizedNet& net) {
+    const vector<Interval>& lengths = net.lengths;
+    const DerivedOnceNet& A = net.A;
+    
     int n = ssize(lengths);
     vector<GeodesicSegment> embedding(n);
     vector<bool> visited(n, false);
@@ -168,14 +171,7 @@ vector<Dart> findFreeParameters(const DerivedOnceNet& A) {
     return joined;
 }
 
-// Returns the time elapsed in nanoseconds from 1 January 1970, at 00:00:00.
-long long get_time() {
-    return chrono::duration_cast<chrono::nanoseconds>(
-        chrono::steady_clock::now().time_since_epoch())
-        .count();
-}
 long long begin_time;
-
 int current_net_id;
 
 
@@ -183,55 +179,51 @@ int current_net_id;
 // 0 no
 // 1 yes
 // 2 maybe
-int searchApproximateMetrization(const DerivedOnceNet& A, 
-                                  const vector<Dart>& fixed_darts, 
-                                  vector<Interval> lengths) {
+int searchApproximateMetrization(MetrizedNet net, 
+                                 const vector<Dart>& fixed_darts) {
+    const DerivedOnceNet& A = net.A;
+    
     // If the computation takes too long, we skip.
     if (get_time() - begin_time > 10*60ll * 1e9) 
         return 2;
     // If we reached the desired precision of the metrization, we 
     // return.
-    if (totalLen(lengths) < 1e-5) {
-        auto pp = embedNet(A, lengths);
+    if (totalLen(net.lengths) < 1e-5) {
+        checkPinAngles(net);
+        auto pp = embedNet(net);
         savePicture(pp.first, pp.second, "data/metrization/" + to_string(current_net_id) + ".txt");
         return 1;
     }
     
     auto print_status = [&]() {
         cout << "State: " << endl;
-        for (int i = 0; i < ssize(lengths); i += 2)
-            cout << A.dart(i) << " " << lengths[i] << endl;
+        for (int i = 0; i < ssize(net.lengths); i += 2)
+            cout << A.dart(i) << " " << net.lengths[i] << endl;
         cout << endl;
     };
     
     
-    //~ if (lengths[fixed_darts[0].id].len() > 0.1) {
-        //~ cout << int((get_time() - begin_time) / 1e9) << endl;
-        //~ print_status();
-    //~ }
-    
-    
     for (Dart d: A.darts())
-        lengths[A.rev(d).id].intersect(lengths[d.id]);
+        net.lengths[A.rev(d).id].intersect(net.lengths[d.id]);
     
-    if (!refineMetrizationConvexContinent(A, lengths))
+    if (!refineMetrizationConvexContinent(net))
         return 0;
     
-    if (!refineMetrizationNonConvexFaces(A, lengths))
+    if (!refineMetrizationNonConvexFaces(net))
         return 0;
     
-    if (!canPinsBeAntipodal(A, lengths)) 
+    if (!canPinsBeAntipodal(net)) 
         return 0;
     
-    if (!checkPinAngles(A, lengths))
+    if (!checkPinAngles(net))
         return 0;
         
-    if (!checkNonIntersection(A, lengths))
+    if (!checkNonIntersection(net))
         return 0;
     
     int q = ssize(fixed_darts);
     for (int bb = 0; bb < (1<<q); bb++) {
-        vector<Interval> new_lengths = lengths;
+        vector<Interval> new_lengths = net.lengths;
         for (int i = 0; i < q; i++) {
             Interval& I = new_lengths[fixed_darts[i].id];
             double m = (I.l + I.r)/2;
@@ -240,8 +232,14 @@ int searchApproximateMetrization(const DerivedOnceNet& A,
             else
                 I = Interval(m, I.r);
         }
-        int outcome = searchApproximateMetrization(
-                A, fixed_darts, new_lengths);
+        auto new_net = net;
+        new_net.lengths = new_lengths;
+        // This is the only external overhead necessary for the
+        // caching mechanis of minimal paths to work.
+        // It could be part of a custom copy constructor, but it
+        // would be even more annoying.
+        new_net.incrementVersion();
+        int outcome = searchApproximateMetrization(new_net, fixed_darts);
         if (outcome > 0)
             return outcome;
     }
@@ -264,22 +262,7 @@ int isApproximateMetrizationPossible(const DerivedOnceNet& A) {
         if (A.isConcaveAngle(d))
             cnt++;
     
-    vector<Interval> lengths(2*A.E(), Interval(0, M_PI));
-    
-    for (Dart d: A.darts()) {
-        Interval& I = lengths[d.id];
-        if (A.isConvexFace(d)) {
-            I.intersect(Interval(0.02, M_PI-0.01));
-            int q = ssize(A.face(d));
-            assert(q != 2);
-            if (q == 5)
-                I.intersect(Interval(0, acos(-1.0/3)-0.0001));
-        }
-    }
-    for (Dart d: A.darts())
-        lengths[d.id].intersect(lengths[A.rev(d).id]);
-        
-    return searchApproximateMetrization(A, fixed_darts, lengths);
+    return searchApproximateMetrization(MetrizedNet(A), fixed_darts);
 }
 
 int main() {
@@ -293,13 +276,13 @@ int main() {
     
     
     vector<int> new_survivors;
-    for (int id: survivors) {//{19,62,113,121,247,278,292,312,330,331}) {
+    for (int id: {19}) {//{19,62,113,121,247,278,292,312,330,331}) {
         cout << "net id = " << setw(4) << id << ":\t";
         current_net_id = id;
-        auto net = parseDerivedOnceNets("data/derived_once_computer.txt")[id];
+        auto A = parseDerivedOnceNets("data/derived_once_computer.txt")[id];
         
         begin_time = get_time();
-        int outcome = isApproximateMetrizationPossible(net);
+        int outcome = isApproximateMetrizationPossible(A);
         double duration_s = (get_time() - begin_time) / 1e9;
         
         cout.precision(2);
@@ -311,11 +294,19 @@ int main() {
         cout << endl;
     }
     
+    cout << boh << endl;
+    
+    StopWatch::printState();
+    
+    return 0;
+    
     ofstream out("data/derived_once_survivors.txt");
     out << new_survivors.size() << endl;
     for (int id: new_survivors)
         out << id << " ";
     out << endl;
     out.close();
+    
+    
 }
 

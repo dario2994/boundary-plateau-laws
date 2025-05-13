@@ -33,6 +33,12 @@ class DerivedOnceNet : public CombinatorialMap {
                != _concave_angles.end();
     }
     
+    int concaveAngleId(const Dart& d) const {
+        auto it = find(_concave_angles.begin(), _concave_angles.end(), d);
+        assert(it != _concave_angles.end());
+        return it - _concave_angles.begin();
+    }
+    
     double phiAngle(const Dart& d) const {
         return isConcaveAngle(d) ? M_PI/3 : -M_PI/3;
     }

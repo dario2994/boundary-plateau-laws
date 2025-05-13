@@ -62,4 +62,43 @@ struct CollectionUpToIsomorphism {
 };
 
 
+// Returns the time elapsed in nanoseconds from 1 January 1970, at 00:00:00.
+long long get_time() {
+    return chrono::duration_cast<chrono::nanoseconds>(
+        chrono::steady_clock::now().time_since_epoch())
+        .count();
+}
+
+
+class StopWatch {
+  private:
+    static map<string,long long> total_time;
+    string name;
+    bool is_active;
+  public:
+    StopWatch(string _name): name(_name), is_active(true) {
+        total_time[name] -= get_time();
+    }
+    
+    void stop() {
+        if (!is_active)
+            return;
+        is_active = false;
+        total_time[name] += get_time();
+    }
+    
+    ~StopWatch() {
+        stop();
+    }
+    
+    static void printState() {
+        for (auto pp: total_time) {
+            double sec = pp.second / 1e9;
+            cout << pp.first << ": " << sec << endl;
+        }
+    }
+};
+map<string,long long> StopWatch::total_time;
+
+
 #endif

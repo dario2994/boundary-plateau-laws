@@ -8,6 +8,8 @@ using namespace std;
 #include "interval_arithmetic.cpp"
 #include "quaternions.cpp"
 #include "derived_once_nets.cpp"
+#include "metrized_nets.cpp"
+#include "utils.cpp"
 
 
 // Enforces the constraint that the three numbers in sides correspond
@@ -184,139 +186,6 @@ Interval intersectWithCircle(const Interval& I, const Interval& J) {
     return inter1.empty() ? inter2 : inter1;
 }
 
-struct PathStep {
-    char type;
-    double rotation;
-    Dart d;
-    
-    PathStep(double _rotation): type('R'), rotation(_rotation) {}
-    PathStep(Dart _d): type('E'), d(_d) {}
-    
-    double cost(const vector<Interval>& lengths) {
-        return 1e-10 + ((type == 'R') ? 0.0 : lengths[d.id].len());
-    }
-};
-
-// Given a sequence of operations (i.e., a path), it returns the 
-// quaternion representing the isometry that maps (e_1, e_2) into the 
-// result of the operations starting from (e_1, e_2).
-//
-// The operations can be:
-//  - {'R', \theta}: Apply \rot_\theta.
-//  - {'E', l}: Apply \exp_l.
-Quaternion<Interval> isometryFromPath(const vector<PathStep>& path, 
-                                      const vector<Interval>& lengths) {
-    double sum_theta = 0;
-    Quaternion<Interval> res(1);
-    for (auto op: path) {
-        if (op.type == 'R')
-            sum_theta += op.rotation;
-        if (op.type == 'E')
-            res *= basicIsometry<Interval>(sum_theta, lengths[op.d.id]);
-    }
-    res *= basicRotation<Interval>(sum_theta);
-    
-    return res;
-}
-
-vector<vector<PathStep>> pathToConcaveAngles(
-        const DerivedOnceNet& A, const vector<Interval>& lengths) {
-    // Step 0: Find the vertices with concave angles.
-    vector<int> concave_angles;
-    for (Dart d: A.darts())
-        if (A.isConcaveAngle(d))
-            concave_angles.push_back(d.to);
-            
-    if (concave_angles.empty())
-        return {};
-        
-    //~ if (ssize(concave_angles) <= 2)
-        //~ return {}; // We save some time.
-    
-    
-    // Step 1: Find the best "center".
-    //         TODO: Now we just select arbitrarily one of the 
-    //               concave angles.
-    int v = concave_angles[0];
-        
-    // Step 2: Run Dijkstra from the chosen dart to the concave angles.
-    Dart root;
-    for (Dart d: A.darts())
-        if (d.from == v)
-            root = d;
-    
-    using pdd = pair<double, Dart>;
-    vector<double> distance(2*A.E(), 1e9);
-    vector<char> father(2*A.E(), '-'); // n = next, r = rev
-    priority_queue<pdd, vector<pdd>, greater<pdd>> q;
-    
-    distance[root.id] = 0;
-    q.push(pdd{0.0, root});
-    while (!q.empty()) {
-        auto pp = q.top();
-        q.pop();
-        Dart d = pp.second;
-        double dist = pp.first;
-        if (dist > distance[d.id])
-            continue;
-        
-        vector<pdd> adj = {{dist + 1e-10, A.next(d)}, 
-                           {dist + lengths[d.id].len() + 1e-10, A.rev(d)}};
-        for (auto [dist2, d2]: adj) {
-            if (dist2 >= distance[d2.id]) 
-                continue;
-            distance[d2.id] = dist2;
-            father[d2.id] = (d.from == d2.from) ? 'n' : 'r';
-            q.push({dist2, d2});
-        }
-    }
-    assert(father[root.id] == '-');
-    
-    // Step 3: Reconstruct the paths from the chosen dart to the edges
-    //         going into the pin.
-    vector<vector<PathStep>> res;
-    for (int goal: concave_angles) {
-        double cost = 1e9;
-        Dart last_dart;
-        for (Dart d: A.darts()) {
-            if (d.from == goal and cost > distance[d.id]) {
-                cost = distance[d.id];
-                last_dart = d;
-            }
-        }
-        Dart curr = last_dart;
-        vector<PathStep> path;
-        
-        // To compress consecutive rotations in a single one.
-        auto append_to_path = [&](PathStep op) {
-            if (!path.empty() and path.back().type == 'R' and op.type == 'R')
-                path.back().rotation += op.rotation;
-            else
-                path.push_back(op);
-        };
-        
-        // Rotation to go in the direction of the pin.
-        double angle_to_pin = A.isConcaveAngle(A.rev(curr)) ? 2*M_PI/3 : M_PI/3;
-        append_to_path(angle_to_pin);
-        // We go from last_dart to root.
-        while (father[curr.id] != '-') {
-            if (father[curr.id] == 'n') { // Rotation by 120 or 240.
-                double angle = A.isConcaveAngle(A.rev(A.prev(curr))) ? -2*M_PI/3 : 2*M_PI/3;
-                append_to_path(angle);
-                curr = A.prev(curr);
-            } else if (father[curr.id] == 'r') { // Exponential + Rotation by 180.
-                append_to_path(M_PI);
-                curr = A.rev(curr);
-                append_to_path(curr);
-            } else assert(0);
-        }
-        reverse(path.begin(), path.end());
-        res.push_back(path);
-    }
-    
-    return res;
-}
-
 template <typename T>
 T det(const array<T, 3>& A, const array<T, 3>& B, const array<T, 3>& C) {
     return A[0]*(B[1]*C[2] - B[2]*C[1])
@@ -324,77 +193,58 @@ T det(const array<T, 3>& A, const array<T, 3>& B, const array<T, 3>& C) {
          + A[2]*(B[0]*C[1] - B[1]*C[0]);
 }
 
-// Determines, approximately, whether there exists a plane that
-// intersects all the given cubes.
-// If it returns false, than it cannot. If it returns yes, it could
-// be a false positive. 
-//
-// Implementing a precise check (without false positives) would most
-// likely require some linear programming. It would be demanding to
-// implement and possibly very slow.
-bool areContainedInPlane(vector<array<Interval, 3>> cubes) {
-    int q = ssize(cubes);
+bool canPinsBeAntipodal(const MetrizedNet& net) {
+    StopWatch _("canPinsBeAntipodal");
+    
+    int q = ssize(net.A.concaveAngles());
     for (int i = 0; i < q; i++) 
-        for (int j = 0; j < q; j++)
+        for (int j = i+1; j < q; j++)
             for (int k = j+1; k < q; k++) {
-                if (i == j or i == k)
-                    continue;
-                if (!det(cubes[i], cubes[j], cubes[k]).containsZero())
+                Dart root = net.A.phi(net.A.concaveAngles()[i]);
+                
+                vector<array<Interval, 3>> equators;
+                for (int z: {i, j, k}) {
+                    Dart d = net.A.concaveAngles()[z];
+                    auto isom = net.getPathToPin(root, d);
+                    equators.push_back(applyIsometry(isom, {0, 0, 1}));
+                }                
+                if (!det(equators[0], equators[1], equators[2]).containsZero())
                     return false;
             }
+    
     return true;
 }
 
-template<typename T>
-array<T, 3> applyIsometry(const Quaternion<T>& S, 
-                          const array<T, 3>& vec) {
-    Quaternion<T> vec2(0, vec[0], vec[1], vec[2]);
-    Quaternion<T> res = S*vec2*conj(S);
-    return {res[1], res[2], res[3]};
-}
 
-bool canPinsBeAntipodal(const DerivedOnceNet& A, 
-                        const vector<Interval>& lengths) {
-    vector<vector<PathStep>> paths = pathToConcaveAngles(A, lengths);
-    vector<Quaternion<Interval>> isometries;
-    for (auto path: paths)
-        isometries.push_back(isometryFromPath(path, lengths));
+bool checkPinAngles(const MetrizedNet& net) {
+    StopWatch _("checkPinAngles");
     
-    vector<array<Interval, 3>> equators;
-    for (auto q: isometries)
-        equators.push_back(applyIsometry(q, {0, 0, 1}));
+    const DerivedOnceNet& A = net.A;
     
-    return areContainedInPlane(equators);
-}
-
-
-bool checkPinAngles(const DerivedOnceNet& A,
-                    const vector<Interval>& lengths) {
     for (const auto& f: A.faces()) {
         if (A.faceType(f).second != 2) // Two pins
             continue;
         
-        vector<int> concave_angles;
-        for (int i = 0; i < ssize(f); i++) {
-            if (A.isConcaveAngle(f[i]))
-                concave_angles.push_back(i);
+        vector<Dart> concave_angles;
+        for (Dart d:  f) {
+            if (A.isConcaveAngle(d))
+                concave_angles.push_back(d);
         }
         assert(ssize(concave_angles) == 2);
-        vector<PathStep> path;
-        path.emplace_back(2*M_PI/3);
-        for (int i = concave_angles[0]+1; i <= concave_angles[1]; i++) {
-            path.emplace_back(f[i]);
-            path.emplace_back(-M_PI/3);
-        }
-        // T transforms the (directed) edge to one pin to the directed 
-        // edge to the other pin.
-        Quaternion<Interval> T = isometryFromPath(path, lengths);
-        array<Interval, 3> pin_edge = applyIsometry(T, {0, 0, 1});
+        
+        Dart root = A.phi(concave_angles[0]);
+        auto iso0 = net.getPathToPin(root, concave_angles[0]);
+        auto iso1 = net.getPathToPin(root, concave_angles[1]);
+        
+        auto eq0 = applyIsometry(iso0, {0, 0, 1});
+        auto eq1 = applyIsometry(iso1, {0, 0, 1});
+        
+        Interval scal_prod = eq0[0]*eq1[0] + 
+                             eq0[1]*eq1[1] + 
+                             eq0[2]*eq1[2];
         
         // scal_prod <= -1/2 is equivalent to the condition on
         // the angle at the pin.
-        Interval scal_prod = pin_edge[2];
-        //~ cout << scal_prod << endl;
         if (scal_prod.l > -0.5 + 1e-8)
             return false;
     }
@@ -402,8 +252,11 @@ bool checkPinAngles(const DerivedOnceNet& A,
 }
 
 
-bool refineMetrizationConvexContinent(const DerivedOnceNet& A, 
-                                      vector<Interval>& lengths) {
+bool refineMetrizationConvexContinent(MetrizedNet& net) {
+    StopWatch _("refineMetrizationConvexContinent");
+    
+    const DerivedOnceNet& A = net.A;
+    vector<Interval>& lengths = net.lengths;
     while (totalLen(lengths) >= 1e-8) {
         double len_before = totalLen(lengths);
         for (const vector<Dart>& f: A.faces()) {
@@ -433,8 +286,11 @@ bool refineMetrizationConvexContinent(const DerivedOnceNet& A,
     return totalLen(lengths) >= 0;
 }
 
-bool refineMetrizationNonConvexFaces(const DerivedOnceNet& A, 
-                                     vector<Interval>& lengths) {
+bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
+    StopWatch _("refineMetrizationNonConvexFaces");
+    
+    const DerivedOnceNet& A = net.A;
+    vector<Interval>& lengths = net.lengths;
     for (int _ = 0; _ < 2; _++) { // We run it twice without a reason.
         for (Dart d: A.darts()) {
             if (A.isConvexFace(d))
@@ -447,7 +303,7 @@ bool refineMetrizationNonConvexFaces(const DerivedOnceNet& A,
                     path.emplace_back(e);
                 path.emplace_back(A.phiAngle(e));
             }
-            Quaternion<Interval> T = isometryFromPath(path, lengths);
+            Quaternion<Interval> T = net.isometryFromPath(path);
             // T is, up to sign, (cos(l/2), 0, 0, -sin(l/2)), where
             // l is the length of d.
             if (!T[1].containsZero() or !T[2].containsZero()) {
@@ -472,11 +328,12 @@ bool refineMetrizationNonConvexFaces(const DerivedOnceNet& A,
 // happens after less then pi distance from both starting points.
 // If this is the case, it returns the maximum distance of the 
 // intersection point along a. Otherwise it returns a large number.
-double farthestIntersection(Quaternion<Interval> T) {
+double farthestIntersection(const Quaternion<Interval>& T) {
     // sign1 determines on which side of a is Te_1.
     Interval sign1 = applyIsometry(T, {1, 0, 0})[2];
     // sign2 determines on which side of b is e_1.
     Interval sign2 = applyIsometry(T, {0, 0, 1})[0];
+    // TODO: Maybe define a sign function for intervals.
     
     // The first intersection happens in less than pi on both geodesics
     // if and only if sign1 and sign2 have different signs.
@@ -502,12 +359,10 @@ double farthestIntersection(Quaternion<Interval> T) {
     return theta;
 }
 
-bool checkNonIntersection(Quaternion<Interval> T, Interval& I, Interval& J) {
+bool checkNonIntersection(const Quaternion<Interval>& T, 
+                          Interval& I, Interval& J) {
     double lenI = farthestIntersection(T);
     double lenJ = farthestIntersection(conj(T));
-    
-    //~ if (lenI <= 5 and lenJ <= 5)
-        //~ cout << lenI << " " << lenJ << endl;
     
     if (I.l >= lenI)
         J.intersect(Interval(0, lenJ));
@@ -518,7 +373,10 @@ bool checkNonIntersection(Quaternion<Interval> T, Interval& I, Interval& J) {
 }
 
 // Checks that non-convex faces have are not self-intersecting.
-bool checkNonIntersection(const DerivedOnceNet& A, vector<Interval>& lengths) {
+bool checkNonIntersection(MetrizedNet& net) {
+    StopWatch _("checkNonIntersection");
+    
+    const DerivedOnceNet& A = net.A;
     for (Dart d: A.darts()) {
         if (A.isConvexFace(d))
             continue;
@@ -530,11 +388,11 @@ bool checkNonIntersection(const DerivedOnceNet& A, vector<Interval>& lengths) {
             if (i != 0) {
                 Dart e = A.phi(d, i+1);
                 bool ans = checkNonIntersection(
-                        isometryFromPath(path, lengths),
-                        lengths[d.id],
-                        lengths[e.id]);
-                lengths[A.rev(d).id].intersect(lengths[d.id]);
-                lengths[A.rev(e).id].intersect(lengths[e.id]);
+                        net.isometryFromPath(path),
+                        net.lengths[d.id],
+                        net.lengths[e.id]);
+                net.lengths[A.rev(d).id].intersect(net.lengths[d.id]);
+                net.lengths[A.rev(e).id].intersect(net.lengths[e.id]);
                 if (!ans)
                     return false;
             }
@@ -543,5 +401,39 @@ bool checkNonIntersection(const DerivedOnceNet& A, vector<Interval>& lengths) {
     }
     return true;
 }
+
+
+//~ bool checkPinOutsideConvexFaces(const MetrizedNet& net) {
+    //~ int cnt = ssize(net.A.concaveAngles());
+    //~ for (int i = 0; i < cnt; i++) for (int j = i+1; j < cnt; j++) {
+        //~ // TODO
+    //~ }
+    //~ // We check that no pin is strictly inside a convex face.
+    //~ vector<array<Interval, 3>> equators;
+    //~ vector<array<Interval, 3>> pin_equators;
+    //~ for (int i = 0; i < ssize(pin_equators); i++) {
+    //~ array<Interval, 3> X, Y;
+    //~ for (const auto& f: A.faces()) {
+        //~ if (A.isConvexFace(f))
+            //~ continue;
+        //~ int val = 0; // 0 means undefined
+        //~ for (Dart d: f) {
+            //~ Interval I = det(X, Y, equator[d.id]);
+            //~ if (I.containsZero()) {
+                //~ val = 0;
+                //~ break;
+            //~ }
+            //~ int new_val = I.l > 0 ? 1 : -1;
+            //~ if (val != 0 and val != new_val) {
+                //~ val = 0;
+                //~ break;
+            //~ }
+            //~ val = new_val;
+        //~ }
+        //~ if (val != 0)
+            //~ return false;
+    //~ }
+    //~ return true;
+//~ }
 
 #endif

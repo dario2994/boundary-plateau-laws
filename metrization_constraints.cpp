@@ -291,31 +291,38 @@ bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
     
     const DerivedOnceNet& A = net.A;
     vector<Interval>& lengths = net.lengths;
-    for (int _ = 0; _ < 2; _++) { // We run it twice without a reason.
-        for (Dart d: A.darts()) {
-            if (A.isConvexFace(d))
-                continue;
-            int q = ssize(A.face(d));
-            vector<PathStep> path;
-            for (int i = 0; i < q; i++) {
-                Dart e = A.phi(d, i);
-                if (i > 0)
-                    path.emplace_back(e);
-                path.emplace_back(A.phiAngle(e));
-            }
-            Quaternion<Interval> T = net.isometryFromPath(path);
-            // T is, up to sign, (cos(l/2), 0, 0, -sin(l/2)), where
-            // l is the length of d.
-            if (!T[1].containsZero() or !T[2].containsZero()) {
-                lengths[d.id] = Interval(0, -1);
-                return false;
-            }
-            Interval I = 2*intersectWithCircle(T[0], -T[3]);
-            lengths[d.id].intersect(I);
-            lengths[A.rev(d).id].intersect(I);
-            if (lengths[d.id].empty())
-                return false;
+    for (Dart d: A.darts()) {
+        if (A.isConvexFace(d))
+            continue;
+        int q = ssize(A.face(d));
+        
+        bool is_maximum_dart = true;
+        for (int i = 1; i < q; i++) {
+            if (lengths[A.phi(d, i).id].len() > 1.1 * lengths[d.id].len())
+                is_maximum_dart = false;
         }
+        if (!is_maximum_dart)
+            continue;
+        
+        vector<PathStep> path;
+        for (int i = 0; i < q; i++) {
+            Dart e = A.phi(d, i);
+            if (i > 0)
+                path.emplace_back(e);
+            path.emplace_back(A.phiAngle(e));
+        }
+        Quaternion<Interval> T = net.isometryFromPath(path);
+        // T is, up to sign, (cos(l/2), 0, 0, -sin(l/2)), where
+        // l is the length of d.
+        if (!T[1].containsZero() or !T[2].containsZero()) {
+            lengths[d.id] = Interval(0, -1);
+            return false;
+        }
+        Interval I = 2*intersectWithCircle(T[0], -T[3]);
+        lengths[d.id].intersect(I);
+        lengths[A.rev(d).id].intersect(I);
+        if (lengths[d.id].empty())
+            return false;
     }
     return true;
 }
@@ -329,10 +336,14 @@ bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
 // If this is the case, it returns the maximum distance of the 
 // intersection point along a. Otherwise it returns a large number.
 double farthestIntersection(const Quaternion<Interval>& T) {
+    //~ StopWatch _("farthestIntersection");
+    
+    auto Te3 = applyIsometry(T, {0, 0, 1}); // For efficiency.
+    
     // sign1 determines on which side of a is Te_1.
     Interval sign1 = applyIsometry(T, {1, 0, 0})[2];
     // sign2 determines on which side of b is e_1.
-    Interval sign2 = applyIsometry(T, {0, 0, 1})[0];
+    Interval sign2 = Te3[0];
     // TODO: Maybe define a sign function for intervals.
     
     // The first intersection happens in less than pi on both geodesics
@@ -346,8 +357,8 @@ double farthestIntersection(const Quaternion<Interval>& T) {
     
     // Te_3^e_3 is, up to scaling, the intersection between a and b.
     // Notice that Te_3^e_3 = (X, Y, 0).
-    Interval X = applyIsometry(T, {0, 0, 1})[1];
-    Interval Y = -applyIsometry(T, {0, 0, 1})[0];
+    Interval X = Te3[1];
+    Interval Y = -Te3[0];
     
     if (Y.containsZero())
         return 10;
@@ -361,6 +372,8 @@ double farthestIntersection(const Quaternion<Interval>& T) {
 
 bool checkNonIntersection(const Quaternion<Interval>& T, 
                           Interval& I, Interval& J) {
+    //~ StopWatch _("checkNonIntersection2");
+    
     double lenI = farthestIntersection(T);
     double lenJ = farthestIntersection(conj(T));
     

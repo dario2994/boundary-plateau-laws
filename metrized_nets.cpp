@@ -8,6 +8,7 @@ using namespace std;
 #include "derived_once_nets.cpp"
 #include "interval_arithmetic.cpp"
 #include "quaternions.cpp"
+#include "utils.cpp"
 
 
 struct PathStep {
@@ -76,11 +77,21 @@ class MetrizedNet {
             lengths[d.id].intersect(lengths[A.rev(d).id]);
     }
     
+    // This should be used.
+    Interval& lenght(const Dart& d) {
+        return lengths[d.id];
+    }
+    const Interval& lenght(const Dart& d) const {
+        return lengths[d.id];
+    }
+    
     void incrementVersion() const {
         (*current_version)++;
     }
     
     Quaternion<Interval> isometryFromPath(const vector<PathStep>& path) const {
+        StopWatch _("isometryFromPath");
+        
         double sum_theta = 0;
         Quaternion<Interval> res(1);
         for (auto op: path) {

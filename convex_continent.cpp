@@ -220,6 +220,9 @@ int searchApproximateMetrization(MetrizedNet net,
         
     if (!checkNonIntersection(net))
         return 0;
+        
+    if (!checkPinOutsideConvexFaces(net))
+        return 0;
     
     int q = ssize(fixed_darts);
     for (int bb = 0; bb < (1<<q); bb++) {
@@ -276,7 +279,7 @@ int main() {
     
     
     vector<int> new_survivors;
-    for (int id: {19}) {//{19,62,113,121,247,278,292,312,330,331}) {
+    for (int id: {278}) {//{19,62,113,121,247,278,292,312,330,331}) {
         cout << "net id = " << setw(4) << id << ":\t";
         current_net_id = id;
         auto A = parseDerivedOnceNets("data/derived_once_computer.txt")[id];

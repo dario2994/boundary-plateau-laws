@@ -152,4 +152,8 @@ double totalLen(const vector<Interval>& vec) {
     return res;
 }
 
+int sign(const Interval& I) {
+    return (I.l > 0) - (I.r < 0);
+}
+
 #endif

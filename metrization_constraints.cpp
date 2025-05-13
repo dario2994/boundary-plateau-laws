@@ -341,18 +341,13 @@ double farthestIntersection(const Quaternion<Interval>& T) {
     auto Te3 = applyIsometry(T, {0, 0, 1}); // For efficiency.
     
     // sign1 determines on which side of a is Te_1.
-    Interval sign1 = applyIsometry(T, {1, 0, 0})[2];
+    int sign1 = sign(applyIsometry(T, {1, 0, 0})[2]);
     // sign2 determines on which side of b is e_1.
-    Interval sign2 = Te3[0];
-    // TODO: Maybe define a sign function for intervals.
+    int sign2 = sign(Te3[0]);
     
     // The first intersection happens in less than pi on both geodesics
     // if and only if sign1 and sign2 have different signs.
-    if (sign1.containsZero() or sign2.containsZero())
-        return 10;
-    if (sign1.l > 0 and sign2.l > 0)
-        return 10;
-    if (sign1.l < 0 and sign2.l < 0)
+    if (sign1 * sign2 != -1)
         return 10;
     
     // Te_3^e_3 is, up to scaling, the intersection between a and b.
@@ -416,37 +411,35 @@ bool checkNonIntersection(MetrizedNet& net) {
 }
 
 
-//~ bool checkPinOutsideConvexFaces(const MetrizedNet& net) {
-    //~ int cnt = ssize(net.A.concaveAngles());
-    //~ for (int i = 0; i < cnt; i++) for (int j = i+1; j < cnt; j++) {
-        //~ // TODO
-    //~ }
-    //~ // We check that no pin is strictly inside a convex face.
-    //~ vector<array<Interval, 3>> equators;
-    //~ vector<array<Interval, 3>> pin_equators;
-    //~ for (int i = 0; i < ssize(pin_equators); i++) {
-    //~ array<Interval, 3> X, Y;
-    //~ for (const auto& f: A.faces()) {
-        //~ if (A.isConvexFace(f))
-            //~ continue;
-        //~ int val = 0; // 0 means undefined
-        //~ for (Dart d: f) {
-            //~ Interval I = det(X, Y, equator[d.id]);
-            //~ if (I.containsZero()) {
-                //~ val = 0;
-                //~ break;
-            //~ }
-            //~ int new_val = I.l > 0 ? 1 : -1;
-            //~ if (val != 0 and val != new_val) {
-                //~ val = 0;
-                //~ break;
-            //~ }
-            //~ val = new_val;
-        //~ }
-        //~ if (val != 0)
-            //~ return false;
-    //~ }
-    //~ return true;
-//~ }
+bool checkPinOutsideConvexFaces(const MetrizedNet& net) {
+    StopWatch _("checkPinOutsideConvexFaces");
+    
+    int cnt = ssize(net.A.concaveAngles());
+    for (int i = 0; i < cnt; i++) for (int j = i+1; j < cnt; j++) {
+        const Dart& root = net.A.concaveAngles()[i];
+        const Dart& other = net.A.concaveAngles()[j];
+        const auto& X = applyIsometry(net.getPathToPin(root, root), {0, 0, 1});
+        const auto& Y = applyIsometry(net.getPathToPin(root, other), {0, 0, 1});
+        for (const auto& f: net.A.faces()) {
+            if (!net.A.isConvexFace(f))
+                continue;
+            // Check that none of the two intersections of X and Y lie
+            // in the convex face f.
+            
+            vector<int> signs;
+            for (const Dart& d: f) {
+                const auto& Z = applyIsometry(net.getPath(root, d), {0, 0, 1});
+                signs.push_back(sign(det(X, Y, Z)));
+            }
+            bool is_inside = true;
+            for (int s: signs) {
+                is_inside &= s != 0 and s == signs[0];
+            }
+            if (is_inside)
+                return false;
+        }
+    }
+    return true;
+}
 
 #endif

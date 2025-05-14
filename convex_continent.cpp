@@ -260,11 +260,6 @@ int isApproximateMetrizationPossible(const DerivedOnceNet& A) {
     cout << "# of parameters = " << ssize(fixed_darts) << ", ";
     cout.flush();
     
-    int cnt = 0;
-    for (Dart d: A.darts())
-        if (A.isConcaveAngle(d))
-            cnt++;
-    
     return searchApproximateMetrization(MetrizedNet(A), fixed_darts);
 }
 
@@ -279,7 +274,7 @@ int main() {
     
     
     vector<int> new_survivors;
-    for (int id: {278}) {//{19,62,113,121,247,278,292,312,330,331}) {
+    for (int id: survivors) {
         cout << "net id = " << setw(4) << id << ":\t";
         current_net_id = id;
         auto A = parseDerivedOnceNets("data/derived_once_computer.txt")[id];
@@ -297,8 +292,6 @@ int main() {
         cout << endl;
     }
     
-    cout << boh << endl;
-    
     StopWatch::printState();
     
     return 0;
@@ -309,7 +302,11 @@ int main() {
         out << id << " ";
     out << endl;
     out.close();
-    
-    
 }
+
+// Useful regexes
+//~ net id = (.+)\:\t# of parameters = ., \(time = .+\) \n
+//~ net id = +([0-9]+)\:\t# of parameters = ., \(time = .+\)
+//~ (POSSIBLE|SKIPPED)\n
+//~ ([0-9]+ SKIPPED|POSSIBLE)\n
 

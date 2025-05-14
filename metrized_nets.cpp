@@ -34,8 +34,6 @@ ostream& operator<<(ostream& out, const PathStep& x) {
     return out;
 }
 
-int boh = 0;
-
 class MetrizedNet {
   public:
     const DerivedOnceNet& A;
@@ -118,7 +116,6 @@ class MetrizedNet {
     void rebuildEmbedding(const Dart& root) const {
         if (!rebuildPolicy(root))
             return;
-        boh++;
         // Run Dijkstra from the root.
         // The cost of traversing a dart is the length of the corresponding 
         // interval.

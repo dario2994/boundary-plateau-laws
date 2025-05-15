@@ -256,16 +256,16 @@ bool refineMetrizationConvexContinent(MetrizedNet& net) {
     StopWatch _("refineMetrizationConvexContinent");
     
     const DerivedOnceNet& A = net.A;
-    vector<Interval>& lengths = net.lengths;
-    while (totalLen(lengths) >= 1e-8) {
-        double len_before = totalLen(lengths);
+    
+    while (totalLen(net.lengths()) >= 1e-8) {
+        double len_before = totalLen(net.lengths());
         for (const vector<Dart>& f: A.faces()) {
             if (!A.isConvexFace(f))
                 continue;
             
             vector<Interval*> sides;
             for (const Dart& d: f)
-                sides.push_back(&lengths[d.id]);
+                sides.push_back(&net.length(d));
             
             assert(3 <= ssize(f) and ssize(f) <= 5);    
             
@@ -277,20 +277,20 @@ bool refineMetrizationConvexContinent(MetrizedNet& net) {
                 enforcePentagonConstraint(sides);
             
             for (const Dart& d: f) 
-                lengths[A.rev(d).id].intersect(lengths[d.id]);
+                net.length(A.rev(d)).intersect(net.length(d));
         }
-        if (totalLen(lengths) > 0.99 * len_before)
+        if (totalLen(net.lengths()) > 0.99 * len_before)
             break;
     }
     
-    return totalLen(lengths) >= 0;
+    return totalLen(net.lengths()) >= 0;
 }
 
 bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
     StopWatch _("refineMetrizationNonConvexFaces");
     
     const DerivedOnceNet& A = net.A;
-    vector<Interval>& lengths = net.lengths;
+    
     for (Dart d: A.darts()) {
         if (A.isConvexFace(d))
             continue;
@@ -298,7 +298,7 @@ bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
         
         bool is_maximum_dart = true;
         for (int i = 1; i < q; i++) {
-            if (lengths[A.phi(d, i).id].len() > 1.1 * lengths[d.id].len())
+            if (net.length(A.phi(d, i)).len() > 1.1 * net.length(d).len())
                 is_maximum_dart = false;
         }
         if (!is_maximum_dart)
@@ -315,13 +315,13 @@ bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
         // T is, up to sign, (cos(l/2), 0, 0, -sin(l/2)), where
         // l is the length of d.
         if (!T[1].containsZero() or !T[2].containsZero()) {
-            lengths[d.id] = Interval(0, -1);
+            net.length(d) = Interval(0, -1);
             return false;
         }
         Interval I = 2*intersectWithCircle(T[0], -T[3]);
-        lengths[d.id].intersect(I);
-        lengths[A.rev(d).id].intersect(I);
-        if (lengths[d.id].empty())
+        net.length(d).intersect(I);
+        net.length(A.rev(d)).intersect(I);
+        if (net.length(d).empty())
             return false;
     }
     return true;
@@ -380,7 +380,7 @@ bool checkNonIntersection(const Quaternion<Interval>& T,
     return !I.empty() and !J.empty();
 }
 
-// Checks that non-convex faces have are not self-intersecting.
+// Checks that non-convex faces are not self-intersecting.
 bool checkNonIntersection(MetrizedNet& net) {
     StopWatch _("checkNonIntersection");
     
@@ -397,10 +397,10 @@ bool checkNonIntersection(MetrizedNet& net) {
                 Dart e = A.phi(d, i+1);
                 bool ans = checkNonIntersection(
                         net.isometryFromPath(path),
-                        net.lengths[d.id],
-                        net.lengths[e.id]);
-                net.lengths[A.rev(d).id].intersect(net.lengths[d.id]);
-                net.lengths[A.rev(e).id].intersect(net.lengths[e.id]);
+                        net.length(d),
+                        net.length(e));
+                net.length(A.rev(d)).intersect(net.length(d));
+                net.length(A.rev(e)).intersect(net.length(e));
                 if (!ans)
                     return false;
             }
@@ -429,7 +429,11 @@ bool checkPinOutsideConvexFaces(const MetrizedNet& net) {
             vector<int> signs;
             for (const Dart& d: f) {
                 const auto& Z = applyIsometry(net.getPath(root, d), {0, 0, 1});
-                signs.push_back(sign(det(X, Y, Z)));
+                int s = sign(det(X, Y, Z));
+                signs.push_back(s);
+                
+                if (s == 0 or s != signs[0])
+                    break; // For performance.
             }
             bool is_inside = true;
             for (int s: signs) {

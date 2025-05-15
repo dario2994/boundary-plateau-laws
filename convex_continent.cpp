@@ -28,15 +28,14 @@ void savePicture(vector<pair<pt, string>> vertices,
 
 pair<vector<pair<pt, string>>, vector<GeodesicSegment>> 
         embedNet(const MetrizedNet& net) {
-    const vector<Interval>& lengths = net.lengths;
     const DerivedOnceNet& A = net.A;
     
-    int n = ssize(lengths);
+    int n = 2*A.E();
     vector<GeodesicSegment> embedding(n);
     vector<bool> visited(n, false);
     function<void(Dart)> dfs = [&](Dart d) {
         GeodesicSegment& curr = embedding[d.id];
-        double len = lengths[d.id].mid();
+        double len = net.length(d).mid();
         curr.len = len;
         visited[d.id] = true;
         // Assuming that rev != next. True if there are no self-loops.
@@ -165,14 +164,18 @@ vector<Dart> findFreeParameters(const DerivedOnceNet& A) {
     vector<Dart> convex = findFreeParametersConvex(A);
     vector<Dart> non_convex = findFreeParametersNonConvex(A);
     
+    cout << ssize(convex) << " " << ssize(non_convex) << ", ";
+    
     vector<Dart> joined = convex;
-    for (Dart d: non_convex)
-        joined.push_back(d);
+    //~ for (Dart d: non_convex)
+        //~ joined.push_back(d);
     return joined;
 }
 
 long long begin_time;
 int current_net_id;
+
+long long boring_counter;
 
 
 // Return values:
@@ -183,28 +186,45 @@ int searchApproximateMetrization(MetrizedNet net,
                                  const vector<Dart>& fixed_darts) {
     const DerivedOnceNet& A = net.A;
     
+    auto print_status = [&]() {
+        cout << "State: " << endl;
+        for (int i = 0; i < ssize(net.lengths()); i += 2) {
+            Dart d = A.dart(i);
+            cout << d << " " << net.length(d) << "\t" << 
+                    net.length(d).len() << endl;
+        }
+        cout << endl;
+    };
+    
     // If the computation takes too long, we skip.
-    if (get_time() - begin_time > 10*60ll * 1e9) 
+    if (get_time() - begin_time > 30 * 60ll * 1e9) 
         return 2;
     // If we reached the desired precision of the metrization, we 
     // return.
-    if (totalLen(net.lengths) < 1e-5) {
-        checkPinAngles(net);
+    if (totalLen(net.lengths()) < 1e-5) {
         auto pp = embedNet(net);
         savePicture(pp.first, pp.second, "data/metrization/" + to_string(current_net_id) + ".txt");
         return 1;
     }
     
-    auto print_status = [&]() {
-        cout << "State: " << endl;
-        for (int i = 0; i < ssize(net.lengths); i += 2)
-            cout << A.dart(i) << " " << net.lengths[i] << endl;
-        cout << endl;
-    };
+    double sum_convex = 0;
+    for (const Dart& d: A.darts()) {
+        if (!A.isConvexFace(d) or !A.isConvexFace(A.rev(d)))
+            continue;
+        double l = net.length(d).len();
+        sum_convex += l;
+    }
+    if (sum_convex < 1) {
+        //~ print_status();
+        //~ auto pp = embedNet(net);
+        //~ savePicture(pp.first, pp.second, "data/metrization/" + to_string(current_net_id) + ".txt");
+        boring_counter++;
+        return 0;
+    }
     
     
     for (Dart d: A.darts())
-        net.lengths[A.rev(d).id].intersect(net.lengths[d.id]);
+        net.length(A.rev(d)).intersect(net.length(d));
     
     if (!refineMetrizationConvexContinent(net))
         return 0;
@@ -226,17 +246,17 @@ int searchApproximateMetrization(MetrizedNet net,
     
     int q = ssize(fixed_darts);
     for (int bb = 0; bb < (1<<q); bb++) {
-        vector<Interval> new_lengths = net.lengths;
+        //~ vector<Interval> new_lengths = net.lengths;
+        auto new_net = net;
         for (int i = 0; i < q; i++) {
-            Interval& I = new_lengths[fixed_darts[i].id];
+            Interval& I = new_net.length(fixed_darts[i]);
             double m = (I.l + I.r)/2;
             if (bb&(1<<i))
                 I = Interval(I.l, m);
             else
                 I = Interval(m, I.r);
         }
-        auto new_net = net;
-        new_net.lengths = new_lengths;
+
         // This is the only external overhead necessary for the
         // caching mechanis of minimal paths to work.
         // It could be part of a custom copy constructor, but it
@@ -255,9 +275,8 @@ int searchApproximateMetrization(MetrizedNet net,
 // 1 yes
 // 2 maybe
 int isApproximateMetrizationPossible(const DerivedOnceNet& A) {
+    cout << "# of parameters = ";
     vector<Dart> fixed_darts = findFreeParameters(A);
-    
-    cout << "# of parameters = " << ssize(fixed_darts) << ", ";
     cout.flush();
     
     return searchApproximateMetrization(MetrizedNet(A), fixed_darts);
@@ -274,7 +293,7 @@ int main() {
     
     
     vector<int> new_survivors;
-    for (int id: survivors) {
+    for (int id: {111}) {
         cout << "net id = " << setw(4) << id << ":\t";
         current_net_id = id;
         auto A = parseDerivedOnceNets("data/derived_once_computer.txt")[id];
@@ -293,6 +312,8 @@ int main() {
     }
     
     StopWatch::printState();
+    
+    cout << "Valid state: " << boring_counter << endl;
     
     return 0;
     

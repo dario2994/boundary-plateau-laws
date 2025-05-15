@@ -37,9 +37,9 @@ ostream& operator<<(ostream& out, const PathStep& x) {
 class MetrizedNet {
   public:
     const DerivedOnceNet& A;
-    vector<Interval> lengths;
     
   private:
+    vector<Interval> _lengths;
     // TODO: If these are too slow, we can use raw pointers.
     // Defined as shared_ptr to avoid the cost of copying.
     shared_ptr<vector<vector<vector<PathStep>>>> optimal_path;
@@ -59,10 +59,10 @@ class MetrizedNet {
         *current_version = 1;
         last_update->resize(2*A.E(), 0);
         
-        lengths.resize(2*A.E(), Interval(0, M_PI));
+        _lengths.resize(2*A.E(), Interval(0, M_PI));
         
         for (Dart d: A.darts()) {
-            Interval& I = lengths[d.id];
+            Interval& I = _lengths[d.id];
             if (A.isConvexFace(d)) {
                 I.intersect(Interval(0.02, M_PI-0.01));
                 int q = ssize(A.face(d));
@@ -72,16 +72,18 @@ class MetrizedNet {
             }
         }
         for (Dart d: A.darts())
-            lengths[d.id].intersect(lengths[A.rev(d).id]);
+            _lengths[d.id].intersect(_lengths[A.rev(d).id]);
     }
     
     // This should be used.
-    Interval& lenght(const Dart& d) {
-        return lengths[d.id];
+    Interval& length(const Dart& d) {
+        return _lengths[d.id];
     }
-    const Interval& lenght(const Dart& d) const {
-        return lengths[d.id];
+    const Interval& length(const Dart& d) const {
+        return _lengths[d.id];
     }
+    
+    const vector<Interval>& lengths() const { return _lengths; }
     
     void incrementVersion() const {
         (*current_version)++;
@@ -96,7 +98,7 @@ class MetrizedNet {
             if (op.type == 'R')
                 sum_theta += op.rotation;
             if (op.type == 'E')
-                res *= basicIsometry<Interval>(sum_theta, lengths[op.d.id]);
+                res *= basicIsometry<Interval>(sum_theta, _lengths[op.d.id]);
         }
         res *= basicRotation<Interval>(sum_theta);
         
@@ -135,7 +137,7 @@ class MetrizedNet {
                 continue;
             
             vector<pdd> adj = {{dist + 1e-10, A.next(d)}, 
-                               {dist + lengths[d.id].len() + 1e-10, A.rev(d)}};
+                               {dist + _lengths[d.id].len() + 1e-10, A.rev(d)}};
             for (auto [dist2, d2]: adj) {
                 if (dist2 >= distance[d2.id]) 
                     continue;

@@ -49,6 +49,13 @@ class MetrizedNet {
     shared_ptr<vector<long long>> last_update;
 
   public:
+    Interval& length(const Dart& d) {
+        return _lengths[d.id>>1];
+    }
+    const Interval& length(const Dart& d) const {
+        return _lengths[d.id>>1];
+    }
+  
     MetrizedNet(const DerivedOnceNet& _A): A(_A),
             optimal_path(make_shared<vector<vector<vector<PathStep>>>>()),
             to_pins(make_shared<vector<vector<vector<PathStep>>>>()),
@@ -59,10 +66,10 @@ class MetrizedNet {
         *current_version = 1;
         last_update->resize(2*A.E(), 0);
         
-        _lengths.resize(2*A.E(), Interval(0, M_PI));
+        _lengths.resize(A.E(), Interval(0, M_PI));
         
         for (Dart d: A.darts()) {
-            Interval& I = _lengths[d.id];
+            Interval& I = length(d);
             if (A.isConvexFace(d)) {
                 I.intersect(Interval(0.02, M_PI-0.01));
                 int q = ssize(A.face(d));
@@ -71,19 +78,17 @@ class MetrizedNet {
                     I.intersect(Interval(0, acos(-1.0/3)-0.0001));
             }
         }
-        for (Dart d: A.darts())
-            _lengths[d.id].intersect(_lengths[A.rev(d).id]);
     }
     
-    // This should be used.
-    Interval& length(const Dart& d) {
-        return _lengths[d.id];
+    double totalError() const {
+        double res = 0;
+        for (const Interval& I: _lengths) {
+            if (I.empty())
+                return -1;
+            res += I.len();
+        }
+        return res;
     }
-    const Interval& length(const Dart& d) const {
-        return _lengths[d.id];
-    }
-    
-    const vector<Interval>& lengths() const { return _lengths; }
     
     void incrementVersion() const {
         (*current_version)++;
@@ -98,7 +103,7 @@ class MetrizedNet {
             if (op.type == 'R')
                 sum_theta += op.rotation;
             if (op.type == 'E')
-                res *= basicIsometry<Interval>(sum_theta, _lengths[op.d.id]);
+                res *= basicIsometry<Interval>(sum_theta, length(op.d));
         }
         res *= basicRotation<Interval>(sum_theta);
         
@@ -137,7 +142,7 @@ class MetrizedNet {
                 continue;
             
             vector<pdd> adj = {{dist + 1e-10, A.next(d)}, 
-                               {dist + _lengths[d.id].len() + 1e-10, A.rev(d)}};
+                               {dist + length(d).len() + 1e-10, A.rev(d)}};
             for (auto [dist2, d2]: adj) {
                 if (dist2 >= distance[d2.id]) 
                     continue;

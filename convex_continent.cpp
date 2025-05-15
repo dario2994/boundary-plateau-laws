@@ -188,7 +188,7 @@ int searchApproximateMetrization(MetrizedNet net,
     
     auto print_status = [&]() {
         cout << "State: " << endl;
-        for (int i = 0; i < ssize(net.lengths()); i += 2) {
+        for (int i = 0; i < 2*A.E(); i += 2) {
             Dart d = A.dart(i);
             cout << d << " " << net.length(d) << "\t" << 
                     net.length(d).len() << endl;
@@ -201,7 +201,7 @@ int searchApproximateMetrization(MetrizedNet net,
         return 2;
     // If we reached the desired precision of the metrization, we 
     // return.
-    if (totalLen(net.lengths()) < 1e-5) {
+    if (net.totalError() < 1e-5) {
         auto pp = embedNet(net);
         savePicture(pp.first, pp.second, "data/metrization/" + to_string(current_net_id) + ".txt");
         return 1;
@@ -214,17 +214,13 @@ int searchApproximateMetrization(MetrizedNet net,
         double l = net.length(d).len();
         sum_convex += l;
     }
-    if (sum_convex < 1) {
+    //~ if (sum_convex < 1) {
         //~ print_status();
         //~ auto pp = embedNet(net);
         //~ savePicture(pp.first, pp.second, "data/metrization/" + to_string(current_net_id) + ".txt");
-        boring_counter++;
-        return 0;
-    }
-    
-    
-    for (Dart d: A.darts())
-        net.length(A.rev(d)).intersect(net.length(d));
+        //~ boring_counter++;
+        //~ return 0;
+    //~ }
     
     if (!refineMetrizationConvexContinent(net))
         return 0;
@@ -293,7 +289,7 @@ int main() {
     
     
     vector<int> new_survivors;
-    for (int id: {111}) {
+    for (int id: {278}) {
         cout << "net id = " << setw(4) << id << ":\t";
         current_net_id = id;
         auto A = parseDerivedOnceNets("data/derived_once_computer.txt")[id];

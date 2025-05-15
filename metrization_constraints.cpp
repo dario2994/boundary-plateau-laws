@@ -257,8 +257,8 @@ bool refineMetrizationConvexContinent(MetrizedNet& net) {
     
     const DerivedOnceNet& A = net.A;
     
-    while (totalLen(net.lengths()) >= 1e-8) {
-        double len_before = totalLen(net.lengths());
+    while (net.totalError() >= 1e-8) {
+        double error_before = net.totalError();
         for (const vector<Dart>& f: A.faces()) {
             if (!A.isConvexFace(f))
                 continue;
@@ -275,15 +275,13 @@ bool refineMetrizationConvexContinent(MetrizedNet& net) {
                 enforceQuadrilateralConstraint(sides);    
             if (ssize(f) == 5) 
                 enforcePentagonConstraint(sides);
-            
-            for (const Dart& d: f) 
-                net.length(A.rev(d)).intersect(net.length(d));
         }
-        if (totalLen(net.lengths()) > 0.99 * len_before)
+        double error_after = net.totalError();
+        if (error_after > 0.99 * error_before)
             break;
     }
     
-    return totalLen(net.lengths()) >= 0;
+    return net.totalError() >= 0;
 }
 
 bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
@@ -320,7 +318,6 @@ bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
         }
         Interval I = 2*intersectWithCircle(T[0], -T[3]);
         net.length(d).intersect(I);
-        net.length(A.rev(d)).intersect(I);
         if (net.length(d).empty())
             return false;
     }
@@ -399,8 +396,6 @@ bool checkNonIntersection(MetrizedNet& net) {
                         net.isometryFromPath(path),
                         net.length(d),
                         net.length(e));
-                net.length(A.rev(d)).intersect(net.length(d));
-                net.length(A.rev(e)).intersect(net.length(e));
                 if (!ans)
                     return false;
             }

@@ -335,7 +335,7 @@ int main() {
     
     
     vector<int> new_survivors;
-    for (int id: {279}) {
+    for (int id: survivors) {
         cout << "net id = " << setw(4) << id << ":\t";
         current_net_id = id;
         auto A = parseDerivedOnceNets("data/derived_once_computer.txt")[id];
@@ -356,6 +356,11 @@ int main() {
     StopWatch::printState();
     
     cout << cnt1 << " " << cnt2 << " " << cnt3 << " " << cnt4 << endl;
+    
+    cout << "New survivors num = " << new_survivors.size() << endl;
+    for (int id: new_survivors)
+        cout << id << " ";
+    cout << endl;
     
     return 0;
     

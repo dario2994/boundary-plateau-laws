@@ -11,18 +11,7 @@ using namespace std;
 #include "metrized_nets.cpp"
 #include "utils.cpp"
 
-
-// Enforces the constraint that the three numbers in sides correspond
-// to the three sides of a spherical triangle with angles 120.
-void enforceTriangleConstraint(vector<Interval*> sides) {
-    assert(ssize(sides) == 3);
-    
-    static const double L = acos(-1.0/3);
-    static const Interval I(L-1e-9, L+1e-9); 
-    for (int i = 0; i < 3; i++) {
-        sides[i]->intersect(I);
-    }
-}
+long long cnt1 = 0, cnt2 = 0, cnt3 = 0, cnt4 = 0;
 
 // Utility function to enforce the constraint on the sides of a 
 // quadrilateral.
@@ -31,35 +20,13 @@ void enforceTriangleConstraint(vector<Interval*> sides) {
 // One side of a quadrilateral belongs to I.
 // The other side belongs to the interval returned by this function.
 Interval quadrilateralConstraint(Interval I) {
+    cnt2++;
     if (I.empty())
         return Interval(0, -1);
     const static double eps = 1e-10;
     static auto f = [](double x) { return 2*atan(0.5 / tan(x/2)); };
     return Interval(f(I.r) - eps, f(I.l) + eps);
 }
-
-// Enforces the constraint that the four numbers in sides correspond
-// to the four sides of a spherical triangle with angles 120.
-//
-// Assumption: all sides are subsets of [0, pi].
-void enforceQuadrilateralConstraint(vector<Interval*> sides) {
-    assert(ssize(sides) == 4);
-    
-    sides[0]->intersect(*sides[2]);
-    sides[2]->intersect(*sides[0]);
-    
-    sides[1]->intersect(*sides[3]);
-    sides[3]->intersect(*sides[1]);
-    
-    Interval even = quadrilateralConstraint(*sides[1]);
-    Interval odd = quadrilateralConstraint(*sides[0]);
-    
-    sides[0]->intersect(even);
-    sides[2]->intersect(even);
-    sides[1]->intersect(odd);
-    sides[3]->intersect(odd);
-}
-
 
 // Utility function to enforce the constraint on the sides of a 
 // pentagon.
@@ -69,6 +36,7 @@ void enforceQuadrilateralConstraint(vector<Interval*> sides) {
 // If AB \in I, BC\in J, then DE belongs to the interval returned by 
 // this function.
 Interval pentagon1Constraint(const Interval& I, const Interval& J) {
+    cnt3++;
     if (I.empty() or J.empty())
         return Interval(0, -1);
     
@@ -91,6 +59,7 @@ Interval pentagon1Constraint(const Interval& I, const Interval& J) {
 // AB \in I, DE\in J.
 // Then BC belongs to the interval returned by this function.
 Interval pentagon2Constraint(const Interval& I, const Interval& J) {
+    cnt4++;
     if (I.empty() or J.empty())
         return Interval(0, -1);
         
@@ -128,37 +97,84 @@ Interval pentagon2Constraint(const Interval& I, const Interval& J) {
 }
 
 
-// Enforces the constraint that the five numbers in sides correspond
-// to the five sides of a spherical triangle with angles 120.
-//
-// Assumption: all sides are subsets of [0, \ell_T].
-void enforcePentagonConstraint(vector<Interval*> sides) {
-    assert(ssize(sides) == 5);
-    
-    auto s = [&](int id) { return sides[id % 5]; };
+bool refineMetrizationConvexContinent(MetrizedNet& net, 
+                                      const vector<Dart>& initial_darts) {
+    StopWatch _("refineMetrizationConvexContinent");
+    cnt1++;
         
-    auto compute_len = [&]() {
-        double res = 0;
-        for (int i = 0; i < 5; i++) {
-            if (s(i)->empty())
-                return -1.0;
-            res += sides[i]->len();
+    const DerivedOnceNet& A = net.A;
+    
+    vector<bool> to_propagate(2*A.E(), false);
+    queue<Dart> propagation_queue; 
+    for (const Dart& d: initial_darts) {
+        int id = d.id;
+        propagation_queue.push(d);
+        propagation_queue.push(A.rev(d));
+        to_propagate[id] = true;
+        to_propagate[id+1] = true;
+    }
+        
+    bool empty_interval = false;
+    auto update_length = [&](const Dart& d, const Interval& I) {
+        if (net.length(d).empty()) {
+            empty_interval = true;
+            return;
         }
-        return res;
+        if (I.empty()) {
+            net.length(d) = I;
+            empty_interval = true;
+            return;
+        }
+        double bef = net.length(d).len();
+        net.length(d).intersect(I);
+        double aft = net.length(d).len();
+        
+        bool updated = bef > 1e-12 and aft < 0.9*bef;
+        if (updated) {
+            if (!to_propagate[d.id]) {
+                to_propagate[d.id] = true;
+                propagation_queue.push(d);
+            }
+            if (!to_propagate[A.rev(d).id]) {
+                to_propagate[A.rev(d).id] = true;
+                propagation_queue.push(A.rev(d));
+            }
+        }
     };
     
-    double curr_len = compute_len();
-    while (curr_len >= 1e-8) {
-        for (int i = 0; i < 5; i++) {
-            s(i+3)->intersect(pentagon1Constraint(*s(i), *s(i+1)));
-            s(i)->intersect(pentagon2Constraint(*s(i+1), *s(i+3)));
-            s(i)->intersect(pentagon2Constraint(*s(i+4), *s(i+2)));
+    while (!empty_interval and !propagation_queue.empty()) {
+        const Dart d = propagation_queue.front();
+        propagation_queue.pop();
+        
+        if (!to_propagate[d.id] or !A.isConvexFace(d))
+            continue;
+        to_propagate[d.id] = false;
+        
+        const vector<Dart>& f = A.face(d);
+        
+        if (ssize(f) == 4) { // Quadrilateral
+            update_length(f[2], net.length(f[0]));
+            const Interval& I = quadrilateralConstraint(net.length(f[0]));
+            update_length(f[1], I);
+            update_length(f[3], I);
         }
-        double new_len = compute_len();
-        if (new_len > 0.99*curr_len)
-            break;
-        curr_len = new_len;
+        if (ssize(f) == 5) { // Pentagon
+            update_length(f[3], pentagon1Constraint(net.length(f[0]), 
+                                                    net.length(f[1])));
+            update_length(f[2], pentagon1Constraint(net.length(f[0]), 
+                                                    net.length(f[4])));
+            update_length(f[4], pentagon2Constraint(net.length(f[0]), 
+                                                    net.length(f[2])));
+            update_length(f[1], pentagon2Constraint(net.length(f[0]), 
+                                                    net.length(f[3])));
+            update_length(f[3], pentagon2Constraint(net.length(f[2]), 
+                                                    net.length(f[0])));
+            update_length(f[2], pentagon2Constraint(net.length(f[3]), 
+                                                    net.length(f[0])));
+        }
     }
+    
+    return net.totalError() >= 0;
 }
 
 // If (cos x, sin(x)) \in IxJ \cup (-I)x(-J) with 0 <= x <= pi/2, 
@@ -252,38 +268,6 @@ bool checkPinAngles(const MetrizedNet& net) {
 }
 
 
-bool refineMetrizationConvexContinent(MetrizedNet& net) {
-    StopWatch _("refineMetrizationConvexContinent");
-    
-    const DerivedOnceNet& A = net.A;
-    
-    while (net.totalError() >= 1e-8) {
-        double error_before = net.totalError();
-        for (const vector<Dart>& f: A.faces()) {
-            if (!A.isConvexFace(f))
-                continue;
-            
-            vector<Interval*> sides;
-            for (const Dart& d: f)
-                sides.push_back(&net.length(d));
-            
-            assert(3 <= ssize(f) and ssize(f) <= 5);    
-            
-            if (ssize(f) == 3)
-                enforceTriangleConstraint(sides);
-            if (ssize(f) == 4)
-                enforceQuadrilateralConstraint(sides);    
-            if (ssize(f) == 5) 
-                enforcePentagonConstraint(sides);
-        }
-        double error_after = net.totalError();
-        if (error_after > 0.99 * error_before)
-            break;
-    }
-    
-    return net.totalError() >= 0;
-}
-
 bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
     StopWatch _("refineMetrizationNonConvexFaces");
     
@@ -294,6 +278,7 @@ bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
             continue;
         int q = ssize(A.face(d));
         
+        // Run the check only for the (almost) most undetermined side.
         bool is_maximum_dart = true;
         for (int i = 1; i < q; i++) {
             if (net.length(A.phi(d, i)).len() > 1.1 * net.length(d).len())
@@ -367,6 +352,8 @@ bool checkNonIntersection(const Quaternion<Interval>& T,
     //~ StopWatch _("checkNonIntersection2");
     
     double lenI = farthestIntersection(T);
+    if (lenI >= I.r)
+        return true;
     double lenJ = farthestIntersection(conj(T));
     
     if (I.l >= lenI)
@@ -385,21 +372,30 @@ bool checkNonIntersection(MetrizedNet& net) {
     for (Dart d: A.darts()) {
         if (A.isConvexFace(d))
             continue;
-        vector<PathStep> path;
-        path.emplace_back(M_PI);
-        int q = ssize(A.face(d));
-        for (int i = 0; i < q-2; i++) {
-            path.emplace_back(A.phiAngle(A.phi(d, i)));
+
+        // We don't use net.isometryFromPath to improve the performance.
+        double sum_theta = 0;
+        sum_theta += M_PI;
+        const vector<Dart>& f = A.face(d);
+        Quaternion<Interval> iso(1);
+        
+        for (int i = 0; i < ssize(f)-2; i++) {
+            sum_theta += A.phiAngle(f[i]);
             if (i != 0) {
-                Dart e = A.phi(d, i+1);
+                Dart e = f[i+1];
                 bool ans = checkNonIntersection(
-                        net.isometryFromPath(path),
+                        iso * basicRotation<Interval>(sum_theta),
                         net.length(d),
                         net.length(e));
                 if (!ans)
                     return false;
             }
-            path.emplace_back(A.phi(d, i+1));
+            iso *= basicIsometry<Interval>(sum_theta, net.length(f[i+1]));
+            
+            double total_error = 
+                iso[0].len() + iso[1].len() + iso[2].len() + iso[3].len();
+            if (total_error > 1)
+                break;
         }
     }
     return true;

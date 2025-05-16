@@ -26,6 +26,7 @@ void savePicture(vector<pair<pt, string>> vertices,
     out.close();
 }
 
+// TODO: Translate this in the quaternion language.
 pair<vector<pair<pt, string>>, vector<GeodesicSegment>> 
         embedNet(const MetrizedNet& net) {
     const DerivedOnceNet& A = net.A;
@@ -76,67 +77,94 @@ vector<DerivedOnceNet> parseDerivedOnceNets(string in_file) {
 
 
 // Determines using only convex faces.
-bool isDetermined(const DerivedOnceNet& A, vector<bool> determined) {
-    auto is_face_determined = [&](Dart d) {
-        if (!A.isConvexFace(d))
-            return false;
-        int missing = 0;
-        for (Dart e: A.face(d))
-            missing += !determined[e.id];
-        return 0 < missing and missing <= 3;
-    };
-    auto determine_face = [&](Dart d) {
-        for (Dart e: A.face(d)) {
-            determined[e.id] = 1;
-            determined[A.rev(e).id] = 1;
-        }
-    };
-    while (1) {
-        bool changed = false;
-        for (Dart d: A.darts()) {
-            if (is_face_determined(d)) {
-                changed = true;
-                determine_face(d);
+// It returns the length of the longest implication chain that is
+// necessary to determine a length.
+// The length of an implication chain is the number of "pentagonal rules"
+// applied.
+int lengthsImplications(const DerivedOnceNet& A, 
+                        const vector<Dart>& fixed_darts) {
+    vector<int> vec(2*A.E(), 1000);
+    for (const Dart& d: fixed_darts) {
+        vec[d.id] = 20;
+        vec[A.rev(d).id] = 20;
+    }
+    
+    bool updated = true;
+    auto determine_edge = [&](const Dart& d, int val) {
+        for (int id: {d.id, A.rev(d).id}) {
+            if (vec[id] > val) {
+                vec[id] = val;
+                updated = true;
             }
         }
-        if (!changed)
-            break;
+    };
+    
+    while (updated) {
+        updated = false;
+        for (const Dart& d: A.darts()) {
+            if (!A.isConvexFace(d))
+                continue;
+            const vector<Dart>& f = A.face(d);
+            if (ssize(f) <= 3) for (const Dart& e: f) determine_edge(e, 0);
+            
+            if (ssize(f) == 4) {
+                int m = 1000;
+                for (const Dart& e: f) m = min(m, vec[e.id]);
+                for (const Dart& e: f) determine_edge(e, m);
+            }
+            
+            if (ssize(f) == 5) {
+                vector<int> x;
+                for (int i = 0; i < 5; i++)
+                    x.push_back(vec[f[i].id]);
+                determine_edge(f[3], max(x[0], x[1]) + 1);
+                determine_edge(f[4], max(x[0], x[2]) + 1);
+                determine_edge(f[3], max(x[0], x[2]) + 1);
+            }
+        }
     }
-    int missing = 0;
-    for (Dart d: A.darts()) 
-        missing += A.isConvexFace(d) and !determined[d.id];
-    return missing == 0;
+    
+    int outcome = 0;
+    for (const Dart& d: A.darts()) {
+        if (!A.isConvexFace(d) and !A.isConvexFace(A.rev(d)))
+            continue;
+        outcome = max(outcome, vec[d.id]);
+    }
+    
+    return outcome;
 }
 
 // Returns the smallest possible set of darts such that once their 
 // length is chosen, the lengths of all the sides of convex faces
 // can be uniquely determined through simple rules.
+// Among the valid possible sets, it returns one that determines
+// all the lengths in a "numerically robust" way.
 vector<Dart> findFreeParametersConvex(const DerivedOnceNet& A) {
     int n = A.E();
-    if (isDetermined(A, vector<bool>(2*n, false)))
+    if (lengthsImplications(A, {}) < 1000)
         return {};
         
     for (int ans = 1; ans <= 6; ans++) {
+        int least_outcome = 1000;
+        vector<Dart> res;
         long long bb = 0;
         while (bb < (1ll<<n)) {
             if (__builtin_popcount(bb) == ans) {
-                vector<bool> vec(2*n, false);
-                for (int i = 0; i < n; i++) {
-                    if (bb&(1ll<<i)) {
-                        vec[2*i] = 1;
-                        vec[2*i+1] = 1;
-                    }
-                }
-                if (isDetermined(A, vec)) {
-                    vector<Dart> res;
-                    for (int i = 0; i < n; i++)
-                        if (bb&(1ll<<i))
-                            res.push_back(A.dart(2*i));
-                    return res;
+                vector<Dart> fixed_darts;
+                for (int i = 0; i < n; i++)
+                    if (bb&(1ll<<i)) 
+                        fixed_darts.push_back(A.dart(2*i));
+                
+                int outcome = lengthsImplications(A, fixed_darts);
+                if (outcome < least_outcome) {
+                    least_outcome = outcome;
+                    res = fixed_darts;
                 }
                 bb += 1ll<<__builtin_ctzll(bb);
             } else bb++;
         }
+        if (!res.empty())
+            return res;
     }
     assert(0);
     return {};
@@ -154,36 +182,29 @@ vector<Dart> findFreeParametersNonConvex(const DerivedOnceNet& A) {
         break;
     }
     
+    // This is a way to guarantee that if res consists of three adjacent
+    // edges, the central one is not chosen.
+    // This is heuristically convenient.
+    //~ sort(res.begin(), res.end(), [&](Dart d) {
+        //~ return -(A.degree(d.from) + A.degree(d.to));
+    //~ });
+    
     if (!res.empty())
         res.pop_back();
 
     return res;
 }
 
-vector<Dart> findFreeParameters(const DerivedOnceNet& A) {
-    vector<Dart> convex = findFreeParametersConvex(A);
-    vector<Dart> non_convex = findFreeParametersNonConvex(A);
-    
-    cout << ssize(convex) << " " << ssize(non_convex) << ", ";
-    
-    vector<Dart> joined = convex;
-    //~ for (Dart d: non_convex)
-        //~ joined.push_back(d);
-    return joined;
-}
-
 long long begin_time;
 int current_net_id;
-
-long long boring_counter;
-
 
 // Return values:
 // 0 no
 // 1 yes
 // 2 maybe
 int searchApproximateMetrization(MetrizedNet net, 
-                                 const vector<Dart>& fixed_darts) {
+                                 const vector<Dart>& convex_fixed_darts,
+                                 const vector<Dart>& non_convex_fixed_darts) {
     const DerivedOnceNet& A = net.A;
     
     auto print_status = [&]() {
@@ -196,6 +217,11 @@ int searchApproximateMetrization(MetrizedNet net,
         cout << endl;
     };
     
+    //~ if (get_time() % (1<<15) == 0) {
+        //~ print_status();
+        //~ cout << endl;
+    //~ }
+    
     // If the computation takes too long, we skip.
     if (get_time() - begin_time > 30 * 60ll * 1e9) 
         return 2;
@@ -206,14 +232,7 @@ int searchApproximateMetrization(MetrizedNet net,
         savePicture(pp.first, pp.second, "data/metrization/" + to_string(current_net_id) + ".txt");
         return 1;
     }
-    
-    double sum_convex = 0;
-    for (const Dart& d: A.darts()) {
-        if (!A.isConvexFace(d) or !A.isConvexFace(A.rev(d)))
-            continue;
-        double l = net.length(d).len();
-        sum_convex += l;
-    }
+
     //~ if (sum_convex < 1) {
         //~ print_status();
         //~ auto pp = embedNet(net);
@@ -222,7 +241,12 @@ int searchApproximateMetrization(MetrizedNet net,
         //~ return 0;
     //~ }
     
-    if (!refineMetrizationConvexContinent(net))
+    // TODO: We shall memorize the outcome of 
+    //  1. checkPinAngles (actually this is already very fast)
+    //  2. checkNonIntersection
+    //  3. checkPinOutsideConvexFaces
+    
+    if (!refineMetrizationConvexContinent(net, convex_fixed_darts))
         return 0;
     
     if (!refineMetrizationNonConvexFaces(net))
@@ -239,10 +263,28 @@ int searchApproximateMetrization(MetrizedNet net,
         
     if (!checkPinOutsideConvexFaces(net))
         return 0;
+        
+    double max_error_boundary_continent = 0;
+    for (const Dart& d: A.darts()) {
+        if (A.isConvexFace(d) == A.isConvexFace(A.rev(d)))
+            continue;
+        double l = net.length(d).len();
+        max_error_boundary_continent = max(max_error_boundary_continent, l);
+    }
     
+    vector<Dart> fixed_darts = convex_fixed_darts;
+    double max_non_convex = 0;
+    for (const Dart& d: non_convex_fixed_darts) {
+        double l = net.length(d).len();
+        max_non_convex = max(max_non_convex, l);
+    }
+    if (max_non_convex > max_error_boundary_continent) {
+        for (const Dart& d: non_convex_fixed_darts)
+            fixed_darts.push_back(d);
+    }
+        
     int q = ssize(fixed_darts);
     for (int bb = 0; bb < (1<<q); bb++) {
-        //~ vector<Interval> new_lengths = net.lengths;
         auto new_net = net;
         for (int i = 0; i < q; i++) {
             Interval& I = new_net.length(fixed_darts[i]);
@@ -258,7 +300,8 @@ int searchApproximateMetrization(MetrizedNet net,
         // It could be part of a custom copy constructor, but it
         // would be even more annoying.
         new_net.incrementVersion();
-        int outcome = searchApproximateMetrization(new_net, fixed_darts);
+        int outcome = searchApproximateMetrization(new_net, 
+            convex_fixed_darts, non_convex_fixed_darts);
         if (outcome > 0)
             return outcome;
     }
@@ -271,11 +314,14 @@ int searchApproximateMetrization(MetrizedNet net,
 // 1 yes
 // 2 maybe
 int isApproximateMetrizationPossible(const DerivedOnceNet& A) {
-    cout << "# of parameters = ";
-    vector<Dart> fixed_darts = findFreeParameters(A);
+    vector<Dart> convex = findFreeParametersConvex(A);
+    vector<Dart> non_convex = findFreeParametersNonConvex(A);
+    
+    cout << "# of parameters = " << ssize(convex) << " " 
+                                 << ssize(non_convex) << ", ";
     cout.flush();
     
-    return searchApproximateMetrization(MetrizedNet(A), fixed_darts);
+    return searchApproximateMetrization(MetrizedNet(A), convex, non_convex);
 }
 
 int main() {
@@ -289,7 +335,7 @@ int main() {
     
     
     vector<int> new_survivors;
-    for (int id: {278}) {
+    for (int id: {279}) {
         cout << "net id = " << setw(4) << id << ":\t";
         current_net_id = id;
         auto A = parseDerivedOnceNets("data/derived_once_computer.txt")[id];
@@ -309,7 +355,7 @@ int main() {
     
     StopWatch::printState();
     
-    cout << "Valid state: " << boring_counter << endl;
+    cout << cnt1 << " " << cnt2 << " " << cnt3 << " " << cnt4 << endl;
     
     return 0;
     

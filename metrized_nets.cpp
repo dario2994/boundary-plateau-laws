@@ -74,8 +74,14 @@ class MetrizedNet {
                 I.intersect(Interval(0.02, M_PI-0.01));
                 int q = ssize(A.face(d));
                 assert(q != 2);
+                
+                static const double ell_T = acos(-1.0/3);
+                
+                if (q == 3) 
+                    I = Interval(ell_T);
+                
                 if (q == 5)
-                    I.intersect(Interval(0, acos(-1.0/3)-0.0001));
+                    I.intersect(Interval(0, ell_T-1e-5));
             }
         }
     }

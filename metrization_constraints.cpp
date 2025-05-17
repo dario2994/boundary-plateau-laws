@@ -221,7 +221,7 @@ bool canPinsBeAntipodal(const MetrizedNet& net) {
                 vector<array<Interval, 3>> equators;
                 for (int z: {i, j, k}) {
                     Dart d = net.A.concaveAngles()[z];
-                    auto isom = net.getPathToPin(root, d);
+                    auto isom = net.getIsometryToPin(root, d);
                     equators.push_back(applyIsometry(isom, {0, 0, 1}));
                 }                
                 if (!det(equators[0], equators[1], equators[2]).containsZero())
@@ -249,8 +249,8 @@ bool checkPinAngles(const MetrizedNet& net) {
         assert(ssize(concave_angles) == 2);
         
         Dart root = A.phi(concave_angles[0]);
-        auto iso0 = net.getPathToPin(root, concave_angles[0]);
-        auto iso1 = net.getPathToPin(root, concave_angles[1]);
+        auto iso0 = net.getIsometryToPin(root, concave_angles[0]);
+        auto iso1 = net.getIsometryToPin(root, concave_angles[1]);
         
         auto eq0 = applyIsometry(iso0, {0, 0, 1});
         auto eq1 = applyIsometry(iso1, {0, 0, 1});
@@ -292,7 +292,7 @@ bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
             Dart e = A.phi(d, i);
             if (i > 0)
                 path.emplace_back(e);
-            path.emplace_back(A.phiAngle(e));
+            path.emplace_back(PathStep('R', A.phiAngle(e)));
         }
         Quaternion<Interval> T = net.isometryFromPath(path);
         // T is, up to sign, (cos(l/2), 0, 0, -sin(l/2)), where
@@ -409,8 +409,8 @@ bool checkPinOutsideConvexFaces(const MetrizedNet& net) {
     for (int i = 0; i < cnt; i++) for (int j = i+1; j < cnt; j++) {
         const Dart& root = net.A.concaveAngles()[i];
         const Dart& other = net.A.concaveAngles()[j];
-        const auto& X = applyIsometry(net.getPathToPin(root, root), {0, 0, 1});
-        const auto& Y = applyIsometry(net.getPathToPin(root, other), {0, 0, 1});
+        const auto& X = applyIsometry(net.getIsometryToPin(root, root), {0, 0, 1});
+        const auto& Y = applyIsometry(net.getIsometryToPin(root, other), {0, 0, 1});
         for (const auto& f: net.A.faces()) {
             if (!net.A.isConvexFace(f))
                 continue;
@@ -419,7 +419,7 @@ bool checkPinOutsideConvexFaces(const MetrizedNet& net) {
             
             vector<int> signs;
             for (const Dart& d: f) {
-                const auto& Z = applyIsometry(net.getPath(root, d), {0, 0, 1});
+                const auto& Z = applyIsometry(net.getIsometry(root, d), {0, 0, 1});
                 int s = sign(det(X, Y, Z));
                 signs.push_back(s);
                 
@@ -435,6 +435,73 @@ bool checkPinOutsideConvexFaces(const MetrizedNet& net) {
         }
     }
     return true;
+}
+
+template<typename T>
+T operator*(const array<T, 3>& X, const array<T, 3>& Y) {
+    return X[0]*Y[0] + X[1]*Y[1] + X[2]*Y[2];
+}
+
+// If it returns true, the given points belong to the strict hemisphere
+// defined by {x: x*q > 0}.
+bool belongToStrictHemisphere(const vector<array<Interval, 3>>& vec, 
+                              array<Interval, 3> q) {
+    bool res = true;
+    for (const auto& x: vec) {
+        if ((x*q).l < 0)
+            res = false;
+    }
+    return res;
+}
+
+bool checkPinsSpecial(const MetrizedNet& net) {
+    const DerivedOnceNet& A = net.A;
+    assert(ssize(A.concaveAngles()) == 2);
+    const Dart& d1 = A.concaveAngles()[0];
+    const Dart& d2 = A.concaveAngles()[1];
+    assert(A.faceType(d1).second == 1);
+    assert(A.faceType(d2).second == 1);
+    
+    double l1 = 10, l2 = 10;
+    for (const Dart& d: A.darts()) {
+        const auto& T1 = net.getIsometryToPin(d, d1);
+        const auto& T2 = net.getIsometryToPin(d, d2);
+        if (farthestIntersection(T1) < net.length(d).l)
+            l1 = min(l1, farthestIntersection(conj(T1)));
+        if (farthestIntersection(T2) < net.length(d).l)
+            l2 = min(l2, farthestIntersection(conj(T2)));
+    }
+    
+    //~ cout << l1 << " " << l2 << endl;
+    
+    if (l1 >= M_PI-1e-5 or l2 >= M_PI-1e-5)
+        return true;
+    
+    const Dart& root = A.phi(d1);
+    vector<PathStep> path1 = net.getPathToPin(root, d1);
+    vector<PathStep> path2 = net.getPathToPin(root, d2);
+    
+    vector<PathStep> path1_end = path1;
+    path1_end.push_back(PathStep('E', l1));
+    
+    vector<PathStep> path2_end = path2;
+    path2_end.push_back(PathStep('E', l2));
+    
+    vector<array<Interval, 3>> vec;
+    for (auto p: {path1, path2, path1_end, path2_end}) {
+        //~ for (auto z: p)
+            //~ cout << z << " ";
+        //~ cout << endl;
+        auto pt = applyIsometry(net.isometryFromPath(p), {1, 0, 0});
+        vec.push_back(pt);
+        //~ cout << pt[0].mid() << " " << pt[1].mid() << " " << pt[2].mid() << endl;
+    }
+    
+    array<Interval, 3> q;
+    for (int i = 0; i < 3; i++)
+        q[i] = vec[0][i] + vec[1][i];
+    
+    return !belongToStrictHemisphere(vec, q);
 }
 
 #endif

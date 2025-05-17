@@ -79,14 +79,15 @@ vector<DerivedOnceNet> parseDerivedOnceNets(string in_file) {
 // Determines using only convex faces.
 // It returns the length of the longest implication chain that is
 // necessary to determine a length.
-// The length of an implication chain is the number of "pentagonal rules"
+// The length of an implication chain depends on the "pentagonal rules" 
 // applied.
 int lengthsImplications(const DerivedOnceNet& A, 
                         const vector<Dart>& fixed_darts) {
-    vector<int> vec(2*A.E(), 1000);
+    static const int INF = 1'000'000;
+    vector<int> vec(2*A.E(), INF);
     for (const Dart& d: fixed_darts) {
-        vec[d.id] = 20;
-        vec[A.rev(d).id] = 20;
+        vec[d.id] = 1;
+        vec[A.rev(d).id] = 1;
     }
     
     bool updated = true;
@@ -108,7 +109,7 @@ int lengthsImplications(const DerivedOnceNet& A,
             if (ssize(f) <= 3) for (const Dart& e: f) determine_edge(e, 0);
             
             if (ssize(f) == 4) {
-                int m = 1000;
+                int m = INF;
                 for (const Dart& e: f) m = min(m, vec[e.id]);
                 for (const Dart& e: f) determine_edge(e, m);
             }
@@ -131,6 +132,9 @@ int lengthsImplications(const DerivedOnceNet& A,
         outcome = max(outcome, vec[d.id]);
     }
     
+    if (outcome == INF) 
+        return -1;
+    
     return outcome;
 }
 
@@ -141,11 +145,11 @@ int lengthsImplications(const DerivedOnceNet& A,
 // all the lengths in a "numerically robust" way.
 vector<Dart> findFreeParametersConvex(const DerivedOnceNet& A) {
     int n = A.E();
-    if (lengthsImplications(A, {}) < 1000)
+    if (lengthsImplications(A, {}) >= 0)
         return {};
         
     for (int ans = 1; ans <= 6; ans++) {
-        int least_outcome = 1000;
+        int least_outcome = 1e9;
         vector<Dart> res;
         long long bb = 0;
         while (bb < (1ll<<n)) {
@@ -156,7 +160,7 @@ vector<Dart> findFreeParametersConvex(const DerivedOnceNet& A) {
                         fixed_darts.push_back(A.dart(2*i));
                 
                 int outcome = lengthsImplications(A, fixed_darts);
-                if (outcome < least_outcome) {
+                if (outcome >= 0 and outcome < least_outcome) {
                     least_outcome = outcome;
                     res = fixed_darts;
                 }
@@ -228,18 +232,11 @@ int searchApproximateMetrization(MetrizedNet net,
     // If we reached the desired precision of the metrization, we 
     // return.
     if (net.totalError() < 1e-5) {
+        //~ cout << checkPinsSpecial(net) << endl;
         auto pp = embedNet(net);
         savePicture(pp.first, pp.second, "data/metrization/" + to_string(current_net_id) + ".txt");
         return 1;
     }
-
-    //~ if (sum_convex < 1) {
-        //~ print_status();
-        //~ auto pp = embedNet(net);
-        //~ savePicture(pp.first, pp.second, "data/metrization/" + to_string(current_net_id) + ".txt");
-        //~ boring_counter++;
-        //~ return 0;
-    //~ }
     
     // TODO: We shall memorize the outcome of 
     //  1. checkPinAngles (actually this is already very fast)
@@ -263,6 +260,20 @@ int searchApproximateMetrization(MetrizedNet net,
         
     if (!checkPinOutsideConvexFaces(net))
         return 0;
+    
+    // Special check to rule out a few nets because the two pins cannot
+    // be chosen in a valid way.
+    // It is meant to resolve only a few special cases. Should not
+    // be executed on all nets, even though it works if there are 
+    // exactly two non-convex faces, each with one concave angle.
+    // TODO: The code shall not depend on the id of the nets (as it will
+    //       most likely change eventually).
+    if (current_net_id == 1316
+        or current_net_id == 2646
+        or current_net_id == 3107) {
+        if (!checkPinsSpecial(net))
+            return 0;
+    }
         
     double max_error_boundary_continent = 0;
     for (const Dart& d: A.darts()) {
@@ -295,8 +306,8 @@ int searchApproximateMetrization(MetrizedNet net,
                 I = Interval(m, I.r);
         }
 
-        // This is the only external overhead necessary for the
-        // caching mechanis of minimal paths to work.
+        // This is the only external overhead necessary for 
+        // caching minimal paths.
         // It could be part of a custom copy constructor, but it
         // would be even more annoying.
         new_net.incrementVersion();
@@ -319,6 +330,9 @@ int isApproximateMetrizationPossible(const DerivedOnceNet& A) {
     
     cout << "# of parameters = " << ssize(convex) << " " 
                                  << ssize(non_convex) << ", ";
+    
+    for (const Dart& d: convex)
+        cout << d << " ";
     cout.flush();
     
     return searchApproximateMetrization(MetrizedNet(A), convex, non_convex);
@@ -335,7 +349,7 @@ int main() {
     
     
     vector<int> new_survivors;
-    for (int id: survivors) {
+    for (int id: {3107}) {
         cout << "net id = " << setw(4) << id << ":\t";
         current_net_id = id;
         auto A = parseDerivedOnceNets("data/derived_once_computer.txt")[id];

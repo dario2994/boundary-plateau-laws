@@ -13,24 +13,29 @@ using namespace std;
 
 struct PathStep {
     char type;
-    double rotation;
+    double t;
     Dart d;
     
-    PathStep(double _rotation): type('R'), rotation(_rotation) {}
-    PathStep(Dart _d): type('E'), d(_d) {}
+    PathStep(char _type, double _t): type(_type), t(_t) {
+        assert(type == 'R' or type == 'E');
+    }
+    PathStep(Dart _d): type('D'), d(_d) {}
     
     double cost(const vector<Interval>& lengths) {
-        return 1e-10 + ((type == 'R') ? 0.0 : lengths[d.id].len());
+        return 1e-10 + ((type == 'D') ? lengths[d.id].len() : 0.0 );
     }
 };
 
 ostream& operator<<(ostream& out, const PathStep& x) {
-    if (x.type == 'R') {
-        int angle = round(x.rotation * 360 / (2*M_PI));
+    if (x.type == 'D') {
+        out << "D(" << x.d.from << "->" << x.d.to << ")"; 
+    } else if (x.type == 'R') {
+        int angle = round(x.t * 360 / (2*M_PI));
         out << "R(" << angle << ")";
-    } else {
-        out << "E(" << x.d.from << "->" << x.d.to << ")"; 
-    }
+    } else if (x.type == 'E') {
+        out << "E(" << x.t << ")"; 
+    } else assert(0);
+    
     return out;
 }
 
@@ -107,9 +112,12 @@ class MetrizedNet {
         Quaternion<Interval> res(1);
         for (auto op: path) {
             if (op.type == 'R')
-                sum_theta += op.rotation;
-            if (op.type == 'E')
+                sum_theta += op.t;
+            else if (op.type == 'E')
+                res *= basicIsometry<Interval>(sum_theta, op.t);
+            else if (op.type == 'D')
                 res *= basicIsometry<Interval>(sum_theta, length(op.d));
+            else assert(0);
         }
         res *= basicRotation<Interval>(sum_theta);
         
@@ -164,8 +172,9 @@ class MetrizedNet {
         
         // To compress consecutive rotations in a single one.
         auto append_to_path = [&](vector<PathStep>& path, PathStep op) {
-            if (!path.empty() and path.back().type == 'R' and op.type == 'R')
-                path.back().rotation += op.rotation;
+            if (!path.empty() and path.back().type == op.type
+                and op.type != 'D')
+                path.back().t += op.t;
             else
                 path.push_back(op);
         };
@@ -179,9 +188,9 @@ class MetrizedNet {
             while (father[curr.id] != '-') {
                 if (father[curr.id] == 'n') { // Rotation by 120 or 240.
                     curr = A.prev(curr);
-                    append_to_path(path, A.nextAngle(curr));
+                    append_to_path(path, PathStep('R', A.nextAngle(curr)));
                 } else if (father[curr.id] == 'r') { // Exponential + Rotation by 180.
-                    append_to_path(path, M_PI);
+                    append_to_path(path, PathStep('R', M_PI));
                     curr = A.rev(curr);
                     append_to_path(path, curr);
                 } else assert(0);
@@ -196,18 +205,28 @@ class MetrizedNet {
         for (Dart d: A.concaveAngles()) {
             assert(A.isConcaveAngle(d));
             vector<PathStep> path = (*optimal_path)[root.id][A.rev(d).id];
-            append_to_path(path, 2*M_PI/3);
+            append_to_path(path, PathStep('R', 2*M_PI/3));
             (*to_pins)[root.id].push_back(path);
         }
     }
     
   public:
-    Quaternion<Interval> getPath(const Dart& from, const Dart& to) const {
+    vector<PathStep> getPath(const Dart& from, const Dart& to) const {
+        rebuildEmbedding(from);
+        return (*optimal_path)[from.id][to.id];
+    }
+    
+    vector<PathStep> getPathToPin(const Dart& from, const Dart& to) const {
+        rebuildEmbedding(from);
+        return (*to_pins)[from.id][A.concaveAngleId(to)];
+    }
+  
+    Quaternion<Interval> getIsometry(const Dart& from, const Dart& to) const {
         rebuildEmbedding(from);
         return isometryFromPath((*optimal_path)[from.id][to.id]);
     }
     
-    Quaternion<Interval> getPathToPin(const Dart& from, const Dart& to) const {
+    Quaternion<Interval> getIsometryToPin(const Dart& from, const Dart& to) const {
         rebuildEmbedding(from);
         return isometryFromPath((*to_pins)[from.id][A.concaveAngleId(to)]);
     }

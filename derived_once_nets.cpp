@@ -123,6 +123,15 @@ class DerivedOnceNet : public CombinatorialMap {
         return angles;
     }
     
+    // Whether d and e belong to the same face.
+    bool sameFace(const Dart& d, const Dart& e) const {
+        const vector<Dart>& f = face(d);
+        for (const Dart& d1: f)
+            if (d1 == e)
+                return true;
+        return false;
+    }
+    
     
     bool isConvexFace(const vector<Dart>& f) const {
         return isConvexFace(f[0]);

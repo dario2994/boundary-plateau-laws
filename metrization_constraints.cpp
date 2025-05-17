@@ -426,11 +426,11 @@ bool checkPinOutsideConvexFaces(const MetrizedNet& net) {
                 if (s == 0 or s != signs[0])
                     break; // For performance.
             }
-            bool is_inside = true;
-            for (int s: signs) {
-                is_inside &= s != 0 and s == signs[0];
-            }
-            if (is_inside)
+            bool same_sign = true;
+            for (int s: signs) 
+                same_sign &= s != 0 and s == signs[0];
+                
+            if (same_sign)
                 return false;
         }
     }
@@ -442,66 +442,97 @@ T operator*(const array<T, 3>& X, const array<T, 3>& Y) {
     return X[0]*Y[0] + X[1]*Y[1] + X[2]*Y[2];
 }
 
-// If it returns true, the given points belong to the strict hemisphere
-// defined by {x: x*q > 0}.
-bool belongToStrictHemisphere(const vector<array<Interval, 3>>& vec, 
-                              array<Interval, 3> q) {
-    bool res = true;
-    for (const auto& x: vec) {
-        if ((x*q).l < 0)
-            res = false;
-    }
-    return res;
+template<typename T>
+array<T, 3> operator-(const array<T, 3>& X, const array<T, 3>& Y) {
+    return {X[0]-Y[0], X[1]-Y[1], X[2]-Y[2]};
 }
 
-bool checkPinsSpecial(const MetrizedNet& net) {
-    const DerivedOnceNet& A = net.A;
-    assert(ssize(A.concaveAngles()) == 2);
-    const Dart& d1 = A.concaveAngles()[0];
-    const Dart& d2 = A.concaveAngles()[1];
-    assert(A.faceType(d1).second == 1);
-    assert(A.faceType(d2).second == 1);
-    
-    double l1 = 10, l2 = 10;
-    for (const Dart& d: A.darts()) {
-        const auto& T1 = net.getIsometryToPin(d, d1);
-        const auto& T2 = net.getIsometryToPin(d, d2);
-        if (farthestIntersection(T1) < net.length(d).l)
-            l1 = min(l1, farthestIntersection(conj(T1)));
-        if (farthestIntersection(T2) < net.length(d).l)
-            l2 = min(l2, farthestIntersection(conj(T2)));
-    }
-    
-    //~ cout << l1 << " " << l2 << endl;
-    
-    if (l1 >= M_PI-1e-5 or l2 >= M_PI-1e-5)
+template<typename T>
+array<T, 3> operator^(const array<T, 3>& X, const array<T, 3>& Y) {
+    return {X[1]*Y[2]-X[2]*Y[1], X[2]*Y[0]-X[0]*Y[2], X[0]*Y[1]-X[1]*Y[0]};
+}
+
+// If it returns true, the given points belong to a strict hemisphere.
+// Complexity: O(n^4), where n = ssize(vec).
+bool belongToStrictHemisphere(vector<array<Interval, 3>> vec) {
+    auto subroutine = [&]() {
+        int n = ssize(vec);
+        for (int i = 0; i < n; i++)
+        for (int j = i+1; j < n; j++)
+        for (int k = j+1; k < n; k++) {
+            auto normal = (vec[j]-vec[i])^(vec[k]-vec[i]);
+            vector<int> signs;
+            for (auto q: vec) {
+                int s = sign(q * normal);
+                signs.push_back(s);
+            }
+            bool same_sign = true;
+            for (int s: signs) 
+                same_sign &= s != 0 and s == signs[0];
+            if (same_sign)
+                return true;
+        }
+        return false;
+    };
+    if (subroutine())
         return true;
     
-    const Dart& root = A.phi(d1);
-    vector<PathStep> path1 = net.getPathToPin(root, d1);
-    vector<PathStep> path2 = net.getPathToPin(root, d2);
+    // If all points in vec are coplanar, subroutine returns false.
+    // To solve this issue, we add a "random" point to vec and we
+    // call subroutine again.
+    vec.push_back({0.84395, 0.19283, 0.96591});
+    return subroutine();
+}
+
+// This is a check useful only when either: 
+//   - All the equators identifying the pins coincide, 
+//   - At least one pin falls on an edge.
+//
+// Consider two "edges to pins" going to different pins (because the
+// edges belong to different faces).
+// Extend this edges until they hit an edge of the net.
+// Let l1, l2 be the resulting lenghts. And let q1, q2 be the edges
+// extended to have length l1 and l2.
+// Since p\in q1 and -p\in q2 (where p is a pin), q1 and q2 do not 
+// belong to a strict hemisphere. 
+bool checkPinsSpecial(const MetrizedNet& net) {
+    const DerivedOnceNet& A = net.A;
     
-    vector<PathStep> path1_end = path1;
-    path1_end.push_back(PathStep('E', l1));
-    
-    vector<PathStep> path2_end = path2;
-    path2_end.push_back(PathStep('E', l2));
-    
-    vector<array<Interval, 3>> vec;
-    for (auto p: {path1, path2, path1_end, path2_end}) {
-        //~ for (auto z: p)
-            //~ cout << z << " ";
-        //~ cout << endl;
-        auto pt = applyIsometry(net.isometryFromPath(p), {1, 0, 0});
-        vec.push_back(pt);
-        //~ cout << pt[0].mid() << " " << pt[1].mid() << " " << pt[2].mid() << endl;
+    for (const Dart& d1: A.concaveAngles())
+    for (const Dart& d2: A.concaveAngles()) {
+        if (A.sameFace(d1, d2))
+            continue;
+        
+        double l1 = 10, l2 = 10;
+        for (const Dart& d: A.darts()) {
+            const auto& T1 = net.getIsometryToPin(d, d1);
+            const auto& T2 = net.getIsometryToPin(d, d2);
+            if (farthestIntersection(T1) < net.length(d).l)
+                l1 = min(l1, farthestIntersection(conj(T1)));
+            if (farthestIntersection(T2) < net.length(d).l)
+                l2 = min(l2, farthestIntersection(conj(T2)));
+        }
+        if (l1 >= M_PI-1e-5 or l2 >= M_PI-1e-5)
+            return true;
+        
+        const Dart& root = A.phi(d1);
+        vector<PathStep> path1 = net.getPathToPin(root, d1);
+        vector<PathStep> path2 = net.getPathToPin(root, d2);
+        vector<PathStep> path1_end = path1;
+        path1_end.push_back(PathStep('E', l1));
+        vector<PathStep> path2_end = path2;
+        path2_end.push_back(PathStep('E', l2));
+        
+        vector<array<Interval, 3>> vec;
+        for (auto p: {path1, path2, path1_end, path2_end}) {
+            auto pt = applyIsometry(net.isometryFromPath(p), {1, 0, 0});
+            vec.push_back(pt);
+        }
+        
+        if (belongToStrictHemisphere(vec))
+            return false;
     }
-    
-    array<Interval, 3> q;
-    for (int i = 0; i < 3; i++)
-        q[i] = vec[0][i] + vec[1][i];
-    
-    return !belongToStrictHemisphere(vec, q);
+    return true;
 }
 
 #endif

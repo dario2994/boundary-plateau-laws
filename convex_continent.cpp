@@ -227,12 +227,17 @@ int searchApproximateMetrization(MetrizedNet net,
     //~ }
     
     // If the computation takes too long, we skip.
-    if (get_time() - begin_time > 30 * 60ll * 1e9) 
+    if (get_time() - begin_time > 10ll * 1e9) 
         return 2;
     // If we reached the desired precision of the metrization, we 
     // return.
     if (net.totalError() < 1e-5) {
-        //~ cout << checkPinsSpecial(net) << endl;
+        // Special check to rule out a few nets because the two pins 
+        // cannot be chosen in a valid way.
+        // It is run only here because it is almost always implied by 
+        // the other checks (and it is slow).
+        if (!checkPinsSpecial(net))
+            return 0;
         auto pp = embedNet(net);
         savePicture(pp.first, pp.second, "data/metrization/" + to_string(current_net_id) + ".txt");
         return 1;
@@ -260,20 +265,6 @@ int searchApproximateMetrization(MetrizedNet net,
         
     if (!checkPinOutsideConvexFaces(net))
         return 0;
-    
-    // Special check to rule out a few nets because the two pins cannot
-    // be chosen in a valid way.
-    // It is meant to resolve only a few special cases. Should not
-    // be executed on all nets, even though it works if there are 
-    // exactly two non-convex faces, each with one concave angle.
-    // TODO: The code shall not depend on the id of the nets (as it will
-    //       most likely change eventually).
-    if (current_net_id == 1316
-        or current_net_id == 2646
-        or current_net_id == 3107) {
-        if (!checkPinsSpecial(net))
-            return 0;
-    }
         
     double max_error_boundary_continent = 0;
     for (const Dart& d: A.darts()) {
@@ -331,8 +322,8 @@ int isApproximateMetrizationPossible(const DerivedOnceNet& A) {
     cout << "# of parameters = " << ssize(convex) << " " 
                                  << ssize(non_convex) << ", ";
     
-    for (const Dart& d: convex)
-        cout << d << " ";
+    //~ for (const Dart& d: convex)
+        //~ cout << d << " ";
     cout.flush();
     
     return searchApproximateMetrization(MetrizedNet(A), convex, non_convex);
@@ -349,7 +340,7 @@ int main() {
     
     
     vector<int> new_survivors;
-    for (int id: {3107}) {
+    for (int id: {1316, 2646, 3107}) {
         cout << "net id = " << setw(4) << id << ":\t";
         current_net_id = id;
         auto A = parseDerivedOnceNets("data/derived_once_computer.txt")[id];

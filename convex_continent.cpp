@@ -121,6 +121,10 @@ int lengthsImplications(const DerivedOnceNet& A,
                 determine_edge(f[3], max(x[0], x[1]) + 1);
                 determine_edge(f[4], max(x[0], x[2]) + 1);
                 determine_edge(f[3], max(x[0], x[2]) + 1);
+                
+                //~ determine_edge(f[3], x[0] + x[1] + 1);
+                //~ determine_edge(f[4], x[0] + x[2] + 1);
+                //~ determine_edge(f[3], x[0] + x[2] + 1);
             }
         }
     }
@@ -153,7 +157,7 @@ vector<Dart> findFreeParametersConvex(const DerivedOnceNet& A) {
         vector<Dart> res;
         long long bb = 0;
         while (bb < (1ll<<n)) {
-            if (__builtin_popcount(bb) == ans) {
+            if (__builtin_popcountll(bb) == ans) {
                 vector<Dart> fixed_darts;
                 for (int i = 0; i < n; i++)
                     if (bb&(1ll<<i)) 
@@ -167,8 +171,10 @@ vector<Dart> findFreeParametersConvex(const DerivedOnceNet& A) {
                 bb += 1ll<<__builtin_ctzll(bb);
             } else bb++;
         }
-        if (!res.empty())
+        if (!res.empty()) {
+            //~ cout << least_outcome << endl;
             return res;
+        }
     }
     assert(0);
     return {};
@@ -202,6 +208,8 @@ vector<Dart> findFreeParametersNonConvex(const DerivedOnceNet& A) {
 long long begin_time;
 int current_net_id;
 
+long long boring_counter = 0; // TODEL
+
 // Return values:
 // 0 no
 // 1 yes
@@ -212,7 +220,7 @@ int searchApproximateMetrization(MetrizedNet net,
     const DerivedOnceNet& A = net.A;
     
     auto print_status = [&]() {
-        cout << "State: " << endl;
+        cout << "State: " << net.totalError() << endl;
         for (int i = 0; i < 2*A.E(); i += 2) {
             Dart d = A.dart(i);
             cout << d << " " << net.length(d) << "\t" << 
@@ -221,13 +229,17 @@ int searchApproximateMetrization(MetrizedNet net,
         cout << endl;
     };
     
-    //~ if (get_time() % (1<<15) == 0) {
-        //~ print_status();
-        //~ cout << endl;
+    //~ if (net.totalError() < 10) {
+        //~ if (get_time() % 30000 == 0) {
+            //~ print_status();
+            //~ cout << endl;
+        //~ }
+        //~ boring_counter++;
+        //~ return 0;
     //~ }
     
     // If the computation takes too long, we skip.
-    if (get_time() - begin_time > 10ll * 1e9) 
+    if (get_time() - begin_time > 10000ll * 1e9) 
         return 2;
     // If we reached the desired precision of the metrization, we 
     // return.
@@ -340,7 +352,7 @@ int main() {
     
     
     vector<int> new_survivors;
-    for (int id: {1316, 2646, 3107}) {
+    for (int id: {729}) {
         cout << "net id = " << setw(4) << id << ":\t";
         current_net_id = id;
         auto A = parseDerivedOnceNets("data/derived_once_computer.txt")[id];
@@ -360,7 +372,10 @@ int main() {
     
     StopWatch::printState();
     
-    cout << cnt1 << " " << cnt2 << " " << cnt3 << " " << cnt4 << endl;
+    cout << boring_counter << endl;
+    return 0;
+    
+    //~ cout << cnt1 << " " << cnt2 << " " << cnt3 << " " << cnt4 << endl;
     
     cout << "New survivors num = " << new_survivors.size() << endl;
     for (int id: new_survivors)

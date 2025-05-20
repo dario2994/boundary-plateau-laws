@@ -6,29 +6,13 @@ typedef unsigned long long ULL;
 
 
 struct Configuration {
-    double delta;
     double L;
+    double delta;
     ConvexSphericalTriangle APO, AQO;
 
-    Configuration(double _delta, double _L): delta(_delta), L(_L) {
+    Configuration(double _L, double _delta): L(_L), delta(_delta) {
         assert(0 < L and L < 0.8);
-        //~ double cos_AO = cos(L)*cos(delta/2) + cos(2*M_PI/3)*sin(L)*sin(delta/2);
-        //~ AO = acos(cos_AO);
         
-        //~ double sin_AOP = sin(L)*sin(2*M_PI/3)/sin(AO);
-        //~ assert(sin_AOP > sin(M_PI/6));
-        //~ AOP = asin(sin_AOP);
-        
-        
-        //~ QOA = M_PI/2 - AOP;
-        
-        //~ double sin_AQ = 2/sqrt(3) * sin(AO) * sin(QOA);
-        //~ AQ = asin(sin_AQ);
-        
-        //~ double tan_QO2 = tan((AO-AQ)/2) * sin((2*M_PI/3 + QOA)/2)
-                                            //~ /
-                                          //~ sin((2*M_PI/3 - QOA)/2);
-        //~ QO = 2*atan(tan_QO2);
         APO = ConvexSphericalTriangle(
             {{'a', delta/2}, {'c', L}, {'B', 2*M_PI/3}});
         AQO = ConvexSphericalTriangle(
@@ -73,12 +57,12 @@ double argmin_naive(function<double(double)> f, double l, double r) {
 
 int main() {
     double L = 0.2;
-    double delta = 0.02;
+    //~ double delta = 0.02;
     //~ double L = argmin_naive([&](double z) { return -Configuration(delta, z).cost(); }, delta*3, 0.5);
     //~ double L = 0.02;
     //~ double delta = 1.0/250;
     cout << L << endl;
-    Configuration C(delta, L);
+    Configuration C(L, L/10);
     //~ cout << C.AQO.get('c') << " " << C.AQO.get('a') << endl;
     //~ cout << C.APO.area() << " " << C.AQO.area() << endl;
     cout << C.cost() << endl;

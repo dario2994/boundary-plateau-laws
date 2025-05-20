@@ -535,4 +535,97 @@ bool checkPinsSpecial(const MetrizedNet& net) {
     return true;
 }
 
+
+// Checks that there are no two distinct darts d, e such that:
+//  1. The faces corresponding to d and e are convex and with the 
+//     same number of sides.
+//  2. The lengths of the sides of the face of d are very close to the
+//     lengths of the sides of the face of e.
+//  3. The direction of the d is very close to the direction of e.
+bool checkFacesNotIdentical(const MetrizedNet& net) {
+    auto interval_is_point = [&](const Interval& I, double z) {
+        const double eps = 0.001;
+        return z - eps <= I.l and I.r <= z + eps;
+    };
+    
+    const DerivedOnceNet& A = net.A;
+    
+    for (const Dart& d: A.darts()) for (const Dart& e: A.darts()) {
+        if (d == e) 
+            continue;
+            
+        bool special = d.from == 11 and d.to == 4;
+        special &= e.from == 5 and e.to == 1;
+        
+        if (!A.isConvexFace(d) or !A.isConvexFace(e))
+            continue;
+        if (ssize(A.face(d)) != ssize(A.face(e)))
+            continue;
+        
+        bool identical = true;
+        int q = ssize(A.face(d));
+        for (int i = 0; i < q; i++) {
+            const Dart& d2 = A.phi(d, i);
+            const Dart& e2 = A.phi(e, i);
+            const Interval& I = net.length(d2);
+            const Interval& J = net.length(e2);
+            if (abs(J.r-I.l) > 0.001)
+                identical = false;
+            if (abs(I.r-J.l) > 0.001)
+                identical = false;
+        }
+        
+        if (!identical)
+            continue;
+        
+        Quaternion<Interval> T = net.getIsometry(d, e);
+        if (!interval_is_point(T[0], 1) and !interval_is_point(T[0], -1))
+            continue;
+        
+        for (int i = 1; i < 3; i++)
+            identical &= interval_is_point(T[i], 0);
+        if (identical)
+            return false;
+    }
+    return true;
+}
+
+
+
+bool checkLengthLowerbound(MetrizedNet& net) {
+    static const auto fun = [&](const Interval& I, const Interval& J) {
+        return 0.1 * min(0.1, min(I.l, J.l)) - 1e-10;
+    };
+    
+    const DerivedOnceNet& A = net.A;
+    for (const Dart& d: A.darts()) {
+        Interval& Z = net.length(A.phi(d));
+        double low = fun(net.length(d), net.length(A.phi(d, 2)));
+        Z.l = max(Z.l, low);
+        if (Z.empty()) 
+            return false;
+    }
+    
+    for (const Dart& d: A.darts()) {
+        if (A.isConcaveAngle(d) 
+            or !A.isConcaveAngle(A.phi(d))
+            or A.isConcaveAngle(A.phi(d, 2)))
+            continue;
+        
+        Interval& X = net.length(A.phi(d));
+        Interval& Y = net.length(A.phi(d, 2));
+        double low = fun(net.length(d), net.length(A.phi(d, 3)));
+        
+        if (X.r < low)
+            Y.l = max(Y.l, low);
+        if (Y.r < low)
+            X.l = max(X.l, low);
+        
+        if (X.empty() or Y.empty())
+            return false;
+    }
+    
+    return true;
+}
+
 #endif

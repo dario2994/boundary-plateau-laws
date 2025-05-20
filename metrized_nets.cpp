@@ -76,7 +76,7 @@ class MetrizedNet {
         for (Dart d: A.darts()) {
             Interval& I = length(d);
             if (A.isConvexFace(d)) {
-                I.intersect(Interval(0.02, M_PI-0.01));
+                I.intersect(Interval(0.01, M_PI-0.001));
                 int q = ssize(A.face(d));
                 assert(q != 2);
                 

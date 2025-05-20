@@ -238,7 +238,7 @@ int searchApproximateMetrization(MetrizedNet net,
     //~ }
     
     // If the computation takes too long, we skip.
-    if (get_time() - begin_time > 10ll * 1e9) 
+    if (get_time() - begin_time > 10*60ll * 1e9) 
         return 2;
     // If we reached the desired precision of the metrization, we 
     // return.
@@ -252,8 +252,11 @@ int searchApproximateMetrization(MetrizedNet net,
         if (!checkPinsSpecial(net))
             return 0;
             
-        //~ if (!checkFacesNotIdentical(net))
-            //~ return 0;
+        if (!checkFacesNotIdentical(net))
+            return 0;
+            
+        if (!checkPinIsVertex(net))
+            return 0;
 
         auto pp = embedNet(net);
         savePicture(pp.first, pp.second, "data/metrization/" + to_string(current_net_id) + ".txt");
@@ -364,7 +367,7 @@ int main() {
     // Doubled: 2202, 2287
     
     vector<int> new_survivors;
-    for (int id: {278, 603, 746, 948, 1017, 1027, 1046, 1120, 1598, 1659, 1680, 1839, 2053, 2474, 2513}) {
+    for (int id: {1223}) {//{1017,1928,3153}) {//{278, 603, 746, 948, 1017, 1027, 1046, 1120, 1598, 1659, 1680, 1839, 2053, 2474, 2513}) {
         cout << "net id = " << setw(4) << id << ":\t";
         current_net_id = id;
         auto A = parseDerivedOnceNets("data/derived_once_computer.txt")[id];

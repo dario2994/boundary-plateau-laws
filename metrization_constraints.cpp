@@ -78,8 +78,8 @@ Interval pentagon2Constraint(const Interval& I, const Interval& J) {
     double low = f(I.l, J.r);
     double high = f(I.r, J.l);
     
-    // Using acos on [low, high] is not necessarily correct here, hence
-    // we do the computation explicitly.
+    // Applying acos on [low, high] is wrong here, hence we do the 
+    // computation explicitly. TODO: Check.
     
     if (low > 1 or high < -1)
         return Interval(0, -1); // empty
@@ -177,31 +177,6 @@ bool refineMetrizationConvexContinent(MetrizedNet& net,
     return net.totalError() >= 0;
 }
 
-// If (cos x, sin(x)) \in IxJ \cup (-I)x(-J) with 0 <= x <= pi/2, 
-// then x belongs to the interval returned by this function.
-Interval intersectWithCircle(const Interval& I, const Interval& J) {
-    if (I.empty() or J.empty())
-        return Interval(0, -1);
-        
-    // We shall return the interval of 0 <= l < pi such that:
-    // (cos l/2, sin l/2) belongs to IxJ or -(IxJ).
-    auto intersectWithCircleQuadrant = [](Interval X, Interval Y) {
-        X.intersect(Interval(0, 1));
-        Y.intersect(Interval(0, 1));
-        if (X.empty() or Y.empty())
-            return Interval(0, -1);
-        return intersection(Interval(acos(X.r), acos(X.l)),
-                            Interval(asin(Y.l), asin(Y.r)));
-    };
-    
-    Interval inter1 = intersectWithCircleQuadrant(I, J);
-    Interval inter2 = intersectWithCircleQuadrant(-I, -J);
-    
-    if (!inter1.empty() and !inter2.empty())
-        return Interval(0, 10);
-    return inter1.empty() ? inter2 : inter1;
-}
-
 template <typename T>
 T det(const array<T, 3>& A, const array<T, 3>& B, const array<T, 3>& C) {
     return A[0]*(B[1]*C[2] - B[2]*C[1])
@@ -209,6 +184,8 @@ T det(const array<T, 3>& A, const array<T, 3>& B, const array<T, 3>& C) {
          + A[2]*(B[0]*C[1] - B[1]*C[0]);
 }
 
+// Checks that the equators corresponding to any three edges going to
+// a pin are concurrent.
 bool canPinsBeAntipodal(const MetrizedNet& net) {
     StopWatch _("canPinsBeAntipodal");
     
@@ -231,7 +208,8 @@ bool canPinsBeAntipodal(const MetrizedNet& net) {
     return true;
 }
 
-
+// Checks that the angles between edges meeting at a pin belongs to
+// [120, 240].
 bool checkPinAngles(const MetrizedNet& net) {
     StopWatch _("checkPinAngles");
     
@@ -267,7 +245,35 @@ bool checkPinAngles(const MetrizedNet& net) {
     return true;
 }
 
+// If (cos x, sin(x)) \in IxJ \cup (-I)x(-J) with 0 <= x <= pi/2, 
+// then x belongs to the interval returned by this function.
+Interval intersectWithCircle(const Interval& I, const Interval& J) {
+    if (I.empty() or J.empty())
+        return Interval(0, -1);
+        
+    // We shall return the interval of 0 <= l < pi such that:
+    // (cos l/2, sin l/2) belongs to IxJ or -(IxJ).
+    auto intersectWithCircleQuadrant = [](Interval X, Interval Y) {
+        X.intersect(Interval(0, 1));
+        Y.intersect(Interval(0, 1));
+        if (X.empty() or Y.empty())
+            return Interval(0, -1);
+        return intersection(Interval(acos(X.r), acos(X.l)),
+                            Interval(asin(Y.l), asin(Y.r)));
+    };
+    
+    Interval inter1 = intersectWithCircleQuadrant(I, J);
+    Interval inter2 = intersectWithCircleQuadrant(-I, -J);
+    
+    if (!inter1.empty() and !inter2.empty())
+        return Interval(0, 10);
+    return inter1.empty() ? inter2 : inter1;
+}
 
+// Assume that you know the lengths of k-1 sides of a non-convex face
+// with k sides. This function determines (robustly) whether they
+// can form the non-convex face (i.e., the angles are correct) and
+// enforces the right length of the remaining side.
 bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
     StopWatch _("refineMetrizationNonConvexFaces");
     
@@ -406,7 +412,7 @@ bool checkNonIntersection(MetrizedNet& net) {
     return true;
 }
 
-
+// Checks that no pins fall strictly inside a convex face.
 bool checkPinOutsideConvexFaces(const MetrizedNet& net) {
     StopWatch _("checkPinOutsideConvexFaces");
     
@@ -607,6 +613,9 @@ bool checkPinIsVertex(const MetrizedNet& net) {
 //  2. The lengths of the sides of the face of d are very close to the
 //     lengths of the sides of the face of e.
 //  3. The direction of the d is very close to the direction of e.
+//
+// This check is sufficient to rule out a few embedding with "overlapping"
+// convex faces. (as in a "double cover")
 bool checkFacesNotIdentical(const MetrizedNet& net) {
     auto interval_is_point = [&](const Interval& I, double z) {
         const double eps = 0.001;
@@ -656,7 +665,8 @@ bool checkFacesNotIdentical(const MetrizedNet& net) {
 }
 
 
-
+// Implementation of the lower bounds on edge lengths that follow from
+// the stability of the net.
 bool checkLengthLowerbound(MetrizedNet& net) {
     static const auto fun1 = [](double x, double y) {
         return min(0.01, 0.1*min(x, y)) - 1e-10;

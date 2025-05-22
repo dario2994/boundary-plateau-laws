@@ -76,7 +76,10 @@ vector<DerivedOnceNet> parseDerivedOnceNets(string in_file) {
 }
 
 
-// Determines using only convex faces.
+// Determines the lengths of sides using only the constraints given by
+// convex faces. It assumes that the lengths of fixed_darts are known
+// a priori.
+//
 // It returns the length of the longest implication chain that is
 // necessary to determine a length.
 // The length of an implication chain depends on the "pentagonal rules" 
@@ -121,10 +124,6 @@ int lengthsImplications(const DerivedOnceNet& A,
                 determine_edge(f[3], max(x[0], x[1]) + 1);
                 determine_edge(f[4], max(x[0], x[2]) + 1);
                 determine_edge(f[3], max(x[0], x[2]) + 1);
-                
-                //~ determine_edge(f[3], x[0] + x[1] + 1);
-                //~ determine_edge(f[4], x[0] + x[2] + 1);
-                //~ determine_edge(f[3], x[0] + x[2] + 1);
             }
         }
     }
@@ -171,10 +170,8 @@ vector<Dart> findFreeParametersConvex(const DerivedOnceNet& A) {
                 bb += 1ll<<__builtin_ctzll(bb);
             } else bb++;
         }
-        if (!res.empty()) {
-            //~ cout << least_outcome << endl;
+        if (!res.empty()) 
             return res;
-        }
     }
     assert(0);
     return {};
@@ -191,13 +188,6 @@ vector<Dart> findFreeParametersNonConvex(const DerivedOnceNet& A) {
         }
         break;
     }
-    
-    // This is a way to guarantee that if res consists of three adjacent
-    // edges, the central one is not chosen.
-    // This is heuristically convenient.
-    //~ sort(res.begin(), res.end(), [&](Dart d) {
-        //~ return -(A.degree(d.from) + A.degree(d.to));
-    //~ });
     
     if (!res.empty())
         res.pop_back();
@@ -228,27 +218,17 @@ int searchApproximateMetrization(MetrizedNet net,
         cout << endl;
     };
     
-    //~ if (net.totalError() < 10) {
-        //~ if (get_time() % 30000 == 0) {
-            //~ print_status();
-            //~ cout << endl;
-        //~ }
-        //~ boring_counter++;
-        //~ return 0;
-    //~ }
-    
     // If the computation takes too long, we skip.
-    if (get_time() - begin_time > 60 * 60ll * 1e9) 
+    if (get_time() - begin_time > 24 * 60 * 60ll * 1e9) 
         return 2;
+    
     // If we reached the desired precision of the metrization, we 
-    // return.
+    // end the search.
     if (net.totalError() < 1e-5) {
-        
         // The following two checks are run only here because:
         //  - They handle rare pathological situations.
         //  - They are almost always implied by other checks.
         //  - They are slow.
-        
         if (!checkPinsSpecial(net))
             return 0;
             
@@ -260,16 +240,9 @@ int searchApproximateMetrization(MetrizedNet net,
 
         auto pp = embedNet(net);
         savePicture(pp.first, pp.second, "data/metrization/" + to_string(current_net_id) + ".txt");
-        for (const Dart& d: A.darts())
-            if (net.length(d).mid() < 0.1)
-                cout << d << ": " << net.length(d).mid() << "; ";
+        
         return 1;
     }
-    
-    // TODO: We shall memorize the outcome of 
-    //  1. checkPinAngles (actually this is already very fast)
-    //  2. checkNonIntersection
-    //  3. checkPinOutsideConvexFaces
     
     if (!refineMetrizationConvexContinent(net, convex_fixed_darts))
         return 0;
@@ -291,7 +264,9 @@ int searchApproximateMetrization(MetrizedNet net,
         
     if (!checkLengthLowerbound(net))
         return 0;
-        
+    
+    // Computes the maximum error on the lengths at the boundary of
+    // the continent made of convex faces.
     double max_error_boundary_continent = 0;
     for (const Dart& d: A.darts()) {
         if (A.isConvexFace(d) == A.isConvexFace(A.rev(d)))
@@ -300,17 +275,23 @@ int searchApproximateMetrization(MetrizedNet net,
         max_error_boundary_continent = max(max_error_boundary_continent, l);
     }
     
-    vector<Dart> fixed_darts = convex_fixed_darts;
+    // Computes the maximum error among the non_convex_fixed_darts.
     double max_non_convex = 0;
     for (const Dart& d: non_convex_fixed_darts) {
         double l = net.length(d).len();
         max_non_convex = max(max_non_convex, l);
     }
+    
+    // Decide whether we want to refine (i.e., half) the precision
+    // only on convex_fixed_darts or also on non_convex_fixed_darts.
+    vector<Dart> fixed_darts = convex_fixed_darts;
     if (max_non_convex > max_error_boundary_continent) {
         for (const Dart& d: non_convex_fixed_darts)
             fixed_darts.push_back(d);
     }
         
+    // For all possible halvings of the confidence interval for the lengths
+    // of fixed_darts, we call recursively the search.
     int q = ssize(fixed_darts);
     for (int bb = 0; bb < (1<<q); bb++) {
         auto new_net = net;
@@ -345,12 +326,9 @@ int isApproximateMetrizationPossible(const DerivedOnceNet& A) {
     vector<Dart> convex = findFreeParametersConvex(A);
     vector<Dart> non_convex = findFreeParametersNonConvex(A);
     
-    cout << "# of parameters = " << ssize(convex) << " " 
+    clog << "# of parameters = " << ssize(convex) << " " 
                                  << ssize(non_convex) << ", ";
-    
-    //~ for (const Dart& d: convex)
-        //~ cout << d << " ";
-    cout.flush();
+    clog.flush();
     
     return searchApproximateMetrization(MetrizedNet(A), convex, non_convex);
 }
@@ -405,10 +383,4 @@ int main() {
     out << endl;
     out.close();
 }
-
-// Useful regexes
-//~ net id = (.+)\:\t# of parameters = ., \(time = .+\) \n
-//~ net id = +([0-9]+)\:\t# of parameters = ., \(time = .+\)
-//~ (POSSIBLE|SKIPPED)\n
-//~ ([0-9]+ SKIPPED|POSSIBLE)\n
 

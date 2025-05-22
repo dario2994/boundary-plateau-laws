@@ -658,29 +658,41 @@ bool checkFacesNotIdentical(const MetrizedNet& net) {
 
 
 bool checkLengthLowerbound(MetrizedNet& net) {
-    static const auto fun = [&](const Interval& I, const Interval& J) {
-        return 0.1 * min(0.1, min(I.l, J.l)) - 1e-10;
+    static const auto fun1 = [](double x, double y) {
+        return min(0.01, 0.1*min(x, y)) - 1e-10;
+    };
+    
+    static const auto fun2 = [](double x, double y) {
+        return min(0.01, 0.5*min(x, y)) - 1e-10;
     };
     
     const DerivedOnceNet& A = net.A;
+    
+    auto min_adjacent = [&](const Dart& d)->double {
+        vector<double> vals = {net.length(A.next(d)).l};
+        if (A.degree(d.from) == 3)
+            vals.push_back(net.length(A.next(A.next(d))).l);
+        return *min(vals.begin(), vals.end());
+    };
+    
     for (const Dart& d: A.darts()) {
-        Interval& Z = net.length(A.phi(d));
-        double low = fun(net.length(d), net.length(A.phi(d, 2)));
+        Interval& Z = net.length(d);
+        double low = fun1(min_adjacent(d), 
+                          min_adjacent(A.rev(d)));
         Z.l = max(Z.l, low);
         if (Z.empty()) 
             return false;
     }
     
     for (const Dart& d: A.darts()) {
-        if (A.isConcaveAngle(d) 
-            or !A.isConcaveAngle(A.phi(d))
-            or A.isConcaveAngle(A.phi(d, 2)))
+        if (A.degree(d.from) != 2)
             continue;
         
-        Interval& X = net.length(A.phi(d));
-        Interval& Y = net.length(A.phi(d, 2));
-        double low = fun(net.length(d), net.length(A.phi(d, 3)));
         
+        Interval& X = net.length(d);
+        Interval& Y = net.length(A.next(d));
+        double low = fun2(min_adjacent(A.rev(d)), 
+                          min_adjacent(A.rev(A.next(d))));
         if (X.r < low)
             Y.l = max(Y.l, low);
         if (Y.r < low)

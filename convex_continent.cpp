@@ -219,7 +219,7 @@ int searchApproximateMetrization(MetrizedNet net,
     };
     
     // If the computation takes too long, we skip.
-    if (get_time() - begin_time > 24 * 60 * 60ll * 1e9) 
+    if (get_time() - begin_time > 60*60ll * 1e9) 
         return 2;
     
     // If we reached the desired precision of the metrization, we 

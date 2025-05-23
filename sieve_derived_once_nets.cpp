@@ -96,7 +96,6 @@ bool containsLongEdges(const DerivedOnceNet& A) {
         if ((A.degree(pred.from)==2) and (A.faceArea(e)<=4))
             continue;  
         return true;
-        
     }
     return false;
 }

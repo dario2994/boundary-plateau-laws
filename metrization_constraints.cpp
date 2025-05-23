@@ -668,12 +668,8 @@ bool checkFacesNotIdentical(const MetrizedNet& net) {
 // Implementation of the lower bounds on edge lengths that follow from
 // the stability of the net.
 bool checkLengthLowerbound(MetrizedNet& net) {
-    static const auto fun1 = [](double x, double y) {
+    static const auto fun = [](double x, double y) {
         return min(0.01, 0.1*min(x, y)) - 1e-10;
-    };
-    
-    static const auto fun2 = [](double x, double y) {
-        return min(0.01, 0.5*min(x, y)) - 1e-10;
     };
     
     const DerivedOnceNet& A = net.A;
@@ -687,8 +683,8 @@ bool checkLengthLowerbound(MetrizedNet& net) {
     
     for (const Dart& d: A.darts()) {
         Interval& Z = net.length(d);
-        double low = fun1(min_adjacent(d), 
-                          min_adjacent(A.rev(d)));
+        double low = fun(min_adjacent(d), 
+                         min_adjacent(A.rev(d)));
         Z.l = max(Z.l, low);
         if (Z.empty()) 
             return false;
@@ -701,8 +697,8 @@ bool checkLengthLowerbound(MetrizedNet& net) {
         
         Interval& X = net.length(d);
         Interval& Y = net.length(A.next(d));
-        double low = fun2(min_adjacent(A.rev(d)), 
-                          min_adjacent(A.rev(A.next(d))));
+        double low = fun(min_adjacent(A.rev(d)), 
+                         min_adjacent(A.rev(A.next(d))));
         if (X.r < low)
             Y.l = max(Y.l, low);
         if (Y.r < low)

@@ -109,6 +109,7 @@ int lengthsImplications(const DerivedOnceNet& A,
             if (!A.isConvexFace(d))
                 continue;
             const vector<Dart>& f = A.face(d);
+            
             if (ssize(f) <= 3) for (const Dart& e: f) determine_edge(e, 0);
             
             if (ssize(f) == 4) {
@@ -219,30 +220,11 @@ int searchApproximateMetrization(MetrizedNet net,
     };
     
     // If the computation takes too long, we skip.
-    if (get_time() - begin_time > 60*60ll * 1e9) 
+    if (get_time() - begin_time > 10ll * 1e9) 
         return 2;
-    
-    // If we reached the desired precision of the metrization, we 
-    // end the search.
-    if (net.totalError() < 1e-5) {
-        // The following two checks are run only here because:
-        //  - They handle rare pathological situations.
-        //  - They are almost always implied by other checks.
-        //  - They are slow.
-        if (!checkPinsSpecial(net))
-            return 0;
-            
-        if (!checkFacesNotIdentical(net))
-            return 0;
-            
-        if (!checkPinIsVertex(net))
-            return 0;
-
-        auto pp = embedNet(net);
-        savePicture(pp.first, pp.second, "data/metrization/" + to_string(current_net_id) + ".txt");
         
-        return 1;
-    }
+    if (net.totalError() < -0.5)
+        return 0;
     
     if (!refineMetrizationConvexContinent(net, convex_fixed_darts))
         return 0;
@@ -264,6 +246,32 @@ int searchApproximateMetrization(MetrizedNet net,
         
     if (!checkLengthLowerbound(net))
         return 0;
+        
+    // If we reached the desired precision of the metrization, we 
+    // end the search.
+    if (net.totalError() < 1e-5) {
+        // The following checks are run only here because:
+        //  - They handle rare pathological situations.
+        //  - They are almost always implied by other checks.
+        //  - They are slow.
+        
+        if (!checkVerticesOutsideConvexFaces(net))
+            return 0;
+        
+        if (!checkFacesNotIdentical(net))
+            return 0;
+            
+        if (!checkPinIsVertex(net))
+            return 0;
+
+        if (!checkPinsSpecial(net))
+            return 0;
+
+        auto pp = embedNet(net);
+        savePicture(pp.first, pp.second, "data/metrization/" + to_string(current_net_id) + ".txt");
+        
+        return 1;
+    }
     
     // Computes the maximum error on the lengths at the boundary of
     // the continent made of convex faces.
@@ -293,6 +301,11 @@ int searchApproximateMetrization(MetrizedNet net,
     // For all possible halvings of the confidence interval for the lengths
     // of fixed_darts, we call recursively the search.
     int q = ssize(fixed_darts);
+    
+    //~ cout << q << " " << max_error_boundary_continent << " " << max_non_convex << endl;
+    //~ cout << convex_fixed_darts[0] << " " << net.length(convex_fixed_darts[0]) << endl;
+    //~ print_status();
+    
     for (int bb = 0; bb < (1<<q); bb++) {
         auto new_net = net;
         for (int i = 0; i < q; i++) {
@@ -330,7 +343,11 @@ int isApproximateMetrizationPossible(const DerivedOnceNet& A) {
                                  << ssize(non_convex) << ", ";
     clog.flush();
     
-    return searchApproximateMetrization(MetrizedNet(A), convex, non_convex);
+    auto net = MetrizedNet(A);
+    if (!refineMetrizationConvexContinent(net, A.darts()))
+        return 0;
+    
+    return searchApproximateMetrization(net, convex, non_convex);
 }
 
 int main() {
@@ -345,22 +362,25 @@ int main() {
     // Doubled: 2202, 2287
     
     vector<int> new_survivors;
-    for (int id: {278, 603, 746, 948, 1027, 1046, 1120, 1598, 1659, 1680, 1839, 2053, 2474, 2513}) {
-        cout << "net id = " << setw(4) << id << ":\t";
+    for (int id: survivors) {
+        if (id <= 2155)
+            continue;
+        clog << "net id = " << setw(4) << id << ":\t";
         current_net_id = id;
+        clog.flush();
         auto A = parseDerivedOnceNets("data/derived_once_computer.txt")[id];
         
         begin_time = get_time();
         int outcome = isApproximateMetrizationPossible(A);
         double duration_s = (get_time() - begin_time) / 1e9;
         
-        cout.precision(2);
-        cout << "(time = " << fixed << setw(6) << duration_s << ") ";
-        if (outcome == 1) cout << "POSSIBLE";
-        if (outcome == 2) cout << "SKIPPED";
+        clog.precision(2);
+        clog << "(time = " << fixed << setw(6) << duration_s << ") ";
+        if (outcome == 1) clog << "POSSIBLE";
+        if (outcome == 2) clog << "SKIPPED";
         if (outcome != 0)
             new_survivors.push_back(id);
-        cout << endl;
+        clog << endl;
     }
     
     StopWatch::printState();

@@ -1,7 +1,6 @@
 import numpy as np
 import plotly.graph_objects as go
 import sys
-import webbrowser
 
 
 def great_circle_path(p, v, length, num_points=50):
@@ -55,7 +54,6 @@ def draw_geodesic_net(vertices, edges, output_file):
     
     # Save and show
     fig.write_html(output_file)
-    webbrowser.open(output_file)
 
 def main():
     if len(sys.argv) != 3:

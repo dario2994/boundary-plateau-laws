@@ -177,12 +177,31 @@ bool refineMetrizationConvexContinent(MetrizedNet& net,
     return net.totalError() >= 0;
 }
 
+
+template<typename T>
+T operator*(const array<T, 3>& X, const array<T, 3>& Y) {
+    return X[0]*Y[0] + X[1]*Y[1] + X[2]*Y[2];
+}
+
+template<typename T>
+array<T, 3> operator-(const array<T, 3>& X, const array<T, 3>& Y) {
+    return {X[0]-Y[0], X[1]-Y[1], X[2]-Y[2]};
+}
+
+template<typename T>
+array<T, 3> operator^(const array<T, 3>& X, const array<T, 3>& Y) {
+    return {X[1]*Y[2]-X[2]*Y[1], X[2]*Y[0]-X[0]*Y[2], X[0]*Y[1]-X[1]*Y[0]};
+}
+
 template <typename T>
 T det(const array<T, 3>& A, const array<T, 3>& B, const array<T, 3>& C) {
-    return A[0]*(B[1]*C[2] - B[2]*C[1])
-         + A[1]*(B[2]*C[0] - B[0]*C[2])
-         + A[2]*(B[0]*C[1] - B[1]*C[0]);
+    return A * (B ^ C);
+    //~ A[0]*(B[1]*C[2] - B[2]*C[1])
+         //~ + A[1]*(B[2]*C[0] - B[0]*C[2])
+         //~ + A[2]*(B[0]*C[1] - B[1]*C[0]);
 }
+
+
 
 // Checks that the equators corresponding to any three edges going to
 // a pin are concurrent.
@@ -412,6 +431,36 @@ bool checkNonIntersection(MetrizedNet& net) {
     return true;
 }
 
+// Returns true if P belongs strictly to the given convex face, where
+// we assume that the dart root is (e_1, e_2).
+// If up_to_symmetry is true, then this returns true if either P or -P
+// belongs strictly to the convex face. 
+bool strictlyInsideConvexFace(const MetrizedNet& net, 
+                        array<Interval, 3> P, 
+                        const Dart& root,
+                        const vector<Dart>& face,
+                        bool up_to_symmetry = false) {
+    assert(net.A.isConvexFace(face));
+    
+    vector<int> signs;
+    for (const Dart& d: face) {
+        const auto& Z = applyIsometry(net.getIsometry(root, d), {0, 0, 1});
+        int s = sign(P * Z);
+        signs.push_back(s);
+        
+        if (s == 0 or s != signs[0])
+            break; // For performance.
+    }
+    bool same_sign = true;
+    for (int s: signs) 
+        same_sign &= s != 0 and s == signs[0];
+    
+    if (!same_sign)
+        return false;
+        
+    return up_to_symmetry or signs[0] == -1;
+}
+
 // Checks that no pins fall strictly inside a convex face.
 bool checkPinOutsideConvexFaces(const MetrizedNet& net) {
     StopWatch _("checkPinOutsideConvexFaces");
@@ -422,45 +471,18 @@ bool checkPinOutsideConvexFaces(const MetrizedNet& net) {
         const Dart& other = net.A.concaveAngles()[j];
         const auto& X = applyIsometry(net.getIsometryToPin(root, root), {0, 0, 1});
         const auto& Y = applyIsometry(net.getIsometryToPin(root, other), {0, 0, 1});
+        const auto& P = X^Y;
         for (const auto& f: net.A.faces()) {
             if (!net.A.isConvexFace(f))
                 continue;
+            
             // Check that none of the two intersections of X and Y lie
             // in the convex face f.
-            
-            vector<int> signs;
-            for (const Dart& d: f) {
-                const auto& Z = applyIsometry(net.getIsometry(root, d), {0, 0, 1});
-                int s = sign(det(X, Y, Z));
-                signs.push_back(s);
-                
-                if (s == 0 or s != signs[0])
-                    break; // For performance.
-            }
-            bool same_sign = true;
-            for (int s: signs) 
-                same_sign &= s != 0 and s == signs[0];
-                
-            if (same_sign)
+            if (strictlyInsideConvexFace(net, P, root, f, true))
                 return false;
         }
     }
     return true;
-}
-
-template<typename T>
-T operator*(const array<T, 3>& X, const array<T, 3>& Y) {
-    return X[0]*Y[0] + X[1]*Y[1] + X[2]*Y[2];
-}
-
-template<typename T>
-array<T, 3> operator-(const array<T, 3>& X, const array<T, 3>& Y) {
-    return {X[0]-Y[0], X[1]-Y[1], X[2]-Y[2]};
-}
-
-template<typename T>
-array<T, 3> operator^(const array<T, 3>& X, const array<T, 3>& Y) {
-    return {X[1]*Y[2]-X[2]*Y[1], X[2]*Y[0]-X[0]*Y[2], X[0]*Y[1]-X[1]*Y[0]};
 }
 
 // If it returns true, the given points belong to a strict hemisphere.
@@ -663,6 +685,20 @@ bool checkFacesNotIdentical(const MetrizedNet& net) {
     }
     return true;
 }
+
+bool checkVerticesOutsideConvexFaces(const MetrizedNet& net) {
+    for (const Dart& root: net.A.darts()) {
+        for (const auto& face: net.A.faces()) {
+            if (!net.A.isConvexFace(face))
+                continue;
+            if (strictlyInsideConvexFace(net, array<Interval,3>{1, 0, 0}, root, face))
+                return false;
+        }
+    }
+    return true;
+}
+
+
 
 
 // Implementation of the lower bounds on edge lengths that follow from

@@ -57,10 +57,11 @@ int pinContribution(const DerivedOnceNet& A, Dart d) {
     return contribution;
 }
 
-// Whether the associated net may contain an edge strictly longer than pi.
-bool containsLongEdges(const DerivedOnceNet& A) {
+
+// Whether the net may contain an edge >= pi.
+bool mayHaveEdgesGePi(const DerivedOnceNet& A) {
     if (containsBiangle(A))
-        return false;
+        return true;
 
     for (Dart d: A.darts()) {
         Dart e = A.rev(d);
@@ -71,33 +72,16 @@ bool containsLongEdges(const DerivedOnceNet& A) {
                 6 + pinContribution(A, d) + pinContribution(A, e))
             continue;
 
-        //aggiunto da Camillo, vedi Lemma 4.7(iv)&(v)
-
-        if (((A.degree(d.to)==2) or (A.degree(d.from)==2))
-            and ((A.faceArea(d)<=pinContribution(A,d)+4) 
-                or (A.faceArea(e)<=pinContribution(A,e)+4)))
-            continue;
-
-        if ((A.degree((A.phi(d)).to)==2) and (A.faceArea(d)<=4))
-            continue;
-
-        if ((A.degree((A.phi(e)).to)==2) and (A.faceArea(e)<=4))
-            continue;
-        
-        Dart pred=d;
-        for (int i=0; i <(A.faceType(d)).first-1; i++) 
-            pred=A.phi(pred);
-        if ((A.degree(pred.from)==2) and (A.faceArea(d)<=4))
-                continue;
-        
-        pred=e;
-        for (int i=0; i <(A.faceType(d)).first-1; i++) 
-        pred=A.phi(pred);
-        if ((A.degree(pred.from)==2) and (A.faceArea(e)<=4))
-            continue;  
         return true;
     }
     return false;
+}
+
+// Whether the net may contain an edge > pi.
+bool mayHaveEdgesGtPi(const DerivedOnceNet& A) {
+    if (containsBiangle(A))
+        return false;
+    return mayHaveEdgesGePi(A);
 }
 
 int sumAreaConvexFaces(const DerivedOnceNet& A) {
@@ -157,7 +141,7 @@ bool criterionSimpleBoundary(const DerivedOnceNet& A) {
 }
 
 bool criterionAdjacentConcaveAngles(const DerivedOnceNet& A) {
-    if (containsLongEdges(A))
+    if (mayHaveEdgesGePi(A))
         return true; // We cannot apply this criterion.
     for (const Dart& d: A.darts()) {
         if (A.isConcaveAngle(d) and A.isConcaveAngle(A.phi(d)) 
@@ -371,7 +355,8 @@ bool criterionPent1(const DerivedOnceNet& A) {
 }
 
 bool criterionTriangleAndNonConvexMerge(const DerivedOnceNet& A) {
-    if (containsLongEdges(A)==true) return true;
+    if (mayHaveEdgesGePi(A)) 
+        return true;
     for (Dart d:A.darts()) {
         if (A.degree(d.to)!=2) continue;
         Dart e=A.rev(d);
@@ -426,7 +411,8 @@ bool ThreeconsecutiveQuadrPent(const DerivedOnceNet &A) {
 }
 
 bool NoSpecialHexagon(const DerivedOnceNet& A) {
-    if (containsLongEdges(A)==true) return true;
+    if (mayHaveEdgesGePi(A)) 
+        return true;
     for (Dart d:A.darts()) {
         if (A.faceType(d)!=pair<int,int> {6,2}) continue;
         Dart tour=d;
@@ -449,7 +435,8 @@ bool NoSpecialHexagon(const DerivedOnceNet& A) {
 }
 
 bool criterionHexagonQuadrilateral(const DerivedOnceNet& A) {
-    if (containsLongEdges(A)==true) return true;
+    if (mayHaveEdgesGePi(A)) 
+        return true;
     for (Dart d:A.darts()) {
         if (A.faceType(d)!=pair<int,int> {6,1}) continue;
         Dart tour=d;
@@ -467,7 +454,8 @@ bool criterionMetrization(const DerivedOnceNet& A) {
 }
 
 bool criterionSpecialHeptagon(const DerivedOnceNet& A) {
-    if (containsLongEdges(A)==true) return true;
+    if (mayHaveEdgesGePi(A)) 
+        return true;
     for (Dart d:A.darts()) {
         if ((A.faceType(d)!=pair<int,int> {7,2}) or
             (A.isConcaveAngle(d)==false)) continue;
@@ -503,7 +491,8 @@ bool criterionSpecialHeptagon(const DerivedOnceNet& A) {
 }
 
 bool criterionQuadrilateralHeptagon(const DerivedOnceNet &A) {
-    if (containsLongEdges(A)==true) return true;
+    if (mayHaveEdgesGePi(A)) 
+        return true;
     for (Dart d:A.darts()) {
         if ((A.faceType(d)!=pair<int,int> {7,1}) or
             (A.isConcaveAngle(d)==false)) continue;
@@ -537,24 +526,24 @@ int main() {
         {"adjacent concave angles\t", criterionAdjacentConcaveAngles},
         {"concave angles are far\t", criterionConcaveAnglesFar},
         {"convex faces intersection", criterionConvexFacesIntersection},
-        {"four pentagons\t\t", criterionFourPentagons},
+        //~ {"four pentagons\t\t", criterionFourPentagons},
         {"quadrilaterals are convex", criterionQuadrilateralsAreConvex},
         {"triangles are convex\t", criterionTrianglesAreConvex},
-        {"three quadrilaterals\t", criterionThreeQuadrilaterals},
-        {"triangle quadrilateral\t", criterionTriangleQuadrilateral},
-        {"pentagon 3 quadrilaterals", criterionPentagonThreeQuadrilaterals},
-        {"triangle quadrilateral 2", criterionTriangleQuadrilateral2},
-        {"2 quadrilaterals 3 pentagons", criterionTwoQuadrilateralsThreePentagons},
+        //~ {"three quadrilaterals\t", criterionThreeQuadrilaterals},
+        //~ {"triangle quadrilateral\t", criterionTriangleQuadrilateral},
+        //~ {"pentagon 3 quadrilaterals", criterionPentagonThreeQuadrilaterals},
+        //~ {"triangle quadrilateral 2", criterionTriangleQuadrilateral2},
+        //~ {"2 quadrilaterals 3 pentagons", criterionTwoQuadrilateralsThreePentagons},
         {"consecutive degree 2 vertices", criterionConsecutiveVerticesDegree2},
-        {"metrization\t\t", criterionMetrization},
-        {"pentagon 2 quadr. 2 bisectors",criterionPentagonTwoQuadrilateralsTwo},
-        {"pentagon {5,1} + quadrilaterals", criterionPent1},
-        {"convex triangle + {n,1} face",criterionTriangleAndNonConvexMerge},
-        {"pentagon 2 quadrilaterals",criterionPentagon2Quadrilaterals},
-        {"special hexagon {6,2}\t",NoSpecialHexagon},
-        {"hexagon {6,1} and quadrilateral",criterionHexagonQuadrilateral},
-        {"special heptagon {7,2}\t",criterionSpecialHeptagon},
-        {"Heptagon {7,1} + quadrilateral",criterionQuadrilateralHeptagon},
+        //~ {"metrization\t\t", criterionMetrization},
+        //~ {"pentagon 2 quadr. 2 bisectors",criterionPentagonTwoQuadrilateralsTwo},
+        //~ {"pentagon {5,1} + quadrilaterals", criterionPent1},
+        //~ {"convex triangle + {n,1} face",criterionTriangleAndNonConvexMerge},
+        //~ {"pentagon 2 quadrilaterals",criterionPentagon2Quadrilaterals},
+        //~ {"special hexagon {6,2}\t",NoSpecialHexagon},
+        //~ {"hexagon {6,1} and quadrilateral",criterionHexagonQuadrilateral},
+        //~ {"special heptagon {7,2}\t",criterionSpecialHeptagon},
+        //~ {"Heptagon {7,1} + quadrilateral",criterionQuadrilateralHeptagon},
     };
     
     map<string, vector<int>> excluded_by; 
@@ -670,8 +659,10 @@ int main() {
     out << endl;
     out.close();
     
-    //~ for (int x: excluded_by["three quadrilaterals\t"])
-        //~ cout << x << ", ";
+    
+    for (int id: survivors)
+        if (mayHaveEdgesGtPi(derived_once[id]))
+            cout << id << endl;
 }
 
 // 788

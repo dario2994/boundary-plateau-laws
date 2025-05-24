@@ -76,15 +76,17 @@ class MetrizedNet {
         for (Dart d: A.darts()) {
             Interval& I = length(d);
             if (A.isConvexFace(d)) {
-                I.intersect(Interval(0.01, M_PI-0.001));
                 int q = ssize(A.face(d));
-                assert(q != 2);
+                assert(2 <= q and q <= 5);
                 
                 static const double ell_T = acos(-1.0/3);
                 
+                if (q == 2)
+                    I.intersect(Interval(M_PI));
                 if (q == 3) 
-                    I = Interval(ell_T);
-                
+                    I.intersect(Interval(ell_T));
+                if (q == 4)
+                    I.intersect(Interval(0.01, M_PI-0.001));
                 if (q == 5)
                     I.intersect(Interval(0, ell_T-1e-5));
             }

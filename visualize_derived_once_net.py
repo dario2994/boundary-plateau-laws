@@ -4,7 +4,17 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from matplotlib.patches import Arc
 import numpy as np
+import sys
 
+# Ensure a net ID is provided
+if len(sys.argv) != 2:
+    sys.exit("Usage: python visualize_derived_once_net.py <net_id>")
+
+net_id = sys.argv[1]
+
+# Validate net_id
+if not net_id.isdigit():
+    sys.exit("Error: net_id must be a positive integer.")
 
 def parse_derived_once_nets():
     lines = []
@@ -129,9 +139,9 @@ def draw_derived_once_net(fig, _id, V, E, darts, next_dart, concave_angles, fake
             
 
 derived_once_nets = parse_derived_once_nets()
-survivors = []
-with open('data/derived_once_survivors.txt') as in_file:
-    survivors = list(map(int, in_file.readlines()[1].split()))
+# ~ survivors = []
+# ~ with open('data/derived_once_survivors.txt') as in_file:
+    # ~ survivors = list(map(int, in_file.readlines()[1].split()))
 
 plt.ioff()
 # We reuse the same figure as a workaround for a memory leak in 
@@ -139,7 +149,8 @@ plt.ioff()
 fig = plt.figure()
 
 # ~ for A in derived_once_nets:
-for k in survivors:
+# ~ for k in [1554]:
 # ~ for k in [4, 392, ...]:
-    draw_derived_once_net(fig, k, *(derived_once_nets[k]))
+    
+draw_derived_once_net(fig, net_id, *(derived_once_nets[net_id]))
 

@@ -141,8 +141,6 @@ bool criterionSimpleBoundary(const DerivedOnceNet& A) {
 }
 
 bool criterionAdjacentConcaveAngles(const DerivedOnceNet& A) {
-    if (mayHaveEdgesGePi(A))
-        return true; // We cannot apply this criterion.
     for (const Dart& d: A.darts()) {
         if (A.isConcaveAngle(d) and A.isConcaveAngle(A.phi(d)) 
                 and ssize(A.face(d)) != 3)
@@ -628,12 +626,12 @@ int main() {
             }
         }
 
-        if (survives) {
-            for (int id2: graylisted) if (id2 == id) {
-                survives = false;
-                excluded_gray.push_back(id);
-            }
-        }
+        //~ if (survives) {
+            //~ for (int id2: graylisted) if (id2 == id) {
+                //~ survives = false;
+                //~ excluded_gray.push_back(id);
+            //~ }
+        //~ }
 
         if (survives) 
             survivors.push_back(id);

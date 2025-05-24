@@ -151,6 +151,6 @@ fig = plt.figure()
 # ~ for A in derived_once_nets:
 # ~ for k in [1554]:
 # ~ for k in [4, 392, ...]:
-    
-draw_derived_once_net(fig, net_id, *(derived_once_nets[net_id]))
+
+draw_derived_once_net(fig, net_id, *(derived_once_nets[int(net_id)]))
 

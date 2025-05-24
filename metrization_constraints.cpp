@@ -561,7 +561,7 @@ bool checkPinsSpecial(const MetrizedNet& net) {
             if (to_pin.to == d.from or to_pin.to == d.to)
                 continue;
             
-            assert(applyIsometry(T, {1, 0, 0})[2].r < 0);
+            //~ assert(applyIsometry(T, {1, 0, 0})[2].r < 0);
             if (applyIsometry(T, {1, 0, 0})[2].r < 0)
                 len = min(len, intersectWithEquator(conj(T), false));
         }
@@ -686,6 +686,7 @@ bool checkFacesNotIdentical(const MetrizedNet& net) {
     return true;
 }
 
+// No vertex can belong to the interior of a convex face.
 bool checkVerticesOutsideConvexFaces(const MetrizedNet& net) {
     for (const Dart& root: net.A.darts()) {
         for (const auto& face: net.A.faces()) {

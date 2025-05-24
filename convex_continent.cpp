@@ -220,7 +220,7 @@ int searchApproximateMetrization(MetrizedNet net,
     };
     
     // If the computation takes too long, we skip.
-    if (get_time() - begin_time > 10ll * 1e9) 
+    if (get_time() - begin_time > 10 * 60ll * 1e9) 
         return 2;
         
     if (net.totalError() < -0.5)
@@ -247,14 +247,11 @@ int searchApproximateMetrization(MetrizedNet net,
     if (!checkLengthLowerbound(net))
         return 0;
         
-    // If we reached the desired precision of the metrization, we 
-    // end the search.
-    if (net.totalError() < 1e-5) {
+    if (net.totalError() < 1e-2) {
         // The following checks are run only here because:
         //  - They handle rare pathological situations.
         //  - They are almost always implied by other checks.
         //  - They are slow.
-        
         if (!checkVerticesOutsideConvexFaces(net))
             return 0;
         
@@ -266,7 +263,11 @@ int searchApproximateMetrization(MetrizedNet net,
 
         if (!checkPinsSpecial(net))
             return 0;
+    }
 
+    // If we reached the desired precision of the metrization, we 
+    // end the search.
+    if (net.totalError() < 1e-5) {
         auto pp = embedNet(net);
         savePicture(pp.first, pp.second, "data/metrization/" + to_string(current_net_id) + ".txt");
         
@@ -301,11 +302,6 @@ int searchApproximateMetrization(MetrizedNet net,
     // For all possible halvings of the confidence interval for the lengths
     // of fixed_darts, we call recursively the search.
     int q = ssize(fixed_darts);
-    
-    //~ cout << q << " " << max_error_boundary_continent << " " << max_non_convex << endl;
-    //~ cout << convex_fixed_darts[0] << " " << net.length(convex_fixed_darts[0]) << endl;
-    //~ print_status();
-    
     for (int bb = 0; bb < (1<<q); bb++) {
         auto new_net = net;
         for (int i = 0; i < q; i++) {
@@ -351,7 +347,7 @@ int isApproximateMetrizationPossible(const DerivedOnceNet& A) {
 }
 
 int main() {
-    ifstream in("data/derived_once_survivors.txt");
+    ifstream in("data/derived_once_metric_survivors.txt");
     int cnt_survivors;
     in >> cnt_survivors;
     vector<int> survivors(cnt_survivors);

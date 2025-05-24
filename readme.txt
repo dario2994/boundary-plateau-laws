@@ -11,19 +11,27 @@ It reads the list of derived-twice nets from data/derived_twice_computer.txt
 and creates data/derived_once_computer.txt, data/derived_once_human.txt,
 data/derived_once_for_visualization.txt.
 These are lists of candidates for being once-twice nets.
-
-c) python visualize_derived_once_nets.py
-It requires ten minutes to be executed.
-It reads the list of derived-once nets from data/derived_once_for_visualization.txt
-and, for each derived-once net, creates data/derived_once_images/id.png
-where id is the id of the net.
-ACHTUNG: It reads from data/derived_once_for_visualization.txt as the
-         python library we are using for planar embedding does not 
-         support multiple edges and thus we tweak the nets so that
-         they don't have multiple edges.
          
-d) ./sieve_derived_once_nets
+c) ./sieve_derived_once_nets
 It requires a fraction of a second to be executed.
 It reads the list of derived-once nets from data/derived_once_computer.txt
 and applies a sequence of criteria to prove that some nets are not realizable.
 The ids of the nets that survive are saved in data/derived_once_survivors.txt
+
+d) ./convex_continent
+Requires <= 24 hours to be executed.
+It reads the list of survived derived-once nets from data/derived_once_survivors.txt.
+For each of them, it tries to embed it in the sphere.
+It either manages to embed it (up to error ~0.00001) or proves that it 
+cannot be embedded.
+The ids of the embeddable nets are saved in data/derived_once_metric_survivors.txt
+
+e) python run_visualization net_id
+It visualizes the "combinatorial" derived once net with net_id as well
+as an embedding in the sphere (if one was found).
+
+It reads the list of derived-once nets from data/derived_once_for_visualization.txt
+ACHTUNG: It reads from data/derived_once_for_visualization.txt as the
+         python library we are using for planar embedding does not 
+         support multiple edges and thus we tweak the nets so that
+         they don't have multiple edges.

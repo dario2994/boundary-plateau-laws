@@ -620,10 +620,12 @@ bool checkPinIsVertex(const MetrizedNet& net) {
         for (const Dart& to_pin: A.concaveAngles()) {
             auto T = net.getIsometryToPin(root, to_pin);
             auto equator = applyIsometry(T, {0, 0, 1});
-            can_be_pin &= (equator * array<Interval, 3>{0, 0, 1}).containsZero();
+            can_be_pin &= (equator * array<Interval, 3>{1, 0, 0}).containsZero();
         }
-        if (can_be_pin)
+        if (can_be_pin) {
+            cout << root << endl;
             return true;
+        }
     }
     return false;
 }

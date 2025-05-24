@@ -363,8 +363,10 @@ int main() {
     
     vector<int> new_survivors;
     for (int id: survivors) {
-        if (id <= 2155)
+        if (id == 4 or id == 1773 or id == 2155) {
+            new_survivors.push_back(id);
             continue;
+        }
         clog << "net id = " << setw(4) << id << ":\t";
         current_net_id = id;
         clog.flush();
@@ -385,7 +387,7 @@ int main() {
     
     StopWatch::printState();
     
-    return 0;
+    //~ return 0;
     
     //~ cout << cnt1 << " " << cnt2 << " " << cnt3 << " " << cnt4 << endl;
     
@@ -394,9 +396,9 @@ int main() {
         cout << id << " ";
     cout << endl;
     
-    return 0;
+    //~ return 0;
     
-    ofstream out("data/derived_once_survivors.txt");
+    ofstream out("data/derived_once_metric_survivors.txt");
     out << new_survivors.size() << endl;
     for (int id: new_survivors)
         out << id << " ";

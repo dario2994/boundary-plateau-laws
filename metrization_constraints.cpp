@@ -622,10 +622,8 @@ bool checkPinIsVertex(const MetrizedNet& net) {
             auto equator = applyIsometry(T, {0, 0, 1});
             can_be_pin &= (equator * array<Interval, 3>{1, 0, 0}).containsZero();
         }
-        if (can_be_pin) {
-            cout << root << endl;
+        if (can_be_pin) 
             return true;
-        }
     }
     return false;
 }

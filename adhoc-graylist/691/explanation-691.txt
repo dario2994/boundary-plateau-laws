@@ -1,1 +1,1 @@
-The net 2192 is obtained from the Heppes 6 removing two edges AB and CD such that A and C are antipodal and B is the vertex of one quadrilateral, while D is the vertex of a second distinct quadrilateral. For instance in Figure 9 we could remove the edges V_1V_9 and V_2V_{14}.
+The net 691 is obtained from the Heppes 6 removing two edges AB and CD such that A and C are antipodal and B is the vertex of one quadrilateral, while D is the vertex of a second distinct quadrilateral. For instance in Figure 9 we could remove the edges V_1V_9 and V_2V_{14}.

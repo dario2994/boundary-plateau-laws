@@ -199,6 +199,7 @@ vector<Dart> findFreeParametersNonConvex(const DerivedOnceNet& A) {
 // TODO: Keeping these globally is horrible.
 long long begin_time;
 int current_net_id;
+bool expected_answer;
 
 // Return values:
 // 0 no
@@ -209,18 +210,9 @@ int searchApproximateMetrization(MetrizedNet net,
                                  const vector<Dart>& non_convex_fixed_darts) {
     const DerivedOnceNet& A = net.A;
     
-    auto print_status = [&]() {
-        cout << "State: " << net.totalError() << endl;
-        for (int i = 0; i < 2*A.E(); i += 2) {
-            Dart d = A.dart(i);
-            cout << d << " " << net.length(d) << "\t" << 
-                    net.length(d).len() << endl;
-        }
-        cout << endl;
-    };
-    
     // If the computation takes too long, we skip.
-    if (get_time() - begin_time > 10 * 60ll * 1e9) 
+    // The slowest net, which is 72, requires 38 hours.
+    if (get_time() - begin_time > 100 * 60 * 60ll * 1e9) 
         return 2;
         
     if (net.totalError() < -0.5)
@@ -247,7 +239,10 @@ int searchApproximateMetrization(MetrizedNet net,
     if (!checkLengthLowerbound(net))
         return 0;
         
-    if (net.totalError() < 1e-2) {
+    bool execute_slow_checks = net.totalError() < 1e-2 
+                               and !expected_answer;
+    
+    if (execute_slow_checks) {
         // The following checks are run only here because:
         //  - They handle rare pathological situations.
         //  - They are almost always implied by other checks.
@@ -347,7 +342,7 @@ int isApproximateMetrizationPossible(const DerivedOnceNet& A) {
 }
 
 int main() {
-    ifstream in("data/derived_once_metric_survivors.txt");
+    ifstream in("data/derived_once_survivors.txt");
     int cnt_survivors;
     in >> cnt_survivors;
     vector<int> survivors(cnt_survivors);
@@ -356,13 +351,23 @@ int main() {
     in.close();
     
     // Doubled: 2202, 2287
+    set<int> expected_possible = {72, 278, 434, 521, 691, 936, 949, 1011, 1034, 1351, 1405, 1514, 1829, 2119, 2192, 2312, 2454, 2676, 2700, 2769, 2799, 2891, 3048, 3222, 3233, 3295};
+    // To be skipped because we cannot prove that their edges belong
+    // to [0, pi].
+    set<int> skip_yes = {1405, 2700};
+    set<int> skip_no = {1508, 1773, 2018, 2614};
     
     vector<int> new_survivors;
     for (int id: survivors) {
-        if (id == 4 or id == 1773 or id == 2155) {
+        if (skip_yes.count(id)) {
             new_survivors.push_back(id);
             continue;
         }
+        if (skip_no.count(id)) {
+            continue;
+        }
+        expected_answer = expected_possible.count(id);
+
         clog << "net id = " << setw(4) << id << ":\t";
         current_net_id = id;
         clog.flush();
@@ -382,17 +387,6 @@ int main() {
     }
     
     StopWatch::printState();
-    
-    //~ return 0;
-    
-    //~ cout << cnt1 << " " << cnt2 << " " << cnt3 << " " << cnt4 << endl;
-    
-    cout << "New survivors num = " << new_survivors.size() << endl;
-    for (int id: new_survivors)
-        cout << id << " ";
-    cout << endl;
-    
-    //~ return 0;
     
     ofstream out("data/derived_once_metric_survivors.txt");
     out << new_survivors.size() << endl;

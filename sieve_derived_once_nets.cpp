@@ -547,22 +547,22 @@ int main() {
     map<string, vector<int>> excluded_by; 
     vector<int> survivors;
     
-    auto parse_subdirectories = [&](string directory_path) {
-        vector<int> subdirs;
+    //~ auto parse_subdirectories = [&](string directory_path) {
+        //~ vector<int> subdirs;
 
-        for (const auto& entry: filesystem::directory_iterator(directory_path)) {
-            if (entry.is_directory()) {
-                string filename = entry.path().filename().string();
-                int num = stoi(filename);
-                subdirs.push_back(num);
-            } 
-        }
+        //~ for (const auto& entry: filesystem::directory_iterator(directory_path)) {
+            //~ if (entry.is_directory()) {
+                //~ string filename = entry.path().filename().string();
+                //~ int num = stoi(filename);
+                //~ subdirs.push_back(num);
+            //~ } 
+        //~ }
         
-        return subdirs;
-    }; 
-    vector<int> blacklisted = parse_subdirectories("adhoc-blacklist/");
-    vector<int> whitelisted = parse_subdirectories("adhoc-whitelist/");
-    vector<int> graylisted  = parse_subdirectories("adhoc-graylist/");    
+        //~ return subdirs;
+    //~ }; 
+    //~ vector<int> blacklisted = parse_subdirectories("adhoc-blacklist/");
+    //~ vector<int> whitelisted = parse_subdirectories("adhoc-whitelist/");
+    //~ vector<int> graylisted  = parse_subdirectories("adhoc-graylist/");    
     //~ vector<DerivedOnceNet> derived_once_old = 
         //~ parseDerivedOnceNets("data/derived_once_computer_old.txt");
         
@@ -596,9 +596,9 @@ int main() {
                            //~ "adhoc-whitelist/" + to_string(new_id));
     //~ }
 
-    vector<int> excluded_white;
-    vector<int> excluded_black;
-    vector<int> excluded_gray;
+    //~ vector<int> excluded_white;
+    //~ vector<int> excluded_black;
+    //~ vector<int> excluded_gray;
 
     for (int id = 0; id < ssize(derived_once); id++) {
         const DerivedOnceNet& A = derived_once[id];
@@ -612,19 +612,19 @@ int main() {
                 break;
             }
         }
-        if (survives) {
-            for (int id2: blacklisted) if (id2 == id) {
-                survives = false;
-                excluded_black.push_back(id);
-            }
-        }
+        //~ if (survives) {
+            //~ for (int id2: blacklisted) if (id2 == id) {
+                //~ survives = false;
+                //~ excluded_black.push_back(id);
+            //~ }
+        //~ }
 
-        if (survives) {
-            for (int id2: whitelisted) if (id2 == id) {
-                survives = false;
-                excluded_white.push_back(id);
-            }
-        }
+        //~ if (survives) {
+            //~ for (int id2: whitelisted) if (id2 == id) {
+                //~ survives = false;
+                //~ excluded_white.push_back(id);
+            //~ }
+        //~ }
 
         //~ if (survives) {
             //~ for (int id2: graylisted) if (id2 == id) {
@@ -643,10 +643,10 @@ int main() {
         cout << name << "\t\t" << excluded_by[name].size() << endl;
     }
     
-    cout << "Blacklisted ad hoc\t\t\t" << excluded_black.size() << endl;
-    cout << "Whitelisted\t\t\t\t" << excluded_white.size() << endl;
-    cout << "Graylisted\t\t\t\t" << excluded_gray.size() << endl;
-    cout << endl;    
+    //~ cout << "Blacklisted ad hoc\t\t\t" << excluded_black.size() << endl;
+    //~ cout << "Whitelisted\t\t\t\t" << excluded_white.size() << endl;
+    //~ cout << "Graylisted\t\t\t\t" << excluded_gray.size() << endl;
+    //~ cout << endl;    
     
     cout << "# survivors = " << survivors.size() << endl;
     
@@ -658,6 +658,7 @@ int main() {
     out.close();
     
     
+    cout << "Nets which may have edges strictly longer than pi: " << endl;
     for (int id: survivors)
         if (mayHaveEdgesGtPi(derived_once[id]))
             cout << id << endl;

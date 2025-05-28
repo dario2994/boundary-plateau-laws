@@ -34,7 +34,7 @@ ostream& operator <<(ostream& out, const Interval& I) {
     return out;
 }
 
-// Returns the smallest interval containing all the given value.
+// Returns the smallest interval containing all the given values.
 Interval hull(vector<double> vec) { 
     return Interval(*min_element(vec.begin(), vec.end()), 
                     *max_element(vec.begin(), vec.end()));

@@ -26,8 +26,7 @@ struct Interval {
         assert(!empty());
         return (l + r) / 2;
     }
-    bool contains(double x) const { return l <= x and x <= r; }
-    bool containsZero() const { return l <= 0 and 0 <= r; } // TODO: Remove.
+    bool containsZero() const { return l <= 0 and 0 <= r; } 
 };
 
 ostream& operator <<(ostream& out, const Interval& I) {
@@ -35,7 +34,7 @@ ostream& operator <<(ostream& out, const Interval& I) {
     return out;
 }
 
-// Returns the smallest interval containing all the given intervals.
+// Returns the smallest interval containing all the given value.
 Interval hull(vector<double> vec) { 
     return Interval(*min_element(vec.begin(), vec.end()), 
                     *max_element(vec.begin(), vec.end()));
@@ -142,16 +141,8 @@ Interval cos(const Interval& I) {
     return Interval(l, r);
 }
 
-double totalLen(const vector<Interval>& vec) {
-    double res = 0;
-    for (const Interval& I: vec) {
-        if (I.empty())
-            return -1;
-        res += I.len();
-    }
-    return res;
-}
-
+//Returns 1, -1, 0 if respectively I is an interval of positive values, 
+// an interval of negative values, or it contains zero.
 int sign(const Interval& I) {
     return (I.l > 0) - (I.r < 0);
 }

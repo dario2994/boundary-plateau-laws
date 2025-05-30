@@ -341,6 +341,22 @@ int isApproximateMetrizationPossible(const DerivedOnceNet& A) {
     return searchApproximateMetrization(net, convex, non_convex);
 }
 
+void specialCase2700() {
+    auto A = parseDerivedOnceNets("data/derived_once_computer.txt")[2700];
+    auto net = MetrizedNet(A);
+        
+    const double ell_triangle = acos(-1.0/3);
+    const double ell_square = 2*atan(sqrt(0.5));
+    net.length(A.dart(0)) = ell_square;
+    net.length(A.dart(2)) = ell_square;
+    net.length(A.dart(4)) = 2*M_PI - ell_triangle;
+    net.length(A.dart(6)) = ell_square;
+    net.length(A.dart(8)) = ell_square;
+    
+    auto pp = embedNet(net);
+    savePicture(pp.first, pp.second, "data/metrization/2700.txt");
+}
+
 int main() {
     ifstream in("data/derived_once_survivors.txt");
     int cnt_survivors;
@@ -351,15 +367,27 @@ int main() {
     in.close();
     
     // Doubled: 2202, 2287
-    set<int> expected_possible = {72, 278, 434, 521, 691, 936, 949, 1011, 1034, 1351, 1405, 1514, 1829, 2119, 2192, 2312, 2454, 2676, 2700, 2769, 2799, 2891, 3048, 3222, 3233, 3295};
+    set<int> expected_possible = {
+        72,     278,    434,    521,    691, 
+        936,    949,    1011,   1034,   1223, 
+        1351,   1514,   1829,   1922,   2017, 
+        2119,   2192,   2312,   2454,   2460, 
+        2676,   2749,   2769,   2799,   2891, 
+        2975,   3048,   3222,   3233,   3295, 
+        3338};
     // To be skipped because we cannot prove that their edges belong
-    // to [0, pi].
-    set<int> skip_yes = {1405, 2700};
-    set<int> skip_no = {1508, 1773, 2018, 2614};
+    // to [0, pi] or because the embeddings found would be degenerate.
+    set<int> skip_no = {1508, 1773, 2018, 2614, 1922, 2975};
+    
+    // Even if we cannot prove that the edges of 1405, 2700 are at most
+    // pi, we do not have to skip them as they are possible.
+    // 1405 has an embedding with all sides <= pi, while 2700 does not
+    // and therefore we explicitly construct its embedding.
     
     vector<int> new_survivors;
     for (int id: survivors) {
-        if (skip_yes.count(id)) {
+        if (id == 2700) {
+            specialCase2700();
             new_survivors.push_back(id);
             continue;
         }

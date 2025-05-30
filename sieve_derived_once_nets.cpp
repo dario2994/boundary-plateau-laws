@@ -524,15 +524,15 @@ int main() {
         {"adjacent concave angles\t", criterionAdjacentConcaveAngles},
         {"concave angles are far\t", criterionConcaveAnglesFar},
         {"convex faces intersection", criterionConvexFacesIntersection},
-        //~ {"four pentagons\t\t", criterionFourPentagons},
         {"quadrilaterals are convex", criterionQuadrilateralsAreConvex},
         {"triangles are convex\t", criterionTrianglesAreConvex},
+        {"consecutive degree 2 vertices", criterionConsecutiveVerticesDegree2},
+        //~ {"four pentagons\t\t", criterionFourPentagons},
         //~ {"three quadrilaterals\t", criterionThreeQuadrilaterals},
         //~ {"triangle quadrilateral\t", criterionTriangleQuadrilateral},
         //~ {"pentagon 3 quadrilaterals", criterionPentagonThreeQuadrilaterals},
         //~ {"triangle quadrilateral 2", criterionTriangleQuadrilateral2},
         //~ {"2 quadrilaterals 3 pentagons", criterionTwoQuadrilateralsThreePentagons},
-        {"consecutive degree 2 vertices", criterionConsecutiveVerticesDegree2},
         //~ {"metrization\t\t", criterionMetrization},
         //~ {"pentagon 2 quadr. 2 bisectors",criterionPentagonTwoQuadrilateralsTwo},
         //~ {"pentagon {5,1} + quadrilaterals", criterionPent1},
@@ -663,5 +663,3 @@ int main() {
         if (mayHaveEdgesGtPi(derived_once[id]))
             cout << id << endl;
 }
-
-// 788

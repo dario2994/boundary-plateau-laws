@@ -776,7 +776,7 @@ net id = 2452:	# of parameters = 3 0, (time =   0.15)
 net id = 2454:	# of parameters = 1 1, (time =   0.01) POSSIBLE
 net id = 2458:	# of parameters = 2 1, (time =   1.95) 
 net id = 2459:	# of parameters = 1 1, (time =   0.05) 
-net id = 2460:	# of parameters = 2 0, (time =   0.05) POSSIBLE
+net id = 2460:	# of parameters = 2 0, (time =   0.01)
 net id = 2463:	# of parameters = 2 2, (time =   0.02) 
 net id = 2466:	# of parameters = 2 0, (time =   0.01) 
 net id = 2470:	# of parameters = 2 1, (time =   0.36) 
@@ -868,7 +868,7 @@ net id = 2721:	# of parameters = 1 1, (time =   0.01)
 net id = 2725:	# of parameters = 2 2, (time =   0.04) 
 net id = 2728:	# of parameters = 2 1, (time =   0.17) 
 net id = 2744:	# of parameters = 3 0, (time =  16.37) 
-net id = 2749:	# of parameters = 2 0, (time =   0.05) POSSIBLE
+net id = 2749:	# of parameters = 2 0, (time =   0.01)
 net id = 2750:	# of parameters = 1 2, (time =   0.25) 
 net id = 2751:	# of parameters = 2 2, (time =   0.80) 
 net id = 2755:	# of parameters = 2 1, (time =   0.02) 

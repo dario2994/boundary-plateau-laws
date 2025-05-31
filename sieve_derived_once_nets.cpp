@@ -30,15 +30,6 @@ bool containsBiangle(const DerivedOnceNet& A) {
     return false;
 }
 
-bool sameFace(const DerivedOnceNet& A, Dart d, Dart e) {
-    const vector<Dart>& face = A.face(d);
-    for (const Dart& e1: face) {
-        if (e1 == e)
-            return true;
-    }
-    return false;
-}
-
 int pinContribution(const DerivedOnceNet& A, Dart d) {
     if (A.faceType(d).second != 2)
         return 0;
@@ -93,7 +84,6 @@ int sumAreaConvexFaces(const DerivedOnceNet& A) {
     return res;
 }
 
-
 bool criterionBiangle(const DerivedOnceNet& A) {
     vector<vector<Dart>> faces = A.faces();
     
@@ -104,7 +94,7 @@ bool criterionBiangle(const DerivedOnceNet& A) {
         if (!A.isConvexFace(face))
             return false;
             
-        if (sameFace(A, A.rev(face[0]), A.rev(face[1])))
+        if (A.sameFace(A.rev(face[0]), A.rev(face[1])))
             return false;
             
         if (A.isConvexFace(A.rev(face[0])) 
@@ -134,7 +124,7 @@ bool criterionSimpleBoundary(const DerivedOnceNet& A) {
     vector<vector<Dart>> faces = A.faces();
     
     for (const Dart& d: A.darts()) {
-        if (sameFace(A, d, A.rev(d)))
+        if (A.sameFace(d, A.rev(d)))
             return false;
     }
     return true;
@@ -177,38 +167,8 @@ bool criterionConvexFacesIntersection(const DerivedOnceNet& A) {
         vector<Dart> face2 = A.face(A.rev(d));
         int cnt = 0;
         for (Dart e: face2)
-            cnt += sameFace(A, d, e);
+            cnt += A.sameFace(d, e);
         if (cnt > 1)
-            return false;
-    }
-    return true;
-}
-
-bool criterionFourPentagons(const DerivedOnceNet& A) {
-    for (const vector<Dart>& face: A.faces()) {
-        if (A.faceType(face) != pair<int,int>{4, 0})
-            continue;
-        bool all_pentagons = true;
-        for (Dart d: face) {
-            auto pentagon = A.face(A.rev(d));
-            all_pentagons &= A.faceType(A.rev(d)) == pair<int,int>{5, 0};
-        }
-        if (all_pentagons)
-            return false;
-    }
-    return true;
-}
-
-bool criterionThreeQuadrilaterals(const DerivedOnceNet& A) {
-    for (const Dart& d: A.darts()) {
-        if (A.degree(d.from) != 3)
-            continue;
-        Dart a = d; 
-        Dart b = A.next(a); 
-        Dart c = A.next(b);
-        if (A.faceType(a) == pair<int,int>{4, 0}
-                and A.faceType(b) == pair<int,int>{4, 0}
-                and A.faceType(c) == pair<int,int>{4, 0})
             return false;
     }
     return true;
@@ -242,79 +202,6 @@ bool criterionTrianglesAreConvex(const DerivedOnceNet& A) {
 }
 
 
-bool criterionTriangleQuadrilateral(const DerivedOnceNet& A) {
-    for (Dart d: A.darts()) {
-        Dart e = A.rev(d);
-        if (A.faceType(d) != pair<int,int>{3, 0} 
-            or A.faceType(e) != pair<int,int>{4, 0})
-            continue;
-        if (A.degree(A.phi(d).to) == 2)
-            return false;
-    }
-    return true;
-}
-
-bool criterionPentagonThreeQuadrilaterals(const DerivedOnceNet& A) {
-    for (Dart d: A.darts()) {
-        if (A.faceType(d) != pair<int,int>{5, 0})
-            continue;
-        Dart e = A.phi(d);
-        Dart f = A.phi(e);
-        bool works = true;
-        for (Dart z: {A.rev(d), A.rev(e), A.rev(f)}) {
-            works &= A.faceType(z) == pair<int,int>{4, 0};
-        }
-        if (works)
-            return false;
-    }
-    return true;
-}
-
-bool criterionTriangleQuadrilateral2(const DerivedOnceNet& A) {
-    // TODO: Should be polished.
-    for (Dart d: A.darts()) {
-        Dart e = A.rev(d);
-        if (A.faceType(d) != pair<int,int>{3, 0}
-            or A.faceType(e) != pair<int,int>{4, 0})
-            continue;
-        Dart opposite = A.phi(A.phi(e));
-        if (A.isConvexFace(A.rev(A.phi(e)))) return false;
-        if (A.isConvexFace(A.rev(A.phi(opposite)))) return false;
-        if (!A.isConvexFace(A.rev(opposite))) continue;
-        if (ssize(A.face(A.rev(opposite))) != 4) return false;
-        opposite = A.phi(A.phi(A.rev(opposite)));
-        if (!A.isConvexFace(A.rev(opposite))) continue;
-        if (ssize(A.face(A.rev(opposite))) != 4) return false;
-        opposite = A.phi(A.phi(A.rev(opposite)));
-        if (A.isConvexFace(A.rev(opposite))) return false;
-    }
-    return true;
-}
-
-bool criterionTwoQuadrilateralsThreePentagons(const DerivedOnceNet& A) {
-    for (Dart d: A.darts()) {
-        Dart e = A.rev(d);
-        if (A.faceType(d) != pair<int,int>{4, 0}
-            or A.faceType(e) != pair<int,int>{4, 0})
-            continue;
-            
-        int cnt = 0;
-        Dart z = A.phi(d);
-        for (int i = 0; i < 3; i++) {
-            Dart f = A.rev(z);
-            if (A.faceType(f) == pair<int,int>{5, 0}) cnt++;
-            z = A.phi(z);
-        }
-        
-        z = A.phi(A.phi(e));
-        if (A.faceType(A.rev(z))== pair<int,int>{5, 0}) cnt++;
-
-        if (cnt >= 3)
-            return false;
-    }
-    return true;
-}
-
 bool criterionConsecutiveVerticesDegree2(const DerivedOnceNet& A) {
     int consecutive_deg2 = 0;
     for (Dart d: A.darts()) {
@@ -339,176 +226,7 @@ bool criterionConsecutiveVerticesDegree2(const DerivedOnceNet& A) {
     return true; 
 }
 
-bool criterionPent1(const DerivedOnceNet& A) {
-    pair <int,int> pent1= {5,1};
-    pair <int,int> quad = {5,0};
-    for (Dart d:A.darts()) {
-        if ((A.degree(d.from)!=2) or A.faceType(d)!=pent1) continue;
-        Dart opp=A.phi(A.phi(d));
-        if (A.faceType(A.rev(opp))!=quad) continue;
-        if ((A.faceType(A.rev(A.phi(d)))==quad) or 
-            (A.faceType(A.rev(A.phi(opp)))==quad)) return false;
-    }
-    return true;
-}
 
-bool criterionTriangleAndNonConvexMerge(const DerivedOnceNet& A) {
-    if (mayHaveEdgesGePi(A)) 
-        return true;
-    for (Dart d:A.darts()) {
-        if (A.degree(d.to)!=2) continue;
-        Dart e=A.rev(d);
-        if ((A.faceType(e)==pair<int,int> {3,0}) and 
-            ((A.faceType(d)).second==1)) return false;   
-    }
-    return true;
-}
-
-bool criterionPentagonTwoQuadrilateralsTwo(const DerivedOnceNet& A) {
-    pair <int,int> quad = {4,0};
-    pair <int,int> pent = {5,0};
-    for (Dart d:A.darts()) {
-        if ((A.faceType(d)!=quad) 
-            or (A.faceType(A.rev(d))!=quad)) continue;
-        Dart e=A.rev(A.phi(d));
-        if (A.faceType(e)!=pent) continue;
-        if ((A.degree((A.phi(A.phi(d))).to)==2) and
-            (A.degree((A.phi(A.phi(e))).to)==2)) return false;
-        if ((A.degree((A.phi(A.rev(d))).to)==2) and
-            (A.degree((A.phi(A.phi(A.phi(e)))).to)==2)) 
-            return false;        
-    }
-    return true;
-}
-
-bool criterionPentagon2Quadrilaterals(const DerivedOnceNet& A) {
-    pair<int,int> quad = {4, 0};
-    pair<int,int> pent = {5, 0};
-    for (Dart d: A.darts()) {
-        Dart e = A.rev(d);
-        if (A.faceType(d) != quad or A.faceType(e) != quad)
-            continue;
-        if (A.faceType(A.rev(A.phi(d))) != pent) 
-            continue;
-        if (A.degree(A.phi(e).to) == 2 
-            and A.degree(A.phi(d, 2).to) == 2)
-                return false;
-    }
-    return true;    
-}
-
-bool ThreeconsecutiveQuadrPent(const DerivedOnceNet &A) {
-    pair<int,int> quad = {4,0}; 
-    for (Dart d:A.darts()) {
-        if ((A.faceType(d)!=quad) or (A.faceType(A.rev(d))!= quad))
-            continue;
-        Dart e=A.rev(A.phi(A.phi(d)));
-        if (A.faceType(e)!=quad) continue;
-    }
-    return false;
-}
-
-bool NoSpecialHexagon(const DerivedOnceNet& A) {
-    if (mayHaveEdgesGePi(A)) 
-        return true;
-    for (Dart d:A.darts()) {
-        if (A.faceType(d)!=pair<int,int> {6,2}) continue;
-        Dart tour=d;
-        int first=0;
-        int second=0;
-        bool crossed=false;
-        for (int i=0; i<6; i++) {
-            if (A.isConcaveAngle(tour)==true) {
-                if (crossed==false) {
-                    crossed=true;
-                    first=i;
-                }
-                else second=i;
-            }
-            tour=A.phi(tour);
-        }
-        if ((second-first)==2) return false;
-    }
-    return true;
-}
-
-bool criterionHexagonQuadrilateral(const DerivedOnceNet& A) {
-    if (mayHaveEdgesGePi(A)) 
-        return true;
-    for (Dart d:A.darts()) {
-        if (A.faceType(d)!=pair<int,int> {6,1}) continue;
-        Dart tour=d;
-        for (int i=0; i<6; i++) {
-            if (A.degree(tour.to)==2) break;
-            tour=A.phi(tour);
-        }
-        if (A.faceType(A.rev(tour))==pair<int,int> {4,0}) return false;
-    }
-    return true;
-}
-
-bool criterionMetrization(const DerivedOnceNet& A) {
-    return MetricDerivedOnceNet(A).isConsistent();
-}
-
-bool criterionSpecialHeptagon(const DerivedOnceNet& A) {
-    if (mayHaveEdgesGePi(A)) 
-        return true;
-    for (Dart d:A.darts()) {
-        if ((A.faceType(d)!=pair<int,int> {7,2}) or
-            (A.isConcaveAngle(d)==false)) continue;
-        Dart e=A.phi(A.phi((d)));
-        Dart f=A.phi(A.phi(A.phi(e)));
-        Dart g1;
-        Dart g2;
-        Dart g3;
-        if (A.isConcaveAngle(e)==true) {
-            g1=A.phi(A.phi(e));
-            g2=f;
-            g3=A.phi(g2);
-        }
-            else {
-                if (A.isConcaveAngle(f)==true) 
-                { 
-                    g1=e;
-                    g2=A.phi(e);
-                    g3=A.phi(g2);
-                }
-                else return true;
-            }
-        if (A.faceType(A.rev(g2))==pair<int,int> {5,0}) return false;
-        if ((A.faceType(A.rev(g2))==pair<int,int> {5,1}) and
-            (A.isConcaveAngle(A.phi(A.phi(A.rev(g2))))==false)) return false;
-        if (A.faceType(A.rev(g1))==pair<int,int> {3,0}) return false;
-        if (A.faceType(A.rev(g3))==pair<int,int> {3,0}) return false;
-        if ((A.faceType(A.rev(g2))==pair<int,int> {4,0})
-            and (((A.faceType(A.rev(g1)))==pair<int,int> {4,0}) or
-                 ((A.faceType(A.rev(g3)))==pair<int,int> {4,0}))) return false;
-    }
-    return true;   
-}
-
-bool criterionQuadrilateralHeptagon(const DerivedOnceNet &A) {
-    if (mayHaveEdgesGePi(A)) 
-        return true;
-    for (Dart d:A.darts()) {
-        if ((A.faceType(d)!=pair<int,int> {7,1}) or
-            (A.isConcaveAngle(d)==false)) continue;
-        if (A.faceType(A.rev(d))!=pair<int,int> {4,0}) return true;
-        Dart g1 = A.phi(A.phi(A.phi(d)));
-        Dart g2=A.phi(g1);
-        Dart g3=A.phi(g2);
-        if (A.faceType(A.rev(g2))==pair<int,int> {5,0}) return false;
-        if ((A.faceType(A.rev(g2))==pair<int,int> {5,1}) and
-            (A.isConcaveAngle(A.phi(A.phi(A.rev(g2))))==false)) return false;
-        if (A.faceType(A.rev(g1))==pair<int,int> {3,0}) return false;
-        if (A.faceType(A.rev(g3))==pair<int,int> {3,0}) return false;
-        if ((A.faceType(A.rev(g2))==pair<int,int> {4,0})
-            and (((A.faceType(A.rev(g1)))==pair<int,int> {4,0}) or
-                 ((A.faceType(A.rev(g3)))==pair<int,int> {4,0}))) return false;
-    }
-    return true;
-}
 
 int main() {
     vector<DerivedOnceNet> derived_once = 
@@ -527,78 +245,10 @@ int main() {
         {"quadrilaterals are convex", criterionQuadrilateralsAreConvex},
         {"triangles are convex\t", criterionTrianglesAreConvex},
         {"consecutive degree 2 vertices", criterionConsecutiveVerticesDegree2},
-        //~ {"four pentagons\t\t", criterionFourPentagons},
-        //~ {"three quadrilaterals\t", criterionThreeQuadrilaterals},
-        //~ {"triangle quadrilateral\t", criterionTriangleQuadrilateral},
-        //~ {"pentagon 3 quadrilaterals", criterionPentagonThreeQuadrilaterals},
-        //~ {"triangle quadrilateral 2", criterionTriangleQuadrilateral2},
-        //~ {"2 quadrilaterals 3 pentagons", criterionTwoQuadrilateralsThreePentagons},
-        //~ {"metrization\t\t", criterionMetrization},
-        //~ {"pentagon 2 quadr. 2 bisectors",criterionPentagonTwoQuadrilateralsTwo},
-        //~ {"pentagon {5,1} + quadrilaterals", criterionPent1},
-        //~ {"convex triangle + {n,1} face",criterionTriangleAndNonConvexMerge},
-        //~ {"pentagon 2 quadrilaterals",criterionPentagon2Quadrilaterals},
-        //~ {"special hexagon {6,2}\t",NoSpecialHexagon},
-        //~ {"hexagon {6,1} and quadrilateral",criterionHexagonQuadrilateral},
-        //~ {"special heptagon {7,2}\t",criterionSpecialHeptagon},
-        //~ {"Heptagon {7,1} + quadrilateral",criterionQuadrilateralHeptagon},
     };
     
     map<string, vector<int>> excluded_by; 
     vector<int> survivors;
-    
-    //~ auto parse_subdirectories = [&](string directory_path) {
-        //~ vector<int> subdirs;
-
-        //~ for (const auto& entry: filesystem::directory_iterator(directory_path)) {
-            //~ if (entry.is_directory()) {
-                //~ string filename = entry.path().filename().string();
-                //~ int num = stoi(filename);
-                //~ subdirs.push_back(num);
-            //~ } 
-        //~ }
-        
-        //~ return subdirs;
-    //~ }; 
-    //~ vector<int> blacklisted = parse_subdirectories("adhoc-blacklist/");
-    //~ vector<int> whitelisted = parse_subdirectories("adhoc-whitelist/");
-    //~ vector<int> graylisted  = parse_subdirectories("adhoc-graylist/");    
-    //~ vector<DerivedOnceNet> derived_once_old = 
-        //~ parseDerivedOnceNets("data/derived_once_computer_old.txt");
-        
-    //~ auto findNet = [&](const DerivedOnceNet& A) {
-        //~ auto B = symmetrize(A);
-        //~ bool found = false;
-        //~ for (int new_id = 0; new_id < ssize(derived_once); new_id++) {
-            //~ if (areIsomorphic(A, derived_once[new_id])
-                //~ or areIsomorphic(B, derived_once[new_id])) {
-                //~ return new_id;
-            //~ }
-        //~ }
-        //~ assert(0);
-        //~ return -1;
-    //~ };
-        
-    // Renaming whitelist and blacklist if the numbering changes.
-    //~ cout << "BLACK: " << endl;
-    //~ for (int old_id: blacklisted) {
-        //~ int new_id = findNet(derived_once_old[old_id]);
-        //~ cout << old_id << ": " << new_id << endl;
-        //~ filesystem::rename("adhoc-blacklist/" + to_string(old_id),
-                           //~ "adhoc-blacklist/" + to_string(new_id));
-    //~ }
-    
-    //~ cout << "WHITE: " << endl;
-    //~ for (int old_id: whitelisted) {
-        //~ int new_id = findNet(derived_once_old[old_id]);
-        //~ cout << old_id << ": " << new_id << endl;
-        //~ filesystem::rename("adhoc-whitelist/" + to_string(old_id),
-                           //~ "adhoc-whitelist/" + to_string(new_id));
-    //~ }
-
-    //~ vector<int> excluded_white;
-    //~ vector<int> excluded_black;
-    //~ vector<int> excluded_gray;
 
     for (int id = 0; id < ssize(derived_once); id++) {
         const DerivedOnceNet& A = derived_once[id];
@@ -612,26 +262,6 @@ int main() {
                 break;
             }
         }
-        //~ if (survives) {
-            //~ for (int id2: blacklisted) if (id2 == id) {
-                //~ survives = false;
-                //~ excluded_black.push_back(id);
-            //~ }
-        //~ }
-
-        //~ if (survives) {
-            //~ for (int id2: whitelisted) if (id2 == id) {
-                //~ survives = false;
-                //~ excluded_white.push_back(id);
-            //~ }
-        //~ }
-
-        //~ if (survives) {
-            //~ for (int id2: graylisted) if (id2 == id) {
-                //~ survives = false;
-                //~ excluded_gray.push_back(id);
-            //~ }
-        //~ }
 
         if (survives) 
             survivors.push_back(id);
@@ -642,11 +272,6 @@ int main() {
         string name = pp.first;
         cout << name << "\t\t" << excluded_by[name].size() << endl;
     }
-    
-    //~ cout << "Blacklisted ad hoc\t\t\t" << excluded_black.size() << endl;
-    //~ cout << "Whitelisted\t\t\t\t" << excluded_white.size() << endl;
-    //~ cout << "Graylisted\t\t\t\t" << excluded_gray.size() << endl;
-    //~ cout << endl;    
     
     cout << "# survivors = " << survivors.size() << endl;
     

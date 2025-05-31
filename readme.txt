@@ -18,7 +18,7 @@ It reads the list of derived-once nets from data/derived_once_computer.txt
 and applies a sequence of criteria to prove that some nets are not realizable.
 The ids of the nets that survive are saved in data/derived_once_survivors.txt
 
-d) ./convex_continent
+d) ./embed_or_exclude_nets
 Requires ~60 hours to be executed.
 It reads the list of survived derived-once nets from data/derived_once_survivors.txt.
 For each of them, it tries to embed it in the sphere.

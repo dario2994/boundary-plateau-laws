@@ -1,1 +1,0 @@
-The net 2799 is obtained from the Heppes 6 removing one edge which connects to a vertex which has an antipodal point. For instance in Figure 9 of the overleaf we could remove the edge V_1_9.

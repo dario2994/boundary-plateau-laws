@@ -1,1 +1,0 @@
-After we eliminate iteratively the triangles we arrive at a 4-cycle where there are two quadrilaterals with two consecutive concave angles. This is however excluded in the classification of the extinct derived-once nets.

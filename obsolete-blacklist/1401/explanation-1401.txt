@@ -1,4 +1,0 @@
-Observe that the nonconvex triangle is metrically determined and that the two sides containing the
-concave angle are congruent and long as the edge of a square. However these two sides are in common 
-with a convex pentagon and this is excluded by Heppes (there is no convex pentagon that has two consecutive
-sides congruent to those of a square). 

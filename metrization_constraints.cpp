@@ -190,11 +190,7 @@ array<T, 3> operator^(const array<T, 3>& X, const array<T, 3>& Y) {
 template <typename T>
 T det(const array<T, 3>& A, const array<T, 3>& B, const array<T, 3>& C) {
     return A * (B ^ C);
-    //~ A[0]*(B[1]*C[2] - B[2]*C[1])
-         //~ + A[1]*(B[2]*C[0] - B[0]*C[2])
-         //~ + A[2]*(B[0]*C[1] - B[1]*C[0]);
 }
-
 
 
 // Checks that the equators corresponding to any three edges going to

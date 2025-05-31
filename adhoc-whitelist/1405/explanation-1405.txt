@@ -1,1 +1,0 @@
-The net can be derived from the net of the triangular prism removing two appropriate edges. These edges contain two antipodal points

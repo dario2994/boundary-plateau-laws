@@ -1,1 +1,0 @@
-After eliminating iteratively all the triangles we get to the net 1508, which is excluded.

@@ -100,8 +100,7 @@ bool criterionBiangle(const DerivedOnceNet& A) {
         if (A.isConvexFace(A.rev(face[0])) 
             or A.isConvexFace(A.rev(face[1])))
             return false;
-        
-        // TODO: Do it as in containsLongEdges.
+
         int strange_area = sumAreaConvexFaces(A) - 4;
         strange_area += pinContribution(A, A.rev(face[0]));
         strange_area += pinContribution(A, A.rev(face[1]));
@@ -205,22 +204,14 @@ bool criterionTrianglesAreConvex(const DerivedOnceNet& A) {
 bool criterionConsecutiveVerticesDegree2(const DerivedOnceNet& A) {
     int consecutive_deg2 = 0;
     for (Dart d: A.darts()) {
-        // TODO: This should be improved.
-        //       Should we simplify the logic? Is it ok not to check
-        //       that these are distinct vertices.
-        // Camillo: I think it is OK, if they are not three distinct
-        //        vertices then there would be a concave biangle,
-        //        which is excluded. 
-        if (A.degree(d.from) == 2 and
-            A.degree(d.to) == 2 and
-            A.degree(A.phi(d).to) == 2) {
-            consecutive_deg2 = max(consecutive_deg2, 
-                                   3 + (A.degree(A.phi(d, 2).to) == 2));
-        }
+        int curr = 0;
+        while (A.degree(A.phi(d, curr).from) == 2)
+            curr++;
+        consecutive_deg2 = max(consecutive_deg2, curr);
     }
     if (consecutive_deg2 == 3)
         return sumAreaConvexFaces(A) <= 7;
-    if (consecutive_deg2 == 4)
+    if (consecutive_deg2 >= 4)
         return sumAreaConvexFaces(A) <= 5 and !containsBiangle(A);
     
     return true; 

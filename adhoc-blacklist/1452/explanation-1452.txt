@@ -1,1 +1,0 @@
-We can keep eliminating the triangles until we get to the 4-cycle. Using the classification of the overleaf this gives rise to the tetrahedral net. We can now argue that we cannot put the triangles back without including one of the pins inside them, see e.g. the argument for excluding the net 2614.

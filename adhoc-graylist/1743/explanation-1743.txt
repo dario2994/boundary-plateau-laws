@@ -1,1 +1,0 @@
-After eliminating all the triangles we arrive at the net 3233.

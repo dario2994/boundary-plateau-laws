@@ -1,1 +1,0 @@
-The net 2891 can be obtained from a dodecahedron removing one edge.

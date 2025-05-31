@@ -1,5 +1,0 @@
-The net has a pentagon with two concave angles. Recall that in order to exclude it via the argument in the 
-overleaf we need, in what is called the difficult to case, to show that the edges are no longer than pi. In
-fact it is shown in the overleaf that the edges connecting to the concave angles are strictly
-shorter than pi. We thus only need to consider the edges 32 and 20. Note however that 32 and 20 are in common with
-a convex face which is not a biangle, so they are also strictly shorter than pi.

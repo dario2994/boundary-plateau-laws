@@ -1,1 +1,0 @@
-This is the net candidate 11 obtained from Heppes 5 removing the appropriate edges.

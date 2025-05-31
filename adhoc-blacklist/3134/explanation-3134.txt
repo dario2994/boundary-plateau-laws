@@ -1,1 +1,0 @@
-If we eliminate the triangle 012, the face 0234958 becomes an hexagon 120-120-120-240-120-240.

@@ -1,1 +1,0 @@
-After eliminating all the triangles we arrive at a net with a quadrilateral which has a single concave angle. This however does not exist.

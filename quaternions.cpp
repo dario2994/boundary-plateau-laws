@@ -55,14 +55,6 @@ Quaternion<T> conj(const Quaternion<T>& z) {
     return Quaternion<T>(z[0], -z[1], -z[2], -z[3]);
 }
 
-template<typename T>
-T abs(const Quaternion<T>& z) {
-    T res = 0;
-    for (int i = 0; i < 4; i++)
-        res += z[i]*z[i];
-    return res;
-}
-
 
 template<typename T>
 ostream& operator <<(ostream& out, const Quaternion<T>& q) {

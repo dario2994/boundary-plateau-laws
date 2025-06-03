@@ -41,3 +41,4 @@ convex_continent
 data/derived_once_images
 __pycache__/
 data/images3d/*.html
+embed_or_exclude_nets

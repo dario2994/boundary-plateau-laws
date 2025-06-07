@@ -387,7 +387,7 @@ Interval firstIntersectionWithEquator(const Quaternion<Interval>& T) {
 //           the sign of the intersection.
 //  -1000: This function does not guarantee anything. 
 int intersectionSign(const Quaternion<Interval>& T, 
-                      Interval& I, Interval& J) {
+                     const Interval& I, const Interval& J) {
     int x = halfEquatorsIntersection(T);
     if (x == 0)
         return 0;
@@ -822,6 +822,50 @@ bool checkLengthLowerbound(MetrizedNet& net) {
             return false;
     }
     
+    return true;
+}
+
+// For 100 times, we randomly pick a geodesic segment g of length 1 on 
+// the sphere.
+// For each face F, we check that the the (signed) total intersection of 
+// g with \partial F belongs to {-1, 0, 1}.
+// Moreover, 
+//  - If g(0) and g(1) belong to the same face, then all intersection 
+//    values shall be 0.
+//  - If g(0) and g(1) belong to different faces, then exactly one face
+//    shall yield value -1 and exactly one face shall yield value -1.
+bool checkFacesAreBoundaries(const MetrizedNet& net) {
+    for (int _ = 0; _ < 100; _++) {
+        Quaternion<Interval> T = randomIsometry();
+        int pos = 0, neg = 0;
+        bool ambiguous = false;
+        const Dart& root = net.A.dart(0);
+        
+        for (const auto& f: net.A.faces()) {
+            int cnt = 0;
+            for (const Dart& d: f) {
+                int x = intersectionSign(T*net.getIsometry(root, d), 
+                                         Interval(1), net.length(d));
+                if (x == -1000) {
+                    ambiguous = true;
+                    break;
+                }
+                cnt += x;
+            }
+            if (ambiguous)
+                break;
+            if (abs(cnt) > 1)
+                return false;
+            pos += cnt == 1;
+            neg += cnt == 1;
+        }
+        if (ambiguous)
+            continue;
+        
+        if (pair<int,int>{pos, neg} != pair<int,int>{0, 0} and 
+            pair<int,int>{pos, neg} != pair<int,int>{1, 1})
+            return false;
+    }
     return true;
 }
 

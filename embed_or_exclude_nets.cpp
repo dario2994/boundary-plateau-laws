@@ -212,7 +212,7 @@ int searchApproximateMetrization(MetrizedNet net,
     
     // If the computation takes too long, we skip.
     // The slowest net, which is 72, requires 38 hours.
-    if (get_time() - begin_time > 100 * 60 * 60ll * 1e9) 
+    if (get_time() - begin_time > 100 * 60 * 60ll * 1e9)
         return 2;
         
     if (net.totalError() < -0.5)
@@ -241,6 +241,8 @@ int searchApproximateMetrization(MetrizedNet net,
         
     bool execute_slow_checks = net.totalError() < 1e-2 
                                and !expected_answer;
+    if (net.totalError() < 1e-5)
+        execute_slow_checks = true;
     
     if (execute_slow_checks) {
         // The following checks are run only here because:
@@ -257,6 +259,8 @@ int searchApproximateMetrization(MetrizedNet net,
             return 0;
 
         if (!checkPinsSpecial(net))
+            return 0;
+        if (!checkFacesAreBoundaries(net))
             return 0;
     }
 
@@ -370,13 +374,13 @@ int main() {
     set<int> expected_possible = {
         72,     278,    434,    521,    691, 
         936,    949,    1011,   1034,   1223, 
-        1351,   1514,   1829,   1922,   2017, 
-        2119,   2192,   2312,   2454,   2676,   
-        2769,   2799,   2891,   2975,   3048,   
-        3222,   3233,   3295,   3338};
+        1351,   1514,   1829,   2017,   2119,   
+        2192,   2312,   2454,   2676,   2769,   
+        2799,   2891,   3048,   3222,   3233,   
+        3295,   3338};
     // To be skipped because we cannot prove that their edges belong
-    // to [0, pi] or because the embeddings found would be degenerate.
-    set<int> skip_no = {1508, 1773, 2018, 2614, 1922, 2975};
+    // to [0, pi].
+    set<int> skip_no = {1508, 1773, 2018, 2614};
     
     // Even if we cannot prove that the edges of 1405, 2700 are at most
     // pi, we do not have to skip them as they are possible.
@@ -390,11 +394,10 @@ int main() {
             new_survivors.push_back(id);
             continue;
         }
-        if (skip_no.count(id)) {
+        if (skip_no.count(id))
             continue;
-        }
         expected_answer = expected_possible.count(id);
-
+        
         clog << "net id = " << setw(4) << id << ":\t";
         current_net_id = id;
         clog.flush();

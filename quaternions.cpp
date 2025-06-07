@@ -90,4 +90,18 @@ array<T, 3> applyIsometry(const Quaternion<T>& S,
     return {res[1], res[2], res[3]};
 }
 
+// TODO: This function shall guarantee that the Quaternion<Interval>
+//       returned contains at least one valid isometry.
+Quaternion<Interval> randomIsometry() {
+    static default_random_engine engine(123);
+    uniform_real_distribution<double> dist(-1.0, 1.0);
+    
+    double a = dist(engine), b = dist(engine), c = dist(engine), d = dist(engine);
+    double z = sqrt(a*a + b*b + c*c + d*d);
+    if (z < 0.1)
+        return randomIsometry();
+    a /= z, b /= z, c /= z, d /= z;
+    return Quaternion<Interval>(a, b, c, d);
+}
+
 #endif

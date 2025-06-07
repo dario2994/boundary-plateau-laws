@@ -324,33 +324,41 @@ bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
     return true;
 }
 
+
 // T is an approximate isometry.
-// Consider the directed geodesic a starting from (e_1, e_2) and the 
-// directed geodesic b starting from (Te_1, Te_2).
+// Let a be the oriented half-equator starting from (e_1, e_2). 
+// Let b be the oriented half-equator starting from (Te_1, Te_2). 
+// 
+// The return values of this function are:
+//  0: a and b are guaranteed not to intersect.
+//  1 or -1: a and b are guaranteed to intersect. The sign depends on
+//           the sign of the intersection.
+//  -1000: This function does not guarantee anything.
+int halfEquatorsIntersection(const Quaternion<Interval>& T) {
+    // sign1 determines on which side of a is Te_1.
+    int sign1 = sign(applyIsometry(T, {1, 0, 0})[2]);
+    // sign2 determines on which side of b is e_1.
+    int sign2 = sign(applyIsometry(T, {0, 0, 1})[0]);
+
+    if (sign1 == 0 or sign2 == 0)
+        return -1000; // We cannot determine the answer.
+    
+    if (sign1 * sign2 == 1)
+        return 0; // The two half-equators do not intersect.
+    
+    // Either 1 or -1 depending on the orientation of the intersection.
+    return sign1;
+}
+
+// T is an approximate isometry.
+// Let a be the oriented geodesic starting from (e_1, e_2). 
+// Let b be the equator going through (Te_1, Te_2). 
 //
-// If this function returns l, it is guaranteed that we will intersect
-// the equator defined by b going along a for at most length l.
-// If halfEquator is true, then it is also guaranteed that the intersection
-// happens in the "first half" of the equator (starting from b). If the
-// first intersection would be on the other half of the equator, this
-// function would return a large number.
-double intersectWithEquator(const Quaternion<Interval>& T,
-                            bool halfEquator) {
-    //~ StopWatch _("farthestIntersection");
-    
-    auto Te3 = applyIsometry(T, {0, 0, 1}); // For efficiency.
-    
-    if (halfEquator) {
-        // sign1 determines on which side of a is Te_1.
-        int sign1 = sign(applyIsometry(T, {1, 0, 0})[2]);
-        // sign2 determines on which side of b is e_1.
-        int sign2 = sign(Te3[0]);
-        
-        // The first intersection happens in less than pi on both geodesics
-        // if and only if sign1 and sign2 have different signs.
-        if (sign1 * sign2 != -1)
-            return 10;
-    }
+// This function returns a nonempty interval I \subseteq [0, pi].
+// It is guaranteed that the first intersection of a with b happens at 
+// exp((e_1, e_2), t) with t\in I.
+Interval firstIntersectionWithEquator(const Quaternion<Interval>& T) {
+    auto Te3 = applyIsometry(T, {0, 0, 1});
     
     // Te_3^e_3 is, up to scaling, the intersection between a and b.
     // Notice that Te_3^e_3 = (X, Y, 0).
@@ -358,23 +366,64 @@ double intersectWithEquator(const Quaternion<Interval>& T,
     Interval Y = -Te3[0];
     
     if (Y.containsZero())
-        return 10;
+        return Interval(0, M_PI);
         
     // We identify the *first* intersection.
     if (Y.l < 0) X = -X, Y = -Y;
     
-    double theta = max(atan2(Y.l, X.l), atan2(Y.r, X.l));
-    return theta;
+    double min_theta = min(atan2(Y.l, X.r), atan2(Y.r, X.r));
+    double max_theta = max(atan2(Y.l, X.l), atan2(Y.r, X.l));
+    return Interval(min_theta, max_theta);
 }
 
+// T is an approximate isometry.
+// Let a be the geodesic segment with length I starting from (e_1, e_2). 
+// Let a be the geodesic segment with length J starting from (Te_1, Te_2).
+// We assume that I, J \subseteq [0, pi].
+// 
+// The return values of this function are:
+//  0: a and b are guaranteed not to intersect.
+//  1 or -1: a and b are guaranteed to intersect. The sign depends on
+//           the sign of the intersection.
+//  -1000: This function does not guarantee anything. 
+int intersectionSign(const Quaternion<Interval>& T, 
+                      Interval& I, Interval& J) {
+    int x = halfEquatorsIntersection(T);
+    if (x == 0)
+        return 0;
+    if (x == -1000)
+        return -1000;
+    
+    Interval I2 = firstIntersectionWithEquator(T);
+    Interval J2 = firstIntersectionWithEquator(conj(T));
+    
+    if (I2.l > I.r or J2.l > J.r)
+        return 0;
+    
+    if (I2.r < I.l and J2.r < J.l)
+        return x;
+    
+    return -1000;
+}
+
+
+// Consider the two geodesic segments:
+// - One starting from (e_1, e_2) with length I.
+// - One starting from (Te_1, Te_2) with length J.
+// This function returns false if they necessarily intersect.
+// (it can change I and J to satisfy the non-intersection requirement)
+// TODO: Do we really need to allow this function to change I and J?
+//       It seems like it makes the logic more complicated, without
+//       necessarily improving the performance.
 bool checkNonIntersection(const Quaternion<Interval>& T, 
                           Interval& I, Interval& J) {
-    //~ StopWatch _("checkNonIntersection2");
-    
-    double lenI = intersectWithEquator(T, true);
-    if (lenI >= I.r)
+    int x = halfEquatorsIntersection(T);
+    if (x != 1 and x != -1)
         return true;
-    double lenJ = intersectWithEquator(conj(T), true);
+    double lenI = firstIntersectionWithEquator(T).r;
+    if (lenI >= I.r) // for performance
+        return true;
+    double lenJ = firstIntersectionWithEquator(conj(T)).r;
     
     if (I.l >= lenI)
         J.intersect(Interval(0, lenJ));
@@ -507,8 +556,8 @@ bool belongToStrictHemisphere(vector<array<Interval, 3>> vec) {
     return subroutine();
 }
 
-// For each concave angles, it returns an upperbound on the length of
-// the edge going from that angles into the pin.
+// For each concave angle, it returns an upperbound on the length of
+// the edge going from that angle into the pin.
 //
 // Consider an "edge to pin" s. 
 // Observe that s cannot intersect any edge of the net. 
@@ -527,8 +576,11 @@ vector<double> maxDistanceToPin(const MetrizedNet& net) {
         for (const Dart& d: A.darts()) {
             const auto& T = net.getIsometryToPin(d, to_pin);
             
-            if (intersectWithEquator(T, true) < net.length(d).l)
-                len = min(len, intersectWithEquator(conj(T), true));
+            int x = halfEquatorsIntersection(T);
+            if (x == 1 or x == -1) {
+                if (firstIntersectionWithEquator(T).r < net.length(d).l)
+                    len = min(len, firstIntersectionWithEquator(conj(T)).r);
+            }
             
             if (!A.isConcaveAngle(d) and !A.isConcaveAngle(A.rev(d)))
                 continue;
@@ -539,9 +591,8 @@ vector<double> maxDistanceToPin(const MetrizedNet& net) {
             if (to_pin.to == d.from or to_pin.to == d.to)
                 continue;
             
-            //~ assert(applyIsometry(T, {1, 0, 0})[2].r < 0);
             if (applyIsometry(T, {1, 0, 0})[2].r < 0)
-                len = min(len, intersectWithEquator(conj(T), false));
+                len = min(len, firstIntersectionWithEquator(conj(T)).r);
         }
         len_to_pin.push_back(len);
     }

@@ -11,7 +11,7 @@ using namespace std;
 
 #include "spherical_geometry.cpp"
 
-void savePicture(vector<pair<pt, string>> vertices, 
+void savePicture(vector<pair<pt, string>> vertices,
                  vector<GeodesicSegment> edges, string out_file) {
     ofstream out(out_file);
     out << ssize(vertices) << " " << ssize(edges) << endl;
@@ -27,10 +27,10 @@ void savePicture(vector<pair<pt, string>> vertices,
 }
 
 // TODO: Translate this in the quaternion language.
-pair<vector<pair<pt, string>>, vector<GeodesicSegment>> 
+pair<vector<pair<pt, string>>, vector<GeodesicSegment>>
         embedNet(const MetrizedNet& net) {
     const DerivedOnceNet& A = net.A;
-    
+
     int n = 2*A.E();
     vector<GeodesicSegment> embedding(n);
     vector<bool> visited(n, false);
@@ -51,12 +51,12 @@ pair<vector<pair<pt, string>>, vector<GeodesicSegment>>
     };
     embedding[0] = GeodesicSegment(TangentVector(), 0);
     dfs(A.dart(0));
-    
+
     vector<pair<pt, string>> vertices(A.V());
     for (Dart d: A.darts()) {
         vertices[d.from] = {embedding[d.id].P, to_string(d.from)};
     }
-    
+
     return {vertices, embedding};
 }
 
@@ -82,9 +82,9 @@ vector<DerivedOnceNet> parseDerivedOnceNets(string in_file) {
 //
 // It returns the length of the longest implication chain that is
 // necessary to determine a length.
-// The length of an implication chain depends on the "pentagonal rules" 
+// The length of an implication chain depends on the "pentagonal rules"
 // applied.
-int lengthsImplications(const DerivedOnceNet& A, 
+int lengthsImplications(const DerivedOnceNet& A,
                         const vector<Dart>& fixed_darts) {
     static const int INF = 1'000'000;
     vector<int> vec(2*A.E(), INF);
@@ -92,7 +92,7 @@ int lengthsImplications(const DerivedOnceNet& A,
         vec[d.id] = 1;
         vec[A.rev(d).id] = 1;
     }
-    
+
     bool updated = true;
     auto determine_edge = [&](const Dart& d, int val) {
         for (int id: {d.id, A.rev(d).id}) {
@@ -102,22 +102,22 @@ int lengthsImplications(const DerivedOnceNet& A,
             }
         }
     };
-    
+
     while (updated) {
         updated = false;
         for (const Dart& d: A.darts()) {
             if (!A.isConvexFace(d))
                 continue;
             const vector<Dart>& f = A.face(d);
-            
+
             if (ssize(f) <= 3) for (const Dart& e: f) determine_edge(e, 0);
-            
+
             if (ssize(f) == 4) {
                 int m = INF;
                 for (const Dart& e: f) m = min(m, vec[e.id]);
                 for (const Dart& e: f) determine_edge(e, m);
             }
-            
+
             if (ssize(f) == 5) {
                 vector<int> x;
                 for (int i = 0; i < 5; i++)
@@ -128,21 +128,21 @@ int lengthsImplications(const DerivedOnceNet& A,
             }
         }
     }
-    
+
     int outcome = 0;
     for (const Dart& d: A.darts()) {
         if (!A.isConvexFace(d) and !A.isConvexFace(A.rev(d)))
             continue;
         outcome = max(outcome, vec[d.id]);
     }
-    
-    if (outcome == INF) 
+
+    if (outcome == INF)
         return -1;
-    
+
     return outcome;
 }
 
-// Returns the smallest possible set of darts such that once their 
+// Returns the smallest possible set of darts such that once their
 // length is chosen, the lengths of all the sides of convex faces
 // can be uniquely determined through simple rules.
 // Among the valid possible sets, it returns one that determines
@@ -151,7 +151,7 @@ vector<Dart> findFreeParametersConvex(const DerivedOnceNet& A) {
     int n = A.E();
     if (lengthsImplications(A, {}) >= 0)
         return {};
-        
+
     for (int ans = 1; ans <= 6; ans++) {
         int least_outcome = 1e9;
         vector<Dart> res;
@@ -160,9 +160,9 @@ vector<Dart> findFreeParametersConvex(const DerivedOnceNet& A) {
             if (__builtin_popcountll(bb) == ans) {
                 vector<Dart> fixed_darts;
                 for (int i = 0; i < n; i++)
-                    if (bb&(1ll<<i)) 
+                    if (bb&(1ll<<i))
                         fixed_darts.push_back(A.dart(2*i));
-                
+
                 int outcome = lengthsImplications(A, fixed_darts);
                 if (outcome >= 0 and outcome < least_outcome) {
                     least_outcome = outcome;
@@ -171,7 +171,7 @@ vector<Dart> findFreeParametersConvex(const DerivedOnceNet& A) {
                 bb += 1ll<<__builtin_ctzll(bb);
             } else bb++;
         }
-        if (!res.empty()) 
+        if (!res.empty())
             return res;
     }
     assert(0);
@@ -189,7 +189,7 @@ vector<Dart> findFreeParametersNonConvex(const DerivedOnceNet& A) {
         }
         break;
     }
-    
+
     if (!res.empty())
         res.pop_back();
 
@@ -205,45 +205,45 @@ bool expected_answer;
 // 0 no
 // 1 yes
 // 2 maybe
-int searchApproximateMetrization(MetrizedNet net, 
+int searchApproximateMetrization(MetrizedNet net,
                                  const vector<Dart>& convex_fixed_darts,
                                  const vector<Dart>& non_convex_fixed_darts) {
     const DerivedOnceNet& A = net.A;
-    
+
     // If the computation takes too long, we skip.
     // The slowest net, which is 72, requires 38 hours.
     if (get_time() - begin_time > 100 * 60 * 60ll * 1e9)
         return 2;
-        
+
     if (net.totalError() < -0.5)
         return 0;
-    
+
     if (!refineMetrizationConvexContinent(net, convex_fixed_darts))
         return 0;
-    
+
     if (!refineMetrizationNonConvexFaces(net))
         return 0;
-    
-    if (!canPinsBeAntipodal(net)) 
+
+    if (!canPinsBeAntipodal(net))
         return 0;
-    
+
     if (!checkPinAngles(net))
         return 0;
-        
+
     if (!checkNonIntersection(net))
         return 0;
-        
+
     if (!checkPinOutsideConvexFaces(net))
         return 0;
-        
+
     if (!checkLengthLowerbound(net))
         return 0;
-        
-    bool execute_slow_checks = net.totalError() < 1e-2 
+
+    bool execute_slow_checks = net.totalError() < 1e-2
                                and !expected_answer;
     if (net.totalError() < 1e-5)
         execute_slow_checks = true;
-    
+
     if (execute_slow_checks) {
         // The following checks are run only here because:
         //  - They handle rare pathological situations.
@@ -251,10 +251,10 @@ int searchApproximateMetrization(MetrizedNet net,
         //  - They are slow.
         if (!checkVerticesOutsideConvexFaces(net))
             return 0;
-        
+
         if (!checkFacesNotIdentical(net))
             return 0;
-            
+
         if (!checkPinIsVertex(net))
             return 0;
 
@@ -264,15 +264,15 @@ int searchApproximateMetrization(MetrizedNet net,
             return 0;
     }
 
-    // If we reached the desired precision of the metrization, we 
+    // If we reached the desired precision of the metrization, we
     // end the search.
     if (net.totalError() < 1e-5) {
         auto pp = embedNet(net);
         savePicture(pp.first, pp.second, "data/metrization/" + to_string(current_net_id) + ".txt");
-        
+
         return 1;
     }
-    
+
     // Computes the maximum error on the lengths at the boundary of
     // the continent made of convex faces.
     double max_error_boundary_continent = 0;
@@ -282,14 +282,14 @@ int searchApproximateMetrization(MetrizedNet net,
         double l = net.length(d).len();
         max_error_boundary_continent = max(max_error_boundary_continent, l);
     }
-    
+
     // Computes the maximum error among the non_convex_fixed_darts.
     double max_non_convex = 0;
     for (const Dart& d: non_convex_fixed_darts) {
         double l = net.length(d).len();
         max_non_convex = max(max_non_convex, l);
     }
-    
+
     // Decide whether we want to refine (i.e., half) the precision
     // only on convex_fixed_darts or also on non_convex_fixed_darts.
     vector<Dart> fixed_darts = convex_fixed_darts;
@@ -297,7 +297,7 @@ int searchApproximateMetrization(MetrizedNet net,
         for (const Dart& d: non_convex_fixed_darts)
             fixed_darts.push_back(d);
     }
-        
+
     // For all possible halvings of the confidence interval for the lengths
     // of fixed_darts, we call recursively the search.
     int q = ssize(fixed_darts);
@@ -312,17 +312,17 @@ int searchApproximateMetrization(MetrizedNet net,
                 I = Interval(m, I.r);
         }
 
-        // This is the only external overhead necessary for 
+        // This is the only external overhead necessary for
         // caching minimal paths.
         // It could be part of a custom copy constructor, but it
         // would be even more annoying.
         new_net.incrementVersion();
-        int outcome = searchApproximateMetrization(new_net, 
+        int outcome = searchApproximateMetrization(new_net,
             convex_fixed_darts, non_convex_fixed_darts);
         if (outcome > 0)
             return outcome;
     }
-    
+
     return 0;
 }
 
@@ -333,22 +333,22 @@ int searchApproximateMetrization(MetrizedNet net,
 int isApproximateMetrizationPossible(const DerivedOnceNet& A) {
     vector<Dart> convex = findFreeParametersConvex(A);
     vector<Dart> non_convex = findFreeParametersNonConvex(A);
-    
-    clog << "# of parameters = " << ssize(convex) << " " 
+
+    clog << "# of parameters = " << ssize(convex) << " "
                                  << ssize(non_convex) << ", ";
     clog.flush();
-    
+
     auto net = MetrizedNet(A);
     if (!refineMetrizationConvexContinent(net, A.darts()))
         return 0;
-    
+
     return searchApproximateMetrization(net, convex, non_convex);
 }
 
 void specialCase2700() {
     auto A = parseDerivedOnceNets("data/derived_once_computer.txt")[2700];
     auto net = MetrizedNet(A);
-        
+
     const double ell_triangle = acos(-1.0/3);
     const double ell_square = 2*atan(sqrt(0.5));
     net.length(A.dart(0)) = ell_square;
@@ -356,7 +356,7 @@ void specialCase2700() {
     net.length(A.dart(4)) = 2*M_PI - ell_triangle;
     net.length(A.dart(6)) = ell_square;
     net.length(A.dart(8)) = ell_square;
-    
+
     auto pp = embedNet(net);
     savePicture(pp.first, pp.second, "data/metrization/2700.txt");
 }
@@ -369,24 +369,24 @@ int main() {
     for (int i = 0; i < cnt_survivors; i++)
         in >> survivors[i];
     in.close();
-    
+
     // Doubled: 2202, 2287
     set<int> expected_possible = {
-        72,     278,    434,    521,    691, 
-        936,    949,    1011,   1034,   1223, 
-        1351,   1514,   1829,   2017,   2119,   
-        2192,   2312,   2454,   2676,   2769,   
-        2799,   2891,   3048,   3222,   3233,   
+        72,     278,    434,    521,    691,
+        936,    949,    1011,   1034,   1223,
+        1351,   1514,   1829,   2017,   2119,
+        2192,   2312,   2454,   2676,   2769,
+        2799,   2891,   3048,   3222,   3233,
         3295,   3338};
     // To be skipped because we cannot prove that their edges belong
     // to [0, pi].
     set<int> skip_no = {1508, 1773, 2018, 2614};
-    
+
     // Even if we cannot prove that the edges of 1405, 2700 are at most
     // pi, we do not have to skip them as they are possible.
     // 1405 has an embedding with all sides <= pi, while 2700 does not
     // and therefore we explicitly construct its embedding.
-    
+
     vector<int> new_survivors;
     for (int id: survivors) {
         if (id == 2700) {
@@ -397,16 +397,16 @@ int main() {
         if (skip_no.count(id))
             continue;
         expected_answer = expected_possible.count(id);
-        
+
         clog << "net id = " << setw(4) << id << ":\t";
         current_net_id = id;
         clog.flush();
         auto A = parseDerivedOnceNets("data/derived_once_computer.txt")[id];
-        
+
         begin_time = get_time();
         int outcome = isApproximateMetrizationPossible(A);
         double duration_s = (get_time() - begin_time) / 1e9;
-        
+
         clog.precision(2);
         clog << "(time = " << fixed << setw(6) << duration_s << ") ";
         if (outcome == 1) clog << "POSSIBLE";
@@ -415,9 +415,9 @@ int main() {
             new_survivors.push_back(id);
         clog << endl;
     }
-    
+
     StopWatch::printState();
-    
+
     ofstream out("data/derived_once_metric_survivors.txt");
     out << new_survivors.size() << endl;
     for (int id: new_survivors)
@@ -425,4 +425,3 @@ int main() {
     out << endl;
     out.close();
 }
-

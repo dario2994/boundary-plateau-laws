@@ -242,9 +242,7 @@ bool checkPinAngles(const MetrizedNet& net) {
         auto eq0 = applyIsometry(iso0, {0, 0, 1});
         auto eq1 = applyIsometry(iso1, {0, 0, 1});
         
-        Interval scal_prod = eq0[0]*eq1[0] + 
-                             eq0[1]*eq1[1] + 
-                             eq0[2]*eq1[2];
+        Interval scal_prod = eq0 * eq1;
         
         // scal_prod <= -1/2 is equivalent to the condition on
         // the angle at the pin.
@@ -715,6 +713,9 @@ bool checkPinIsVertex(const MetrizedNet& net) {
 //
 // This check is sufficient to rule out a few embedding with "overlapping"
 // convex faces. (as in a "double cover")
+//
+// TODO: This should be strictly weaker than checkFacesAreBoundaries
+//       Should be removed. (unless checkFacesAreBoundaries is too slow)
 bool checkFacesNotIdentical(const MetrizedNet& net) {
     auto interval_is_point = [&](const Interval& I, double z) {
         const double eps = 0.001;
@@ -764,6 +765,8 @@ bool checkFacesNotIdentical(const MetrizedNet& net) {
 }
 
 // No vertex can belong to the interior of a convex face.
+// TODO: This should be strictly weaker than checkFacesAreBoundaries
+//       Should be removed. (unless checkFacesAreBoundaries is too slow)
 bool checkVerticesOutsideConvexFaces(const MetrizedNet& net) {
     for (const Dart& root: net.A.darts()) {
         for (const auto& face: net.A.faces()) {

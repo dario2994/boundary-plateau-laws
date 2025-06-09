@@ -11,9 +11,9 @@ using namespace std;
 #include "metrized_nets.cpp"
 #include "utils.cpp"
 
-// Utility function to enforce the constraint on the sides of a 
+// Utility function to enforce the constraint on the sides of a
 // quadrilateral.
-// 
+//
 // I is strictly inside [0, \pi].
 // One side of a quadrilateral belongs to I.
 // The other side belongs to the interval returned by this function.
@@ -25,31 +25,31 @@ Interval quadrilateralConstraint(Interval I) {
     return Interval(f(I.r) - eps, f(I.l) + eps);
 }
 
-// Utility function to enforce the constraint on the sides of a 
+// Utility function to enforce the constraint on the sides of a
 // pentagon.
-// 
+//
 // I, J are strictly inside [0, \ell_T].
 // Let ABCDE be a spherical pentagon with angles 120.
-// If AB \in I, BC\in J, then DE belongs to the interval returned by 
+// If AB \in I, BC\in J, then DE belongs to the interval returned by
 // this function.
 Interval pentagon1Constraint(const Interval& I, const Interval& J) {
     if (I.empty() or J.empty())
         return Interval(0, -1);
-    
+
     static auto f = [](double x, double y) {
-        return 0.5*(1.0/3 + 
+        return 0.5*(1.0/3 +
             cos(x) + cos(y) + cos(x)*cos(y) - 2*sin(x)*sin(y));
     };
-    
+
     double high = f(I.l, J.l);
     double low = f(I.r, J.r);
-    
-    return acos(Interval(low, high)); 
+
+    return acos(Interval(low, high));
 }
 
-// Utility function to enforce the constraint on the sides of a 
+// Utility function to enforce the constraint on the sides of a
 // pentagon.
-// 
+//
 // I, J are strictly inside [0, \ell_T].
 // Let ABCDE be a spherical pentagon with angles 120.
 // AB \in I, DE\in J.
@@ -57,49 +57,49 @@ Interval pentagon1Constraint(const Interval& I, const Interval& J) {
 Interval pentagon2Constraint(const Interval& I, const Interval& J) {
     if (I.empty() or J.empty())
         return Interval(0, -1);
-        
+
     static auto get_theta = [](double x) {
         return atan(2*sin(x) / (1+cos(x)));
     };
-    
+
     static auto get_lambda = [](double x) {
         return 2*sin(x) / sin(get_theta(x));
     };
-    
+
     static auto f = [&](double x, double z) {
         return (2*cos(z)-1.0/3-cos(x))/get_lambda(x);
     };
-    
+
     double low = f(I.l, J.r);
     double high = f(I.r, J.l);
-    
-    // Applying acos on [low, high] is wrong here, hence we do the 
+
+    // Applying acos on [low, high] is wrong here, hence we do the
     // computation explicitly. TODO: Check.
-    
+
     if (low > 1 or high < -1)
         return Interval(0, -1); // empty
-    
+
     double l = (high < 1) ?  acos(high) : 0;
     l -= get_theta(I.r);
     double r = (low > -1) ? acos(low) : M_PI;
     r -= get_theta(I.l);
     Interval K(l, r);
-    
+
     const static double ellT = acos(-1.0/3);
     K.intersect(Interval(0, ellT));
-    
-    return K; 
+
+    return K;
 }
 
 
-bool refineMetrizationConvexContinent(MetrizedNet& net, 
+bool refineMetrizationConvexContinent(MetrizedNet& net,
                                       const vector<Dart>& initial_darts) {
     StopWatch _("refineMetrizationConvexContinent");
-        
+
     const DerivedOnceNet& A = net.A;
-    
+
     vector<bool> to_propagate(2*A.E(), false);
-    queue<Dart> propagation_queue; 
+    queue<Dart> propagation_queue;
     for (const Dart& d: initial_darts) {
         int id = d.id;
         propagation_queue.push(d);
@@ -107,7 +107,7 @@ bool refineMetrizationConvexContinent(MetrizedNet& net,
         to_propagate[id] = true;
         to_propagate[id+1] = true;
     }
-        
+
     bool empty_interval = false;
     auto update_length = [&](const Dart& d, const Interval& I) {
         if (net.length(d).empty()) {
@@ -122,7 +122,7 @@ bool refineMetrizationConvexContinent(MetrizedNet& net,
         double bef = net.length(d).len();
         net.length(d).intersect(I);
         double aft = net.length(d).len();
-        
+
         bool updated = bef > 1e-12 and aft < 0.9*bef;
         if (updated) {
             if (!to_propagate[d.id]) {
@@ -135,17 +135,17 @@ bool refineMetrizationConvexContinent(MetrizedNet& net,
             }
         }
     };
-    
+
     while (!empty_interval and !propagation_queue.empty()) {
         const Dart d = propagation_queue.front();
         propagation_queue.pop();
-        
+
         if (!to_propagate[d.id] or !A.isConvexFace(d))
             continue;
         to_propagate[d.id] = false;
-        
+
         const vector<Dart>& f = A.face(d);
-        
+
         if (ssize(f) == 4) { // Quadrilateral
             update_length(f[2], net.length(f[0]));
             const Interval& I = quadrilateralConstraint(net.length(f[0]));
@@ -153,21 +153,21 @@ bool refineMetrizationConvexContinent(MetrizedNet& net,
             update_length(f[3], I);
         }
         if (ssize(f) == 5) { // Pentagon
-            update_length(f[3], pentagon1Constraint(net.length(f[0]), 
+            update_length(f[3], pentagon1Constraint(net.length(f[0]),
                                                     net.length(f[1])));
-            update_length(f[2], pentagon1Constraint(net.length(f[0]), 
+            update_length(f[2], pentagon1Constraint(net.length(f[0]),
                                                     net.length(f[4])));
-            update_length(f[4], pentagon2Constraint(net.length(f[0]), 
+            update_length(f[4], pentagon2Constraint(net.length(f[0]),
                                                     net.length(f[2])));
-            update_length(f[1], pentagon2Constraint(net.length(f[0]), 
+            update_length(f[1], pentagon2Constraint(net.length(f[0]),
                                                     net.length(f[3])));
-            update_length(f[3], pentagon2Constraint(net.length(f[2]), 
+            update_length(f[3], pentagon2Constraint(net.length(f[2]),
                                                     net.length(f[0])));
-            update_length(f[2], pentagon2Constraint(net.length(f[3]), 
+            update_length(f[2], pentagon2Constraint(net.length(f[3]),
                                                     net.length(f[0])));
         }
     }
-    
+
     return net.totalError() >= 0;
 }
 
@@ -197,23 +197,23 @@ T det(const array<T, 3>& A, const array<T, 3>& B, const array<T, 3>& C) {
 // a pin are concurrent.
 bool canPinsBeAntipodal(const MetrizedNet& net) {
     StopWatch _("canPinsBeAntipodal");
-    
+
     int q = ssize(net.A.concaveAngles());
-    for (int i = 0; i < q; i++) 
+    for (int i = 0; i < q; i++)
         for (int j = i+1; j < q; j++)
             for (int k = j+1; k < q; k++) {
                 Dart root = net.A.phi(net.A.concaveAngles()[i]);
-                
+
                 vector<array<Interval, 3>> equators;
                 for (int z: {i, j, k}) {
                     Dart d = net.A.concaveAngles()[z];
                     auto isom = net.getIsometryToPin(root, d);
                     equators.push_back(applyIsometry(isom, {0, 0, 1}));
-                }                
+                }
                 if (!det(equators[0], equators[1], equators[2]).containsZero())
                     return false;
             }
-    
+
     return true;
 }
 
@@ -221,29 +221,29 @@ bool canPinsBeAntipodal(const MetrizedNet& net) {
 // [120, 240].
 bool checkPinAngles(const MetrizedNet& net) {
     StopWatch _("checkPinAngles");
-    
+
     const DerivedOnceNet& A = net.A;
-    
+
     for (const auto& f: A.faces()) {
         if (A.faceType(f).second != 2) // Two pins
             continue;
-        
+
         vector<Dart> concave_angles;
         for (Dart d:  f) {
             if (A.isConcaveAngle(d))
                 concave_angles.push_back(d);
         }
         assert(ssize(concave_angles) == 2);
-        
+
         Dart root = A.phi(concave_angles[0]);
         auto iso0 = net.getIsometryToPin(root, concave_angles[0]);
         auto iso1 = net.getIsometryToPin(root, concave_angles[1]);
-        
+
         auto eq0 = applyIsometry(iso0, {0, 0, 1});
         auto eq1 = applyIsometry(iso1, {0, 0, 1});
-        
+
         Interval scal_prod = eq0 * eq1;
-        
+
         // scal_prod <= -1/2 is equivalent to the condition on
         // the angle at the pin.
         if (scal_prod.l > -0.5 + 1e-8)
@@ -252,14 +252,14 @@ bool checkPinAngles(const MetrizedNet& net) {
     return true;
 }
 
-// If (cos x, sin(x)) \in IxJ \cup (-I)x(-J) with 0 <= x <= pi/2, 
-// then x belongs to the interval returned by this function.
+// If (cos l, sin l) \in IxJ \cup (-I)x(-J) with 0 <= l <= pi/2,
+// then l belongs to the interval returned by this function.
 Interval intersectWithCircle(const Interval& I, const Interval& J) {
     if (I.empty() or J.empty())
         return Interval(0, -1);
-        
-    // We shall return the interval of 0 <= l < pi such that:
-    // (cos l/2, sin l/2) belongs to IxJ or -(IxJ).
+
+    // We shall return the interval of 0 <= l < pi/2 such that:
+    // (cos l, sin l) belongs to IxJ or -(IxJ).
     auto intersectWithCircleQuadrant = [](Interval X, Interval Y) {
         X.intersect(Interval(0, 1));
         Y.intersect(Interval(0, 1));
@@ -268,13 +268,11 @@ Interval intersectWithCircle(const Interval& I, const Interval& J) {
         return intersection(Interval(acos(X.r), acos(X.l)),
                             Interval(asin(Y.l), asin(Y.r)));
     };
-    
+
     Interval inter1 = intersectWithCircleQuadrant(I, J);
     Interval inter2 = intersectWithCircleQuadrant(-I, -J);
-    
-    if (!inter1.empty() and !inter2.empty())
-        return Interval(0, 10);
-    return inter1.empty() ? inter2 : inter1;
+
+    return hull({inter1, inter2});
 }
 
 // Assume that you know the lengths of k-1 sides of a non-convex face
@@ -283,14 +281,14 @@ Interval intersectWithCircle(const Interval& I, const Interval& J) {
 // enforces the right length of the remaining side.
 bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
     StopWatch _("refineMetrizationNonConvexFaces");
-    
+
     const DerivedOnceNet& A = net.A;
-    
+
     for (Dart d: A.darts()) {
         if (A.isConvexFace(d))
             continue;
         int q = ssize(A.face(d));
-        
+
         // Run the check only for the (almost) most undetermined side.
         bool is_maximum_dart = true;
         for (int i = 1; i < q; i++) {
@@ -299,7 +297,7 @@ bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
         }
         if (!is_maximum_dart)
             continue;
-        
+
         vector<PathStep> path;
         for (int i = 0; i < q; i++) {
             Dart e = A.phi(d, i);
@@ -324,9 +322,9 @@ bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
 
 
 // T is an approximate isometry.
-// Let a be the oriented half-equator starting from (e_1, e_2). 
-// Let b be the oriented half-equator starting from (Te_1, Te_2). 
-// 
+// Let a be the oriented half-equator starting from (e_1, e_2).
+// Let b be the oriented half-equator starting from (Te_1, Te_2).
+//
 // The return values of this function are:
 //  0: a and b are guaranteed not to intersect.
 //  1 or -1: a and b are guaranteed to intersect. The sign depends on
@@ -340,67 +338,67 @@ int halfEquatorsIntersection(const Quaternion<Interval>& T) {
 
     if (sign1 == 0 or sign2 == 0)
         return -1000; // We cannot determine the answer.
-    
+
     if (sign1 * sign2 == 1)
         return 0; // The two half-equators do not intersect.
-    
+
     // Either 1 or -1 depending on the orientation of the intersection.
     return sign1;
 }
 
 // T is an approximate isometry.
-// Let a be the oriented geodesic starting from (e_1, e_2). 
-// Let b be the equator going through (Te_1, Te_2). 
+// Let a be the oriented geodesic starting from (e_1, e_2).
+// Let b be the equator going through (Te_1, Te_2).
 //
 // This function returns a nonempty interval I \subseteq [0, pi].
-// It is guaranteed that the first intersection of a with b happens at 
+// It is guaranteed that the first intersection of a with b happens at
 // exp((e_1, e_2), t) with t\in I.
 Interval firstIntersectionWithEquator(const Quaternion<Interval>& T) {
     auto Te3 = applyIsometry(T, {0, 0, 1});
-    
+
     // Te_3^e_3 is, up to scaling, the intersection between a and b.
     // Notice that Te_3^e_3 = (X, Y, 0).
     Interval X = Te3[1];
     Interval Y = -Te3[0];
-    
+
     if (Y.containsZero())
         return Interval(0, M_PI);
-        
+
     // We identify the *first* intersection.
     if (Y.l < 0) X = -X, Y = -Y;
-    
+
     double min_theta = min(atan2(Y.l, X.r), atan2(Y.r, X.r));
     double max_theta = max(atan2(Y.l, X.l), atan2(Y.r, X.l));
     return Interval(min_theta, max_theta);
 }
 
 // T is an approximate isometry.
-// Let a be the geodesic segment with length I starting from (e_1, e_2). 
+// Let a be the geodesic segment with length I starting from (e_1, e_2).
 // Let a be the geodesic segment with length J starting from (Te_1, Te_2).
 // We assume that I, J \subseteq [0, pi].
-// 
+//
 // The return values of this function are:
 //  0: a and b are guaranteed not to intersect.
 //  1 or -1: a and b are guaranteed to intersect. The sign depends on
 //           the sign of the intersection.
-//  -1000: This function does not guarantee anything. 
-int intersectionSign(const Quaternion<Interval>& T, 
+//  -1000: This function does not guarantee anything.
+int intersectionSign(const Quaternion<Interval>& T,
                      const Interval& I, const Interval& J) {
     int x = halfEquatorsIntersection(T);
     if (x == 0)
         return 0;
     if (x == -1000)
         return -1000;
-    
+
     Interval I2 = firstIntersectionWithEquator(T);
     Interval J2 = firstIntersectionWithEquator(conj(T));
-    
+
     if (I2.l > I.r or J2.l > J.r)
         return 0;
-    
+
     if (I2.r < I.l and J2.r < J.l)
         return x;
-    
+
     return -1000;
 }
 
@@ -413,7 +411,7 @@ int intersectionSign(const Quaternion<Interval>& T,
 // TODO: Do we really need to allow this function to change I and J?
 //       It seems like it makes the logic more complicated, without
 //       necessarily improving the performance.
-bool checkNonIntersection(const Quaternion<Interval>& T, 
+bool checkNonIntersection(const Quaternion<Interval>& T,
                           Interval& I, Interval& J) {
     int x = halfEquatorsIntersection(T);
     if (x != 1 and x != -1)
@@ -422,19 +420,19 @@ bool checkNonIntersection(const Quaternion<Interval>& T,
     if (lenI >= I.r) // for performance
         return true;
     double lenJ = firstIntersectionWithEquator(conj(T)).r;
-    
+
     if (I.l >= lenI)
         J.intersect(Interval(0, lenJ));
     if (J.l >= lenJ)
         I.intersect(Interval(0, lenI));
-        
+
     return !I.empty() and !J.empty();
 }
 
 // Checks that non-convex faces are not self-intersecting.
 bool checkNonIntersection(MetrizedNet& net) {
     StopWatch _("checkNonIntersection");
-    
+
     const DerivedOnceNet& A = net.A;
     for (Dart d: A.darts()) {
         if (A.isConvexFace(d))
@@ -445,7 +443,7 @@ bool checkNonIntersection(MetrizedNet& net) {
         sum_theta += M_PI;
         const vector<Dart>& f = A.face(d);
         Quaternion<Interval> iso(1);
-        
+
         for (int i = 0; i < ssize(f)-2; i++) {
             sum_theta += A.phiAngle(f[i]);
             if (i != 0) {
@@ -458,8 +456,8 @@ bool checkNonIntersection(MetrizedNet& net) {
                     return false;
             }
             iso *= basicIsometry<Interval>(sum_theta, net.length(f[i+1]));
-            
-            double total_error = 
+
+            double total_error =
                 iso[0].len() + iso[1].len() + iso[2].len() + iso[3].len();
             if (total_error > 1)
                 break;
@@ -471,37 +469,37 @@ bool checkNonIntersection(MetrizedNet& net) {
 // Returns true if P belongs strictly to the given convex face, where
 // we assume that the dart root is (e_1, e_2).
 // If up_to_symmetry is true, then this returns true if either P or -P
-// belongs strictly to the convex face. 
-bool strictlyInsideConvexFace(const MetrizedNet& net, 
-                        array<Interval, 3> P, 
+// belongs strictly to the convex face.
+bool strictlyInsideConvexFace(const MetrizedNet& net,
+                        array<Interval, 3> P,
                         const Dart& root,
                         const vector<Dart>& face,
                         bool up_to_symmetry = false) {
     assert(net.A.isConvexFace(face));
-    
+
     vector<int> signs;
     for (const Dart& d: face) {
         const auto& Z = applyIsometry(net.getIsometry(root, d), {0, 0, 1});
         int s = sign(P * Z);
         signs.push_back(s);
-        
+
         if (s == 0 or s != signs[0])
             break; // For performance.
     }
     bool same_sign = true;
-    for (int s: signs) 
+    for (int s: signs)
         same_sign &= s != 0 and s == signs[0];
-    
+
     if (!same_sign)
         return false;
-        
+
     return up_to_symmetry or signs[0] == -1;
 }
 
 // Checks that no pins fall strictly inside a convex face.
 bool checkPinOutsideConvexFaces(const MetrizedNet& net) {
     StopWatch _("checkPinOutsideConvexFaces");
-    
+
     int cnt = ssize(net.A.concaveAngles());
     for (int i = 0; i < cnt; i++) for (int j = i+1; j < cnt; j++) {
         const Dart& root = net.A.concaveAngles()[i];
@@ -512,7 +510,7 @@ bool checkPinOutsideConvexFaces(const MetrizedNet& net) {
         for (const auto& f: net.A.faces()) {
             if (!net.A.isConvexFace(f))
                 continue;
-            
+
             // Check that none of the two intersections of X and Y lie
             // in the convex face f.
             if (strictlyInsideConvexFace(net, P, root, f, true))
@@ -537,7 +535,7 @@ bool belongToStrictHemisphere(vector<array<Interval, 3>> vec) {
                 signs.push_back(s);
             }
             bool same_sign = true;
-            for (int s: signs) 
+            for (int s: signs)
                 same_sign &= s != 0 and s == signs[0];
             if (same_sign)
                 return true;
@@ -546,7 +544,7 @@ bool belongToStrictHemisphere(vector<array<Interval, 3>> vec) {
     };
     if (subroutine())
         return true;
-    
+
     // If all points in vec are coplanar, subroutine returns false.
     // To solve this issue, we add a "random" point to vec and we
     // call subroutine again.
@@ -557,64 +555,64 @@ bool belongToStrictHemisphere(vector<array<Interval, 3>> vec) {
 // For each concave angle, it returns an upperbound on the length of
 // the edge going from that angle into the pin.
 //
-// Consider an "edge to pin" s. 
-// Observe that s cannot intersect any edge of the net. 
+// Consider an "edge to pin" s.
+// Observe that s cannot intersect any edge of the net.
 // Furthermore, consider the equator generated by another edge t, in the
 // same face, that is adjacent to the other "edge to pin" (if it is present).
 // Then, we know on which side of t the pin must be. If the vertex
-// identified by s and the pin are on same side of t, then s cannot 
+// identified by s and the pin are on same side of t, then s cannot
 // intersect the equator described by t.
 // In this way, we have determined the maximum length of s.
 vector<double> maxDistanceToPin(const MetrizedNet& net) {
     const DerivedOnceNet& A = net.A;
-    
+
     vector<double> len_to_pin;
     for (const Dart& to_pin: A.concaveAngles()) {
         double len = 10;
         for (const Dart& d: A.darts()) {
             const auto& T = net.getIsometryToPin(d, to_pin);
-            
+
             int x = halfEquatorsIntersection(T);
             if (x == 1 or x == -1) {
                 if (firstIntersectionWithEquator(T).r < net.length(d).l)
                     len = min(len, firstIntersectionWithEquator(conj(T)).r);
             }
-            
+
             if (!A.isConcaveAngle(d) and !A.isConcaveAngle(A.rev(d)))
                 continue;
-            
+
             if (!A.sameFace(d, to_pin))
                 continue;
-            
+
             if (to_pin.to == d.from or to_pin.to == d.to)
                 continue;
-            
+
             if (applyIsometry(T, {1, 0, 0})[2].r < 0)
                 len = min(len, firstIntersectionWithEquator(conj(T)).r);
         }
         len_to_pin.push_back(len);
     }
-    
+
     return len_to_pin;
 }
 
-// This is a check useful only when either: 
-//   - All the equators identifying the pins coincide, 
+// This is a check useful only when either:
+//   - All the equators identifying the pins coincide,
 //   - At least one pin falls on an edge.
 //
 // Consider two "edges to pins" going to different pins.
-// Let l1, l2 be the upper bounds on their lenghts. 
+// Let l1, l2 be the upper bounds on their lenghts.
 // And let q1, q2 be the edges extended to have length l1 and l2.
-// Since p\in q1 and -p\in q2 (where p is a pin), q1 and q2 do not 
-// belong to a strict hemisphere. 
+// Since p\in q1 and -p\in q2 (where p is a pin), q1 and q2 do not
+// belong to a strict hemisphere.
 //
-// We check that they do not belong to a strict hemisphere, instead of 
+// We check that they do not belong to a strict hemisphere, instead of
 // checking that q1 and -q2 intersect because:
 //  - It involves less special cases.
 //  - It is sufficient for our purposes.
 bool checkPinsSpecial(const MetrizedNet& net) {
     const DerivedOnceNet& A = net.A;
-    
+
     vector<double> len_to_pin = maxDistanceToPin(net);
 
     for (int i = 0; i < ssize(A.concaveAngles()); i++) {
@@ -623,10 +621,10 @@ bool checkPinsSpecial(const MetrizedNet& net) {
             if (A.sameFace(d1, d2))
                 continue;
             double l1 = len_to_pin[i], l2 = len_to_pin[j];
-            
+
             if (l1 >= M_PI-1e-5 or l2 >= M_PI-1e-5)
                 return true;
-            
+
             const Dart& root = A.phi(d1);
             vector<PathStep> path1 = net.getPathToPin(root, d1);
             vector<PathStep> path2 = net.getPathToPin(root, d2);
@@ -634,13 +632,13 @@ bool checkPinsSpecial(const MetrizedNet& net) {
             path1_end.push_back(PathStep('E', l1));
             vector<PathStep> path2_end = path2;
             path2_end.push_back(PathStep('E', l2));
-            
+
             vector<array<Interval, 3>> vec;
             for (auto p: {path1, path2, path1_end, path2_end}) {
                 auto pt = applyIsometry(net.isometryFromPath(p), {1, 0, 0});
                 vec.push_back(pt);
             }
-            
+
             if (belongToStrictHemisphere(vec))
                 return false;
         }
@@ -652,52 +650,52 @@ bool checkPinsSpecial(const MetrizedNet& net) {
 // must coincide with a degree-3 vertex of the net.
 bool checkPinIsVertex(const MetrizedNet& net) {
     const DerivedOnceNet& A = net.A;
-    
+
     if (A.concaveAngles().empty())
         return true;
-    
+
     bool one_concave_face = true;
     for (const Dart& to_pin: A.concaveAngles())
         one_concave_face &= A.sameFace(to_pin, A.concaveAngles()[0]);
-    
+
     if (!one_concave_face)
         return true;
-        
+
     vector<double> len_to_pin = maxDistanceToPin(net);
-    
+
     for (const Dart& root: A.darts()) {
         if (A.degree(root.from) < 3)
             continue;
         bool can_be_pin = true;
         for (int i = 0; i < ssize(A.concaveAngles()); i++) {
             const Dart& to_pin = A.concaveAngles()[i];
-            
+
             auto T = net.getIsometryToPin(root, to_pin);
             auto equator = applyIsometry(T, {0, 0, 1});
             can_be_pin &= (equator * array<Interval, 3>{1, 0, 0}).containsZero();
-            
+
             if (!can_be_pin)
                 break;
-            
+
             double l = len_to_pin[i];
-            
+
             if (l >= M_PI-1e-5)
                 continue;
-            
+
             vector<PathStep> path_begin = net.getPathToPin(root, to_pin);
             vector<PathStep> path_end = path_begin;
             path_end.push_back(PathStep('E', l));
-            
+
             vector<array<Interval, 3>> vec;
             for (auto p: {{}, path_begin, path_end}) {
                 auto pt = applyIsometry(net.isometryFromPath(p), {1, 0, 0});
                 vec.push_back(pt);
             }
-            
+
             can_be_pin &= !belongToStrictHemisphere(vec);
-            
+
         }
-        if (can_be_pin) 
+        if (can_be_pin)
             return true;
     }
     return false;
@@ -705,7 +703,7 @@ bool checkPinIsVertex(const MetrizedNet& net) {
 
 
 // Checks that there are no two distinct darts d, e such that:
-//  1. The faces corresponding to d and e are convex and with the 
+//  1. The faces corresponding to d and e are convex and with the
 //     same number of sides.
 //  2. The lengths of the sides of the face of d are very close to the
 //     lengths of the sides of the face of e.
@@ -721,21 +719,21 @@ bool checkFacesNotIdentical(const MetrizedNet& net) {
         const double eps = 0.001;
         return z - eps <= I.l and I.r <= z + eps;
     };
-    
+
     const DerivedOnceNet& A = net.A;
-    
+
     for (const Dart& d: A.darts()) for (const Dart& e: A.darts()) {
-        if (d == e) 
+        if (d == e)
             continue;
-            
+
         bool special = d.from == 11 and d.to == 4;
         special &= e.from == 5 and e.to == 1;
-        
+
         if (!A.isConvexFace(d) or !A.isConvexFace(e))
             continue;
         if (ssize(A.face(d)) != ssize(A.face(e)))
             continue;
-        
+
         bool identical = true;
         int q = ssize(A.face(d));
         for (int i = 0; i < q; i++) {
@@ -748,14 +746,14 @@ bool checkFacesNotIdentical(const MetrizedNet& net) {
             if (abs(I.r-J.l) > 0.001)
                 identical = false;
         }
-        
+
         if (!identical)
             continue;
-        
+
         Quaternion<Interval> T = net.getIsometry(d, e);
         if (!interval_is_point(T[0], 1) and !interval_is_point(T[0], -1))
             continue;
-        
+
         for (int i = 1; i < 3; i++)
             identical &= interval_is_point(T[i], 0);
         if (identical)
@@ -788,52 +786,52 @@ bool checkLengthLowerbound(MetrizedNet& net) {
     static const auto fun = [](double x, double y) {
         return min(0.01, 0.1*min(x, y)) - 1e-10;
     };
-    
+
     const DerivedOnceNet& A = net.A;
-    
+
     auto min_adjacent = [&](const Dart& d)->double {
         vector<double> vals = {net.length(A.next(d)).l};
         if (A.degree(d.from) == 3)
             vals.push_back(net.length(A.next(A.next(d))).l);
         return *min(vals.begin(), vals.end());
     };
-    
+
     for (const Dart& d: A.darts()) {
         Interval& Z = net.length(d);
-        double low = fun(min_adjacent(d), 
+        double low = fun(min_adjacent(d),
                          min_adjacent(A.rev(d)));
         Z.l = max(Z.l, low);
-        if (Z.empty()) 
+        if (Z.empty())
             return false;
     }
-    
+
     for (const Dart& d: A.darts()) {
         if (A.degree(d.from) != 2)
             continue;
-        
-        
+
+
         Interval& X = net.length(d);
         Interval& Y = net.length(A.next(d));
-        double low = fun(min_adjacent(A.rev(d)), 
+        double low = fun(min_adjacent(A.rev(d)),
                          min_adjacent(A.rev(A.next(d))));
         if (X.r < low)
             Y.l = max(Y.l, low);
         if (Y.r < low)
             X.l = max(X.l, low);
-        
+
         if (X.empty() or Y.empty())
             return false;
     }
-    
+
     return true;
 }
 
-// For 100 times, we randomly pick a geodesic segment g of length 1 on 
+// For 100 times, we randomly pick a geodesic segment g of length 1 on
 // the sphere.
-// For each face F, we check that the the (signed) total intersection of 
+// For each face F, we check that the the (signed) total intersection of
 // g with \partial F belongs to {-1, 0, 1}.
-// Moreover, 
-//  - If g(0) and g(1) belong to the same face, then all intersection 
+// Moreover,
+//  - If g(0) and g(1) belong to the same face, then all intersection
 //    values shall be 0.
 //  - If g(0) and g(1) belong to different faces, then exactly one face
 //    shall yield value -1 and exactly one face shall yield value -1.
@@ -843,11 +841,11 @@ bool checkFacesAreBoundaries(const MetrizedNet& net) {
         int pos = 0, neg = 0;
         bool ambiguous = false;
         const Dart& root = net.A.dart(0);
-        
+
         for (const auto& f: net.A.faces()) {
             int cnt = 0;
             for (const Dart& d: f) {
-                int x = intersectionSign(T*net.getIsometry(root, d), 
+                int x = intersectionSign(T*net.getIsometry(root, d),
                                          Interval(1), net.length(d));
                 if (x == -1000) {
                     ambiguous = true;
@@ -864,8 +862,8 @@ bool checkFacesAreBoundaries(const MetrizedNet& net) {
         }
         if (ambiguous)
             continue;
-        
-        if (pair<int,int>{pos, neg} != pair<int,int>{0, 0} and 
+
+        if (pair<int,int>{pos, neg} != pair<int,int>{0, 0} and
             pair<int,int>{pos, neg} != pair<int,int>{1, 1})
             return false;
     }

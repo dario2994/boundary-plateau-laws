@@ -9,24 +9,24 @@ using namespace std;
 // In many of our applications, the interval is a subset of [0, pi].
 struct Interval {
     double l, r;
-    
+
     Interval(): l(-1e9), r(1e9) {}
     Interval(double _l, double _r): l(_l), r(_r) {}
     Interval(double x): l(x-1e-10), r(x+1e-10) {}
-    
+
     bool empty() const { return r < l; }
-    
+
     void intersect(Interval I) {
         l = max(l, I.l);
         r = min(r, I.r);
     }
-    
+
     double len() const { return empty() ? 0.0 : (r-l); }
-    double mid() const { 
+    double mid() const {
         assert(!empty());
         return (l + r) / 2;
     }
-    bool containsZero() const { return l <= 0 and 0 <= r; } 
+    bool containsZero() const { return l <= 0 and 0 <= r; }
 };
 
 ostream& operator <<(ostream& out, const Interval& I) {
@@ -35,9 +35,23 @@ ostream& operator <<(ostream& out, const Interval& I) {
 }
 
 // Returns the smallest interval containing all the given values.
-Interval hull(vector<double> vec) { 
-    return Interval(*min_element(vec.begin(), vec.end()), 
+Interval hull(const vector<double>& vec) {
+    if (vec.empty())
+        return Interval(0, -1);
+    return Interval(*min_element(vec.begin(), vec.end()),
                     *max_element(vec.begin(), vec.end()));
+}
+
+// Returns the smallest interval containing all the given intervals.
+Interval hull(const vector<Interval>& vec) {
+    vector<double> vals;
+    for (const Interval& I: vec) {
+        if (!I.empty()) {
+            vals.push_back(I.l);
+            vals.push_back(I.r);
+        }
+    }
+    return hull(vals);
 }
 
 Interval intersection(Interval I, const Interval& J) {
@@ -95,7 +109,7 @@ Interval acos(Interval I) {
         return Interval(0, -1); // empty
     double l = acos(I.r);
     double r = acos(I.l);
-    
+
     const static double eps = 1e-7;
     Interval J(l-eps, r+eps);
     J.intersect(Interval(0, M_PI));
@@ -122,10 +136,10 @@ Interval sin(const Interval& I) {
     if (I.empty())
         return Interval(0, -1);
     double sl = sin(I.l), sr = sin(I.r);
-    
+
     double l = containsMod2pi(I, 3*M_PI/2) ? -1 : min(sl, sr);
     double r = containsMod2pi(I, M_PI/2) ? 1 : max(sl, sr);
-    
+
     return Interval(l, r);
 }
 
@@ -134,14 +148,14 @@ Interval cos(const Interval& I) {
     if (I.empty())
         return Interval(0, -1);
     double sl = cos(I.l), sr = cos(I.r);
-    
+
     double l = containsMod2pi(I, M_PI) ? -1 : min(sl, sr);
     double r = containsMod2pi(I, 0) ? 1 : max(sl, sr);
-    
+
     return Interval(l, r);
 }
 
-//Returns 1, -1, 0 if respectively I is an interval of positive values, 
+//Returns 1, -1, 0 if respectively I is an interval of positive values,
 // an interval of negative values, or it contains zero.
 int sign(const Interval& I) {
     return (I.l > 0) - (I.r < 0);

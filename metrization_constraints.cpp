@@ -19,7 +19,7 @@ using namespace std;
 // The other side belongs to the interval returned by this function.
 Interval quadrilateralConstraint(Interval I) {
     if (I.empty())
-        return Interval(0, -1);
+        return EMPTY_INTERVAL;
     const static double eps = 1e-10;
     static auto f = [](double x) { return 2*atan(0.5 / tan(x/2)); };
     return Interval(f(I.r) - eps, f(I.l) + eps);
@@ -34,7 +34,7 @@ Interval quadrilateralConstraint(Interval I) {
 // this function.
 Interval pentagon1Constraint(const Interval& I, const Interval& J) {
     if (I.empty() or J.empty())
-        return Interval(0, -1);
+        return EMPTY_INTERVAL;
 
     static auto f = [](double x, double y) {
         return 0.5*(1.0/3 +
@@ -56,7 +56,7 @@ Interval pentagon1Constraint(const Interval& I, const Interval& J) {
 // Then BC belongs to the interval returned by this function.
 Interval pentagon2Constraint(const Interval& I, const Interval& J) {
     if (I.empty() or J.empty())
-        return Interval(0, -1);
+        return EMPTY_INTERVAL;
 
     static auto get_theta = [](double x) {
         return atan(2*sin(x) / (1+cos(x)));
@@ -77,7 +77,7 @@ Interval pentagon2Constraint(const Interval& I, const Interval& J) {
     // computation explicitly. TODO: Check.
 
     if (low > 1 or high < -1)
-        return Interval(0, -1); // empty
+        return EMPTY_INTERVAL;
 
     double l = (high < 1) ?  acos(high) : 0;
     l -= get_theta(I.r);
@@ -256,7 +256,7 @@ bool checkPinAngles(const MetrizedNet& net) {
 // then l belongs to the interval returned by this function.
 Interval intersectWithCircle(const Interval& I, const Interval& J) {
     if (I.empty() or J.empty())
-        return Interval(0, -1);
+        return EMPTY_INTERVAL;
 
     // We shall return the interval of 0 <= l < pi/2 such that:
     // (cos l, sin l) belongs to IxJ or -(IxJ).
@@ -264,7 +264,7 @@ Interval intersectWithCircle(const Interval& I, const Interval& J) {
         X.intersect(Interval(0, 1));
         Y.intersect(Interval(0, 1));
         if (X.empty() or Y.empty())
-            return Interval(0, -1);
+            return EMPTY_INTERVAL;
         return intersection(Interval(acos(X.r), acos(X.l)),
                             Interval(asin(Y.l), asin(Y.r)));
     };
@@ -309,7 +309,7 @@ bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
         // T is, up to sign, (cos(l/2), 0, 0, -sin(l/2)), where
         // l is the length of d.
         if (!T[1].containsZero() or !T[2].containsZero()) {
-            net.length(d) = Interval(0, -1);
+            net.length(d) = EMPTY_INTERVAL;
             return false;
         }
         Interval I = 2*intersectWithCircle(T[0], -T[3]);

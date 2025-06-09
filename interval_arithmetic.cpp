@@ -29,6 +29,8 @@ struct Interval {
     bool containsZero() const { return l <= 0 and 0 <= r; }
 };
 
+const Interval EMPTY_INTERVAL(0, -1);
+
 ostream& operator <<(ostream& out, const Interval& I) {
     out << "[" << I.l << ", " << I.r << "]";
     return out;
@@ -37,7 +39,7 @@ ostream& operator <<(ostream& out, const Interval& I) {
 // Returns the smallest interval containing all the given values.
 Interval hull(const vector<double>& vec) {
     if (vec.empty())
-        return Interval(0, -1);
+        return EMPTY_INTERVAL;
     return Interval(*min_element(vec.begin(), vec.end()),
                     *max_element(vec.begin(), vec.end()));
 }
@@ -59,16 +61,10 @@ Interval intersection(Interval I, const Interval& J) {
     return I;
 }
 
-// If 0 does not belong to I, returns 1/I.
-Interval inverse(const Interval I) {
-    assert(!I.containsZero());
-    return Interval(1.0 / I.r, 1.0 / I.l);
-}
-
 // I+J
 Interval operator +(const Interval& I, const Interval& J) {
     if (I.empty() or J.empty())
-        return Interval(0, -1);
+        return EMPTY_INTERVAL;
     return Interval(I.l + J.l, I.r + J.r);
 }
 
@@ -81,14 +77,14 @@ Interval& operator +=(Interval& I, const Interval& J) {
 // I-J
 Interval operator -(const Interval& I, const Interval& J) {
     if (I.empty() or J.empty())
-        return Interval(0, -1);
+        return EMPTY_INTERVAL;
     return Interval(I.l - J.r, I.r - J.l);
 }
 
 // I*J
 Interval operator *(const Interval& I, const Interval& J) {
     if (I.empty() or J.empty())
-        return Interval(0, -1);
+        return EMPTY_INTERVAL;
     vector<double> vec = {I.l*J.l, I.l*J.r, I.r*J.l, I.r*J.r};
     return hull(vec);
 }
@@ -96,7 +92,7 @@ Interval operator *(const Interval& I, const Interval& J) {
 // -I
 Interval operator-(Interval I) {
     if (I.empty())
-        return Interval(0, -1);
+        return EMPTY_INTERVAL;
     return Interval(-I.r, -I.l);
 }
 
@@ -106,7 +102,7 @@ Interval operator-(Interval I) {
 Interval acos(Interval I) {
     I.intersect(Interval(-1, 1));
     if (I.empty())
-        return Interval(0, -1); // empty
+        return EMPTY_INTERVAL; // empty
     double l = acos(I.r);
     double r = acos(I.l);
 
@@ -134,7 +130,7 @@ bool containsMod2pi(Interval I, double x) {
 // sin(I)
 Interval sin(const Interval& I) {
     if (I.empty())
-        return Interval(0, -1);
+        return EMPTY_INTERVAL;
     double sl = sin(I.l), sr = sin(I.r);
 
     double l = containsMod2pi(I, 3*M_PI/2) ? -1 : min(sl, sr);
@@ -146,7 +142,7 @@ Interval sin(const Interval& I) {
 // cos(I)
 Interval cos(const Interval& I) {
     if (I.empty())
-        return Interval(0, -1);
+        return EMPTY_INTERVAL;
     double sl = cos(I.l), sr = cos(I.r);
 
     double l = containsMod2pi(I, M_PI) ? -1 : min(sl, sr);

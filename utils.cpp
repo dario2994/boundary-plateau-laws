@@ -35,7 +35,7 @@ vector<vector<ULL>> largeMatrixPower(vector<vector<ULL>> mat) {
 template <typename T>
 struct CollectionUpToIsomorphism {
     map<ULL, vector<T>> signature2list;
-    
+
     void add(const T& x) {
         bool is_new = true;
         vector<T>& vec = signature2list[x.isomorphismSignature()];
@@ -51,7 +51,7 @@ struct CollectionUpToIsomorphism {
         // the signature used is efficient.
         assert(ssize(vec) < 10);
     }
-    
+
     vector<T> getList() {
         vector<T> res;
         for (const auto& pp: signature2list) for (const T& x: pp.second) {
@@ -73,32 +73,36 @@ long long get_time() {
 class StopWatch {
   private:
     static map<string,long long> total_time;
+    static map<string,long long> cnt_calls;
     string name;
     bool is_active;
   public:
     StopWatch(string _name): name(_name), is_active(true) {
         total_time[name] -= get_time();
+        cnt_calls[name]++;
     }
-    
+
     void stop() {
         if (!is_active)
             return;
         is_active = false;
         total_time[name] += get_time();
     }
-    
+
     ~StopWatch() {
         stop();
     }
-    
+
     static void printState() {
         for (auto pp: total_time) {
             double sec = pp.second / 1e9;
-            cout << pp.first << ": " << sec << endl;
+            cout << pp.first << ": " << sec << "s, "
+                 << cnt_calls[pp.first] << " calls" << endl;
         }
     }
 };
 map<string,long long> StopWatch::total_time;
+map<string,long long> StopWatch::cnt_calls;
 
 
 #endif

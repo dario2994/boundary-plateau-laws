@@ -91,7 +91,7 @@ array<T, 3> applyIsometry(const Quaternion<T>& S,
 }
 
 // TODO: This function shall guarantee that the Quaternion<Interval>
-//       returned contains at least one valid isometry.
+//       returned contains at least one valid isometry (i.e. a quaternion with norm 1).
 Quaternion<Interval> randomIsometry() {
     static default_random_engine engine(123);
     uniform_real_distribution<double> dist(-1.0, 1.0);

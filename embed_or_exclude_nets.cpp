@@ -199,12 +199,16 @@ vector<Dart> findFreeParametersNonConvex(const DerivedOnceNet& A) {
 // TODO: Keeping these globally is horrible.
 long long begin_time;
 int current_net_id;
-bool expected_answer;
+bool run_pathological_checks;
 
-// Return values:
-// 0 no
-// 1 yes
-// 2 maybe
+// Takes an approximately metrized once-derived net and returns:
+//  0: No refinement of the given approximate metrization can be realized by
+//     a stable cone.
+//  1: The current approximate metrization is precise enough (error 1e-5) and
+//     the metrized net has antipodal pins, correct angles, and no side
+//     extremely short.
+//  INDETERMINATE: The program stopped because the computation was taking
+//                 too long.
 int searchApproximateMetrization(MetrizedNet net,
                                  const vector<Dart>& convex_fixed_darts,
                                  const vector<Dart>& non_convex_fixed_darts) {
@@ -212,8 +216,11 @@ int searchApproximateMetrization(MetrizedNet net,
 
     // If the computation takes too long, we skip.
     // The slowest net, which is 72, requires 38 hours.
-    if (get_time() - begin_time > 100 * 60 * 60ll * 1e9)
-        return 2;
+    static const long long one_second = 1e9;
+    static const long long one_minute = 60*one_second;
+    [[maybe_unused]] static const long long one_hour = 60*one_minute;
+    if (get_time() - begin_time > 5 * one_second)
+        return INDETERMINATE;
 
     if (net.totalError() < -0.5)
         return 0;
@@ -239,12 +246,12 @@ int searchApproximateMetrization(MetrizedNet net,
     if (!checkLengthLowerbound(net))
         return 0;
 
-    bool execute_slow_checks = net.totalError() < 1e-2
-                               and !expected_answer;
+    bool run_now_pathological_checks = net.totalError() < 1e-2
+                                       and run_pathological_checks;
     if (net.totalError() < 1e-5)
-        execute_slow_checks = true;
+        run_now_pathological_checks = true;
 
-    if (execute_slow_checks) {
+    if (run_now_pathological_checks) {
         // The following checks are run only here because:
         //  - They handle rare pathological situations.
         //  - They are almost always implied by other checks.
@@ -260,6 +267,7 @@ int searchApproximateMetrization(MetrizedNet net,
 
         if (!checkPinsSpecial(net))
             return 0;
+
         if (!checkFacesAreBoundaries(net))
             return 0;
     }
@@ -319,17 +327,19 @@ int searchApproximateMetrization(MetrizedNet net,
         new_net.incrementVersion();
         int outcome = searchApproximateMetrization(new_net,
             convex_fixed_darts, non_convex_fixed_darts);
-        if (outcome > 0)
+        if (outcome != 0)
             return outcome;
     }
 
     return 0;
 }
 
-// Return values:
-// 0 no
-// 1 yes
-// 2 maybe
+// Takes a once-derived net and returns:
+//  0: The net cannot be realized by a stable cone.
+//  1: The net admits an approximate embedding (up to precision 1e-5) with
+//     antipodal pins, correct angles, and no side extremely short.
+//  INDETERMINATE: The program was not able to show either of the previous
+//                 two possibilities.
 int isApproximateMetrizationPossible(const DerivedOnceNet& A) {
     vector<Dart> convex = findFreeParametersConvex(A);
     vector<Dart> non_convex = findFreeParametersNonConvex(A);
@@ -345,22 +355,6 @@ int isApproximateMetrizationPossible(const DerivedOnceNet& A) {
     return searchApproximateMetrization(net, convex, non_convex);
 }
 
-void specialCase2700() {
-    auto A = parseDerivedOnceNets("data/derived_once_computer.txt")[2700];
-    auto net = MetrizedNet(A);
-
-    const double ell_triangle = acos(-1.0/3);
-    const double ell_square = 2*atan(sqrt(0.5));
-    net.length(A.dart(0)) = ell_square;
-    net.length(A.dart(2)) = ell_square;
-    net.length(A.dart(4)) = 2*M_PI - ell_triangle;
-    net.length(A.dart(6)) = ell_square;
-    net.length(A.dart(8)) = ell_square;
-
-    auto pp = embedNet(net);
-    savePicture(pp.first, pp.second, "data/metrization/2700.txt");
-}
-
 int main() {
     ifstream in("data/derived_once_survivors.txt");
     int cnt_survivors;
@@ -370,33 +364,20 @@ int main() {
         in >> survivors[i];
     in.close();
 
-    // Doubled: 2202, 2287
-    set<int> expected_possible = {
+    set<int> possible_nets = {
         72,     278,    434,    521,    691,
         936,    949,    1011,   1034,   1223,
-        1351,   1514,   1829,   2017,   2119,
-        2192,   2312,   2454,   2676,   2769,
-        2799,   2891,   3048,   3222,   3233,
-        3295,   3338};
-    // To be skipped because we cannot prove that their edges belong
-    // to [0, pi].
-    set<int> skip_no = {1508, 1773, 2018, 2614};
-
-    // Even if we cannot prove that the edges of 1405, 2700 are at most
-    // pi, we do not have to skip them as they are possible.
-    // 1405 has an embedding with all sides <= pi, while 2700 does not
-    // and therefore we explicitly construct its embedding.
-
+        1351,   1405,   1514,   1829,   2017,
+        2119,   2192,   2312,   2454,   2676,
+        2700,   2769,   2799,   2891,   3048,
+        3222,   3233,   3295,   3338};
+    // Slow impossible nets: 729, 1002
+    // Slow possible nets: 72, 521, 949, 1829
     vector<int> new_survivors;
     for (int id: survivors) {
-        if (id == 2700) {
-            specialCase2700();
-            new_survivors.push_back(id);
-            continue;
-        }
-        if (skip_no.count(id))
-            continue;
-        expected_answer = expected_possible.count(id);
+        // We skip pathological checks for net 1002 because it completes in roughly 2 hours without
+        // them, but takes 10 hours with them.
+        run_pathological_checks = !possible_nets.count(id) and id != 1002;
 
         clog << "net id = " << setw(4) << id << ":\t";
         current_net_id = id;
@@ -407,10 +388,13 @@ int main() {
         int outcome = isApproximateMetrizationPossible(A);
         double duration_s = (get_time() - begin_time) / 1e9;
 
+        if (outcome != INDETERMINATE)
+            assert(outcome == (int)possible_nets.count(id));
+
         clog.precision(2);
         clog << "(time = " << fixed << setw(6) << duration_s << ") ";
+        if (outcome == INDETERMINATE) clog << "SKIPPED";
         if (outcome == 1) clog << "POSSIBLE";
-        if (outcome == 2) clog << "SKIPPED";
         if (outcome != 0)
             new_survivors.push_back(id);
         clog << endl;

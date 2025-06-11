@@ -11,6 +11,13 @@ using namespace std;
 #include "metrized_nets.cpp"
 #include "utils.cpp"
 
+static const int INDETERMINATE = -9832521;
+// TODO: We should make the behavior of the routines more consistent.
+//       More routines should be able to return either an answer or INDETERMINATE.
+//       Currently the main checks return either true or false, where true means
+//       "ok or INDETERMINATE" and false means "something is surely off, this net is impossible".
+//       Also sign(Interval) should use INDETERMINATE.
+
 // Utility function to enforce the constraint on the sides of a
 // quadrilateral.
 //
@@ -252,25 +259,29 @@ bool checkPinAngles(const MetrizedNet& net) {
     return true;
 }
 
-// If (cos l, sin l) \in IxJ \cup (-I)x(-J) with 0 <= l <= pi/2,
+// If (cos l, sin l) \in IxJ \cup (-I)x(-J) with l \in domain,
 // then l belongs to the interval returned by this function.
-Interval intersectWithCircle(const Interval& I, const Interval& J) {
+// domain is a subinterval of [0, pi].
+Interval intersectWithCircle(const Interval& I, const Interval& J, const Interval& domain) {
     if (I.empty() or J.empty())
         return EMPTY_INTERVAL;
 
-    // We shall return the interval of 0 <= l < pi/2 such that:
+    // We shall return the interval of 0 <= l < pi such that:
     // (cos l, sin l) belongs to IxJ or -(IxJ).
     auto intersectWithCircleQuadrant = [](Interval X, Interval Y) {
-        X.intersect(Interval(0, 1));
+        X.intersect(Interval(-1, 1));
         Y.intersect(Interval(0, 1));
         if (X.empty() or Y.empty())
             return EMPTY_INTERVAL;
-        return intersection(Interval(acos(X.r), acos(X.l)),
-                            Interval(asin(Y.l), asin(Y.r)));
+        Interval inv_c = Interval(acos(X.r), acos(X.l));
+        Interval inv_s = Interval(asin(Y.l), asin(Y.r));
+        return hull({intersection(inv_c, inv_s), intersection(inv_c, M_PI-inv_s)});
     };
 
     Interval inter1 = intersectWithCircleQuadrant(I, J);
     Interval inter2 = intersectWithCircleQuadrant(-I, -J);
+    inter1 = intersection(inter1, domain);
+    inter2 = intersection(inter2, domain);
 
     return hull({inter1, inter2});
 }
@@ -312,7 +323,7 @@ bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
             net.length(d) = EMPTY_INTERVAL;
             return false;
         }
-        Interval I = 2*intersectWithCircle(T[0], -T[3]);
+        Interval I = 2*intersectWithCircle(T[0], -T[3], 0.5 * net.length(d));
         net.length(d).intersect(I);
         if (net.length(d).empty())
             return false;
@@ -329,7 +340,7 @@ bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
 //  0: a and b are guaranteed not to intersect.
 //  1 or -1: a and b are guaranteed to intersect. The sign depends on
 //           the sign of the intersection.
-//  -1000: This function does not guarantee anything.
+//  INDETERMINATE: This function does not guarantee anything.
 int halfEquatorsIntersection(const Quaternion<Interval>& T) {
     // sign1 determines on which side of a is Te_1.
     int sign1 = sign(applyIsometry(T, {1, 0, 0})[2]);
@@ -337,7 +348,7 @@ int halfEquatorsIntersection(const Quaternion<Interval>& T) {
     int sign2 = sign(applyIsometry(T, {0, 0, 1})[0]);
 
     if (sign1 == 0 or sign2 == 0)
-        return -1000; // We cannot determine the answer.
+        return INDETERMINATE;
 
     if (sign1 * sign2 == 1)
         return 0; // The two half-equators do not intersect.
@@ -374,21 +385,27 @@ Interval firstIntersectionWithEquator(const Quaternion<Interval>& T) {
 
 // T is an approximate isometry.
 // Let a be the geodesic segment with length I starting from (e_1, e_2).
-// Let a be the geodesic segment with length J starting from (Te_1, Te_2).
+// Let b be the geodesic segment with length J starting from (Te_1, Te_2).
 // We assume that I, J \subseteq [0, pi].
+//
+// a and b may have zero or one intersections. Moreover, since we don't know b exactly,
+// we may not be able to tell whether they intersect.
 //
 // The return values of this function are:
 //  0: a and b are guaranteed not to intersect.
 //  1 or -1: a and b are guaranteed to intersect. The sign depends on
 //           the sign of the intersection.
-//  -1000: This function does not guarantee anything.
-int intersectionSign(const Quaternion<Interval>& T,
-                     const Interval& I, const Interval& J) {
+//  INDETERMINATE: This function does not guarantee anything.
+int internalIntersectionSign(const Quaternion<Interval>& T,
+                             const Interval& I, const Interval& J) {
+    assert(0 <= I.l and I.r <= M_PI+1e-10);
+    assert(0 <= J.l and J.r <= M_PI+1e-10);
+
     int x = halfEquatorsIntersection(T);
     if (x == 0)
         return 0;
-    if (x == -1000)
-        return -1000;
+    if (x == INDETERMINATE)
+        return INDETERMINATE;
 
     Interval I2 = firstIntersectionWithEquator(T);
     Interval J2 = firstIntersectionWithEquator(conj(T));
@@ -399,7 +416,46 @@ int intersectionSign(const Quaternion<Interval>& T,
     if (I2.r < I.l and J2.r < J.l)
         return x;
 
-    return -1000;
+    return INDETERMINATE;
+}
+
+// T is an approximate isometry.
+// Let a be the geodesic segment with length I starting from (e_1, e_2).
+// Let b be the geodesic segment with length J starting from (Te_1, Te_2).
+// We assume that I, J \subseteq [0, 2pi].
+//
+// a and b may have zero or one or two intersections. Moreover, since we don't know b exactly,
+// we may not be able to tell how many intersections they have.
+//
+// The return values of this function are:
+//  0: a and b are guaranteed not to intersect or to have exactly two intersections (in the latter
+//     case, the 0 represents the signed sum of the two intersections points).
+//  1 or -1: a and b are guaranteed to intersect. The sign depends on
+//           the sign of the intersection.
+//  INDETERMINATE: This function does not guarantee anything.
+int intersectionSign(const Quaternion<Interval>& T,
+                     const Interval& I, const Interval& J) {
+    const Interval& pi = Interval(0, M_PI);
+    int ans = 0;
+    vector<pair<Interval, Interval>> halves = {{I, J}};
+    for (int i = 0; i < 2; i++) for (int j = 0; j < 2; j++) {
+        Interval I2 = intersection(pi, i == 0 ? I : I-M_PI);
+        Interval J2 = intersection(pi, j == 0 ? J : J-M_PI);
+        Quaternion<Interval> S = T;
+        Quaternion<Interval> k = {0, 0, 0, 1};
+        if (i == 1)
+            S = k * S;
+        if (j == 1)
+            S = S * k;
+        int curr = internalIntersectionSign(S, I2, J2);
+        if (ans != INDETERMINATE and curr != INDETERMINATE)
+            ans += curr;
+        else
+            ans = INDETERMINATE;
+    }
+    if (ans == INDETERMINATE)
+        return INDETERMINATE;
+    return ans;
 }
 
 
@@ -408,9 +464,17 @@ int intersectionSign(const Quaternion<Interval>& T,
 // - One starting from (Te_1, Te_2) with length J.
 // This function returns false if they necessarily intersect.
 // (it can change I and J to satisfy the non-intersection requirement)
+//
+// If the intersection happens after at least pi along one of the two
+// geodesic segments, it is not detected.
+// The guarantee that "false -> they intersect" is not broken, but it
+// returns true even if the segments are clearly intersecting.
+//
 // TODO: Do we really need to allow this function to change I and J?
 //       It seems like it makes the logic more complicated, without
 //       necessarily improving the performance.
+//       If we change it, it becomes easier (though still somewhat messy) to support the
+//       intersections past pi.
 bool checkNonIntersection(const Quaternion<Interval>& T,
                           Interval& I, Interval& J) {
     int x = halfEquatorsIntersection(T);
@@ -471,10 +535,10 @@ bool checkNonIntersection(MetrizedNet& net) {
 // If up_to_symmetry is true, then this returns true if either P or -P
 // belongs strictly to the convex face.
 bool strictlyInsideConvexFace(const MetrizedNet& net,
-                        array<Interval, 3> P,
-                        const Dart& root,
-                        const vector<Dart>& face,
-                        bool up_to_symmetry = false) {
+                              array<Interval, 3> P,
+                              const Dart& root,
+                              const vector<Dart>& face,
+                              bool up_to_symmetry = false) {
     assert(net.A.isConvexFace(face));
 
     vector<int> signs;
@@ -836,6 +900,8 @@ bool checkLengthLowerbound(MetrizedNet& net) {
 //  - If g(0) and g(1) belong to different faces, then exactly one face
 //    shall yield value -1 and exactly one face shall yield value -1.
 bool checkFacesAreBoundaries(const MetrizedNet& net) {
+    StopWatch _("checkFacesAreBoundaries");
+
     for (int _ = 0; _ < 100; _++) {
         Quaternion<Interval> T = randomIsometry();
         int pos = 0, neg = 0;
@@ -847,7 +913,7 @@ bool checkFacesAreBoundaries(const MetrizedNet& net) {
             for (const Dart& d: f) {
                 int x = intersectionSign(T*net.getIsometry(root, d),
                                          Interval(1), net.length(d));
-                if (x == -1000) {
+                if (x == INDETERMINATE) {
                     ambiguous = true;
                     break;
                 }

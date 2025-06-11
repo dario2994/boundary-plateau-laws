@@ -219,7 +219,7 @@ int searchApproximateMetrization(MetrizedNet net,
     static const long long one_second = 1e9;
     static const long long one_minute = 60*one_second;
     [[maybe_unused]] static const long long one_hour = 60*one_minute;
-    if (get_time() - begin_time > 5 * one_second)
+    if (get_time() - begin_time > 100 * one_hour)
         return INDETERMINATE;
 
     if (net.totalError() < -0.5)

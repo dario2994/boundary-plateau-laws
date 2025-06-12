@@ -134,9 +134,9 @@ class MetrizedNet {
                 if (q == 3)
                     I.intersect(Interval(ell_T));
                 if (q == 4)
-                    I.intersect(Interval(0.01, M_PI-0.001));
+                    I.intersect(Interval(0.01, M_PI - 1e-3));
                 if (q == 5)
-                    I.intersect(Interval(0, ell_T-1e-5));
+                    I.intersect(Interval(0.01, ell_T - 1e-3));
             }
         }
     }

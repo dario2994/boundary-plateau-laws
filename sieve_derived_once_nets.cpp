@@ -114,20 +114,6 @@ bool criterionConcaveAnglesFar(const DerivedOnceNet& A) {
     return true;
 }
 
-bool criterionConvexFacesIntersection(const DerivedOnceNet& A) {
-    for (Dart d: A.darts()) {
-        if (!A.isConvexFace(d) or !A.isConvexFace(A.rev(d)))
-            continue;
-        vector<Dart> face2 = A.face(A.rev(d));
-        int cnt = 0;
-        for (Dart e: face2)
-            cnt += A.sameFace(d, e);
-        if (cnt > 1)
-            return false;
-    }
-    return true;
-}
-
 int main() {
     vector<DerivedOnceNet> derived_once =
         parseDerivedOnceNets("data/derived_once_computer.txt");
@@ -137,9 +123,6 @@ int main() {
     // The order of the criteria matters, as a criterion may implicitly
     // assume that all the previous ones pass.
     vector<pair<string, function<bool(const DerivedOnceNet&)>>> criteria = {
-        // This criterion excludes zero nets. We keep it because it is useful to
-        // know that all nets survived have this property.
-        {"convex faces intersection", criterionConvexFacesIntersection},
         // Only one net excluded by this criterion would not be excluded by
         // the following criteria. We keep it because it is useful to
         // know that all nets survived have this property.

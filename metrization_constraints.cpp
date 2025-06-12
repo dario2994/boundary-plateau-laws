@@ -238,33 +238,6 @@ bool checkPinAngles(const MetrizedNet& net) {
     return true;
 }
 
-// If (cos l, sin l) \in IxJ \cup (-I)x(-J) with l \in domain,
-// then l belongs to the interval returned by this function.
-// domain is a subinterval of [0, pi].
-Interval intersectWithCircle(const Interval& I, const Interval& J, const Interval& domain) {
-    if (I.empty() or J.empty())
-        return EMPTY_INTERVAL;
-
-    // We shall return the interval of 0 <= l < pi such that:
-    // (cos l, sin l) belongs to IxJ or -(IxJ).
-    auto intersectWithCircleQuadrant = [](Interval X, Interval Y) {
-        X.intersect(Interval(-1, 1));
-        Y.intersect(Interval(0, 1));
-        if (X.empty() or Y.empty())
-            return EMPTY_INTERVAL;
-        Interval inv_c = Interval(acos(X.r), acos(X.l));
-        Interval inv_s = Interval(asin(Y.l), asin(Y.r));
-        return hull({intersection(inv_c, inv_s), intersection(inv_c, M_PI-inv_s)});
-    };
-
-    Interval inter1 = intersectWithCircleQuadrant(I, J);
-    Interval inter2 = intersectWithCircleQuadrant(-I, -J);
-    inter1 = intersection(inter1, domain);
-    inter2 = intersection(inter2, domain);
-
-    return hull({inter1, inter2});
-}
-
 // Assume that you know the lengths of k-1 sides of a non-convex face
 // with k sides. This function determines (robustly) whether they
 // can form the non-convex face (i.e., the angles are correct) and

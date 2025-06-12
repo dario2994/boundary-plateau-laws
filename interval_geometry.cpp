@@ -47,8 +47,8 @@ ApproximateIsometry basicTranslation(Interval theta, Interval len) {
 }
 
 
-// TODO: This function shall guarantee that the Quaternion<Interval>
-//       returned contains at least one valid isometry (i.e. a quaternion with norm 1).
+// TODO: This function shall guarantee that it returns an isometry (i.e.,
+//       a quaternion with norm 1 is contained in the 4-dim box).
 ApproximateIsometry randomIsometry() {
     static default_random_engine engine(123);
     uniform_real_distribution<double> dist(-1.0, 1.0);
@@ -59,6 +59,34 @@ ApproximateIsometry randomIsometry() {
         return randomIsometry();
     a /= z, b /= z, c /= z, d /= z;
     return ApproximateIsometry(a, b, c, d);
+}
+
+
+// If (cos l, sin l) \in IxJ \cup (-I)x(-J) with l \in domain,
+// then l belongs to the interval returned by this function.
+// domain is a subinterval of [0, pi].
+Interval intersectWithCircle(const Interval& I, const Interval& J, const Interval& domain) {
+    if (I.empty() or J.empty())
+        return EMPTY_INTERVAL;
+
+    // We shall return the interval of 0 <= l < pi such that:
+    // (cos l, sin l) belongs to IxJ or -(IxJ).
+    auto intersectWithCircleQuadrant = [](Interval X, Interval Y) {
+        X.intersect(Interval(-1, 1));
+        Y.intersect(Interval(0, 1));
+        if (X.empty() or Y.empty())
+            return EMPTY_INTERVAL;
+        Interval inv_c = Interval(acos(X.r), acos(X.l));
+        Interval inv_s = Interval(asin(Y.l), asin(Y.r));
+        return hull({intersection(inv_c, inv_s), intersection(inv_c, M_PI-inv_s)});
+    };
+
+    Interval inter1 = intersectWithCircleQuadrant(I, J);
+    Interval inter2 = intersectWithCircleQuadrant(-I, -J);
+    inter1 = intersection(inter1, domain);
+    inter2 = intersection(inter2, domain);
+
+    return hull({inter1, inter2});
 }
 
 

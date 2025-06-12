@@ -13,7 +13,7 @@ struct Quaternion{
     Quaternion(): q{T(0),T(0),T(0),T(0)} {}
     Quaternion(T a, T b, T c, T d): q{a,b,c,d} {}
     Quaternion(T r): q{r, T(0), T(0), T(0)} {}
-    
+
     T& operator [](int i) { return q[i]; }
     const T& operator [](int i) const { return q[i]; }
 };
@@ -23,7 +23,7 @@ Quaternion<T> operator +(const Quaternion<T>& x, const Quaternion<T>& y) {
     Quaternion<T> z;
     for (int i = 0; i < 4; i++)
         z[i] = x[i] + y[i];
-    return z; 
+    return z;
 }
 
 template<typename T>
@@ -31,7 +31,7 @@ Quaternion<T> operator -(const Quaternion<T>& x, const Quaternion<T>& y) {
     Quaternion<T> z;
     for (int i = 0; i < 4; i++)
         z[i] = x[i] - y[i];
-    return z; 
+    return z;
 }
 
 template<typename T>
@@ -60,48 +60,6 @@ template<typename T>
 ostream& operator <<(ostream& out, const Quaternion<T>& q) {
     out << q[0] << " + i" << q[1] << " + j" << q[2] << " + k" << q[3];
     return out;
-}
-
-
-// We employ the identification R^3 \cong <i, j, k> \subseteq Quaternions.
-// Then, any quaternion q with |q|=1 induces an isometry via v -> qv\bar q.
- 
-// Set v = (e_1, e_2).
-// This function returns R(v, theta).
-template<typename T> 
-Quaternion<T> basicRotation(T theta) {
-    T theta2 = 0.5 * theta;
-    return Quaternion<T>(cos(theta2), sin(theta2), 0, 0);
-}
-
-// This function returns E(\rot_\theta v, len)
-template<typename T> 
-Quaternion<T> basicIsometry(T theta, T len) {
-    T len2 = 0.5 * len;
-    return Quaternion<T>(cos(len2), 0, 
-            -sin(theta) * sin(len2), cos(theta) * sin(len2)); 
-}
-
-template<typename T>
-array<T, 3> applyIsometry(const Quaternion<T>& S, 
-                          const array<T, 3>& vec) {
-    Quaternion<T> vec2(0, vec[0], vec[1], vec[2]);
-    Quaternion<T> res = S*vec2*conj(S);
-    return {res[1], res[2], res[3]};
-}
-
-// TODO: This function shall guarantee that the Quaternion<Interval>
-//       returned contains at least one valid isometry (i.e. a quaternion with norm 1).
-Quaternion<Interval> randomIsometry() {
-    static default_random_engine engine(123);
-    uniform_real_distribution<double> dist(-1.0, 1.0);
-    
-    double a = dist(engine), b = dist(engine), c = dist(engine), d = dist(engine);
-    double z = sqrt(a*a + b*b + c*c + d*d);
-    if (z < 0.1)
-        return randomIsometry();
-    a /= z, b /= z, c /= z, d /= z;
-    return Quaternion<Interval>(a, b, c, d);
 }
 
 #endif

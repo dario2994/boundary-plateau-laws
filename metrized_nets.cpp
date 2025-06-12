@@ -8,6 +8,7 @@ using namespace std;
 #include "derived_once_nets.cpp"
 #include "interval_arithmetic.cpp"
 #include "quaternions.cpp"
+#include "interval_geometry.cpp"
 #include "utils.cpp"
 
 bool containsBiangle(const DerivedOnceNet& A) {
@@ -154,21 +155,21 @@ class MetrizedNet {
         (*current_version)++;
     }
 
-    Quaternion<Interval> isometryFromPath(const vector<PathStep>& path) const {
+    ApproximateIsometry isometryFromPath(const vector<PathStep>& path) const {
         StopWatch _("isometryFromPath");
 
         double sum_theta = 0;
-        Quaternion<Interval> res(1);
+        ApproximateIsometry res(1);
         for (auto op: path) {
             if (op.type == 'R')
                 sum_theta += op.t;
             else if (op.type == 'E')
-                res *= basicIsometry<Interval>(sum_theta, op.t);
+                res *= basicTranslation(sum_theta, op.t);
             else if (op.type == 'D')
-                res *= basicIsometry<Interval>(sum_theta, length(op.d));
+                res *= basicTranslation(sum_theta, length(op.d));
             else assert(0);
         }
-        res *= basicRotation<Interval>(sum_theta);
+        res *= basicRotation(sum_theta);
 
         return res;
     }
@@ -270,12 +271,12 @@ class MetrizedNet {
         return (*to_pins)[from.id][A.concaveAngleId(to)];
     }
 
-    Quaternion<Interval> getIsometry(const Dart& from, const Dart& to) const {
+    ApproximateIsometry getIsometry(const Dart& from, const Dart& to) const {
         rebuildEmbedding(from);
         return isometryFromPath((*optimal_path)[from.id][to.id]);
     }
 
-    Quaternion<Interval> getIsometryToPin(const Dart& from, const Dart& to) const {
+    ApproximateIsometry getIsometryToPin(const Dart& from, const Dart& to) const {
         rebuildEmbedding(from);
         return isometryFromPath((*to_pins)[from.id][A.concaveAngleId(to)]);
     }

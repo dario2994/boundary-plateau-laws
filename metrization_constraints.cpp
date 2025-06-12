@@ -7,16 +7,16 @@ using namespace std;
 
 #include "interval_arithmetic.cpp"
 #include "quaternions.cpp"
+#include "interval_geometry.cpp"
 #include "derived_once_nets.cpp"
 #include "metrized_nets.cpp"
 #include "utils.cpp"
 
-static const int INDETERMINATE = -9832521;
+
 // TODO: We should make the behavior of the routines more consistent.
 //       More routines should be able to return either an answer or INDETERMINATE.
 //       Currently the main checks return either true or false, where true means
 //       "ok or INDETERMINATE" and false means "something is surely off, this net is impossible".
-//       Also sign(Interval) should use INDETERMINATE.
 
 // Utility function to enforce the constraint on the sides of a
 // quadrilateral.
@@ -179,27 +179,6 @@ bool refineMetrizationConvexContinent(MetrizedNet& net,
 }
 
 
-template<typename T>
-T operator*(const array<T, 3>& X, const array<T, 3>& Y) {
-    return X[0]*Y[0] + X[1]*Y[1] + X[2]*Y[2];
-}
-
-template<typename T>
-array<T, 3> operator-(const array<T, 3>& X, const array<T, 3>& Y) {
-    return {X[0]-Y[0], X[1]-Y[1], X[2]-Y[2]};
-}
-
-template<typename T>
-array<T, 3> operator^(const array<T, 3>& X, const array<T, 3>& Y) {
-    return {X[1]*Y[2]-X[2]*Y[1], X[2]*Y[0]-X[0]*Y[2], X[0]*Y[1]-X[1]*Y[0]};
-}
-
-template <typename T>
-T det(const array<T, 3>& A, const array<T, 3>& B, const array<T, 3>& C) {
-    return A * (B ^ C);
-}
-
-
 // Checks that the equators corresponding to any three edges going to
 // a pin are concurrent.
 bool canPinsBeAntipodal(const MetrizedNet& net) {
@@ -215,7 +194,7 @@ bool canPinsBeAntipodal(const MetrizedNet& net) {
                 for (int z: {i, j, k}) {
                     Dart d = net.A.concaveAngles()[z];
                     auto isom = net.getIsometryToPin(root, d);
-                    equators.push_back(applyIsometry(isom, {0, 0, 1}));
+                    equators.push_back(isom({0, 0, 1}));
                 }
                 if (!det(equators[0], equators[1], equators[2]).containsZero())
                     return false;
@@ -246,8 +225,8 @@ bool checkPinAngles(const MetrizedNet& net) {
         auto iso0 = net.getIsometryToPin(root, concave_angles[0]);
         auto iso1 = net.getIsometryToPin(root, concave_angles[1]);
 
-        auto eq0 = applyIsometry(iso0, {0, 0, 1});
-        auto eq1 = applyIsometry(iso1, {0, 0, 1});
+        auto eq0 = iso0({0, 0, 1});
+        auto eq1 = iso1({0, 0, 1});
 
         Interval scal_prod = eq0 * eq1;
 
@@ -316,7 +295,7 @@ bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
                 path.emplace_back(e);
             path.emplace_back(PathStep('R', A.phiAngle(e)));
         }
-        Quaternion<Interval> T = net.isometryFromPath(path);
+        ApproximateIsometry T = net.isometryFromPath(path);
         // T is, up to sign, (cos(l/2), 0, 0, -sin(l/2)), where
         // l is the length of d.
         if (!T[1].containsZero() or !T[2].containsZero()) {
@@ -329,168 +308,6 @@ bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
             return false;
     }
     return true;
-}
-
-
-// T is an approximate isometry.
-// Let a be the oriented half-equator starting from (e_1, e_2).
-// Let b be the oriented half-equator starting from (Te_1, Te_2).
-//
-// The return values of this function are:
-//  0: a and b are guaranteed not to intersect.
-//  1 or -1: a and b are guaranteed to intersect. The sign depends on
-//           the sign of the intersection.
-//  INDETERMINATE: This function does not guarantee anything.
-int halfEquatorsIntersection(const Quaternion<Interval>& T) {
-    // sign1 determines on which side of a is Te_1.
-    int sign1 = sign(applyIsometry(T, {1, 0, 0})[2]);
-    // sign2 determines on which side of b is e_1.
-    int sign2 = sign(applyIsometry(T, {0, 0, 1})[0]);
-
-    if (sign1 == 0 or sign2 == 0)
-        return INDETERMINATE;
-
-    if (sign1 * sign2 == 1)
-        return 0; // The two half-equators do not intersect.
-
-    // Either 1 or -1 depending on the orientation of the intersection.
-    return sign1;
-}
-
-// T is an approximate isometry.
-// Let a be the oriented geodesic starting from (e_1, e_2).
-// Let b be the equator going through (Te_1, Te_2).
-//
-// This function returns a nonempty interval I \subseteq [0, pi].
-// It is guaranteed that the first intersection of a with b happens at
-// exp((e_1, e_2), t) with t\in I.
-Interval firstIntersectionWithEquator(const Quaternion<Interval>& T) {
-    auto Te3 = applyIsometry(T, {0, 0, 1});
-
-    // Te_3^e_3 is, up to scaling, the intersection between a and b.
-    // Notice that Te_3^e_3 = (X, Y, 0).
-    Interval X = Te3[1];
-    Interval Y = -Te3[0];
-
-    if (Y.containsZero())
-        return Interval(0, M_PI);
-
-    // We identify the *first* intersection.
-    if (Y.l < 0) X = -X, Y = -Y;
-
-    double min_theta = min(atan2(Y.l, X.r), atan2(Y.r, X.r));
-    double max_theta = max(atan2(Y.l, X.l), atan2(Y.r, X.l));
-    return Interval(min_theta, max_theta);
-}
-
-// T is an approximate isometry.
-// Let a be the geodesic segment with length I starting from (e_1, e_2).
-// Let b be the geodesic segment with length J starting from (Te_1, Te_2).
-// We assume that I, J \subseteq [0, pi].
-//
-// a and b may have zero or one intersections. Moreover, since we don't know b exactly,
-// we may not be able to tell whether they intersect.
-//
-// The return values of this function are:
-//  0: a and b are guaranteed not to intersect.
-//  1 or -1: a and b are guaranteed to intersect. The sign depends on
-//           the sign of the intersection.
-//  INDETERMINATE: This function does not guarantee anything.
-int internalIntersectionSign(const Quaternion<Interval>& T,
-                             const Interval& I, const Interval& J) {
-    assert(0 <= I.l and I.r <= M_PI+1e-10);
-    assert(0 <= J.l and J.r <= M_PI+1e-10);
-
-    int x = halfEquatorsIntersection(T);
-    if (x == 0)
-        return 0;
-    if (x == INDETERMINATE)
-        return INDETERMINATE;
-
-    Interval I2 = firstIntersectionWithEquator(T);
-    Interval J2 = firstIntersectionWithEquator(conj(T));
-
-    if (I2.l > I.r or J2.l > J.r)
-        return 0;
-
-    if (I2.r < I.l and J2.r < J.l)
-        return x;
-
-    return INDETERMINATE;
-}
-
-// T is an approximate isometry.
-// Let a be the geodesic segment with length I starting from (e_1, e_2).
-// Let b be the geodesic segment with length J starting from (Te_1, Te_2).
-// We assume that I, J \subseteq [0, 2pi].
-//
-// a and b may have zero or one or two intersections. Moreover, since we don't know b exactly,
-// we may not be able to tell how many intersections they have.
-//
-// The return values of this function are:
-//  0: a and b are guaranteed not to intersect or to have exactly two intersections (in the latter
-//     case, the 0 represents the signed sum of the two intersections points).
-//  1 or -1: a and b are guaranteed to intersect. The sign depends on
-//           the sign of the intersection.
-//  INDETERMINATE: This function does not guarantee anything.
-int intersectionSign(const Quaternion<Interval>& T,
-                     const Interval& I, const Interval& J) {
-    const Interval& pi = Interval(0, M_PI);
-    int ans = 0;
-    vector<pair<Interval, Interval>> halves = {{I, J}};
-    for (int i = 0; i < 2; i++) for (int j = 0; j < 2; j++) {
-        Interval I2 = intersection(pi, i == 0 ? I : I-M_PI);
-        Interval J2 = intersection(pi, j == 0 ? J : J-M_PI);
-        Quaternion<Interval> S = T;
-        Quaternion<Interval> k = {0, 0, 0, 1};
-        if (i == 1)
-            S = k * S;
-        if (j == 1)
-            S = S * k;
-        int curr = internalIntersectionSign(S, I2, J2);
-        if (ans != INDETERMINATE and curr != INDETERMINATE)
-            ans += curr;
-        else
-            ans = INDETERMINATE;
-    }
-    if (ans == INDETERMINATE)
-        return INDETERMINATE;
-    return ans;
-}
-
-
-// Consider the two geodesic segments:
-// - One starting from (e_1, e_2) with length I.
-// - One starting from (Te_1, Te_2) with length J.
-// This function returns false if they necessarily intersect.
-// (it can change I and J to satisfy the non-intersection requirement)
-//
-// If the intersection happens after at least pi along one of the two
-// geodesic segments, it is not detected.
-// The guarantee that "false -> they intersect" is not broken, but it
-// returns true even if the segments are clearly intersecting.
-//
-// TODO: Do we really need to allow this function to change I and J?
-//       It seems like it makes the logic more complicated, without
-//       necessarily improving the performance.
-//       If we change it, it becomes easier (though still somewhat messy) to support the
-//       intersections past pi.
-bool checkNonIntersection(const Quaternion<Interval>& T,
-                          Interval& I, Interval& J) {
-    int x = halfEquatorsIntersection(T);
-    if (x != 1 and x != -1)
-        return true;
-    double lenI = firstIntersectionWithEquator(T).r;
-    if (lenI >= I.r) // for performance
-        return true;
-    double lenJ = firstIntersectionWithEquator(conj(T)).r;
-
-    if (I.l >= lenI)
-        J.intersect(Interval(0, lenJ));
-    if (J.l >= lenJ)
-        I.intersect(Interval(0, lenI));
-
-    return !I.empty() and !J.empty();
 }
 
 // Checks that non-convex faces are not self-intersecting.
@@ -506,20 +323,20 @@ bool checkNonIntersection(MetrizedNet& net) {
         double sum_theta = 0;
         sum_theta += M_PI;
         const vector<Dart>& f = A.face(d);
-        Quaternion<Interval> iso(1);
+        ApproximateIsometry iso(1);
 
         for (int i = 0; i < ssize(f)-2; i++) {
             sum_theta += A.phiAngle(f[i]);
             if (i != 0) {
                 Dart e = f[i+1];
                 bool ans = checkNonIntersection(
-                        iso * basicRotation<Interval>(sum_theta),
+                        iso * basicRotation(sum_theta),
                         net.length(d),
                         net.length(e));
                 if (!ans)
                     return false;
             }
-            iso *= basicIsometry<Interval>(sum_theta, net.length(f[i+1]));
+            iso *= basicTranslation(sum_theta, net.length(f[i+1]));
 
             double total_error =
                 iso[0].len() + iso[1].len() + iso[2].len() + iso[3].len();
@@ -543,16 +360,16 @@ bool strictlyInsideConvexFace(const MetrizedNet& net,
 
     vector<int> signs;
     for (const Dart& d: face) {
-        const auto& Z = applyIsometry(net.getIsometry(root, d), {0, 0, 1});
+        const auto& Z = net.getIsometry(root, d)({0, 0, 1});
         int s = sign(P * Z);
         signs.push_back(s);
 
-        if (s == 0 or s != signs[0])
+        if (s == INDETERMINATE or s != signs[0])
             break; // For performance.
     }
     bool same_sign = true;
     for (int s: signs)
-        same_sign &= s != 0 and s == signs[0];
+        same_sign &= s != INDETERMINATE and s == signs[0];
 
     if (!same_sign)
         return false;
@@ -568,8 +385,8 @@ bool checkPinOutsideConvexFaces(const MetrizedNet& net) {
     for (int i = 0; i < cnt; i++) for (int j = i+1; j < cnt; j++) {
         const Dart& root = net.A.concaveAngles()[i];
         const Dart& other = net.A.concaveAngles()[j];
-        const auto& X = applyIsometry(net.getIsometryToPin(root, root), {0, 0, 1});
-        const auto& Y = applyIsometry(net.getIsometryToPin(root, other), {0, 0, 1});
+        const auto& X = net.getIsometryToPin(root, root)({0, 0, 1});
+        const auto& Y = net.getIsometryToPin(root, other)({0, 0, 1});
         const auto& P = X^Y;
         for (const auto& f: net.A.faces()) {
             if (!net.A.isConvexFace(f))
@@ -582,38 +399,6 @@ bool checkPinOutsideConvexFaces(const MetrizedNet& net) {
         }
     }
     return true;
-}
-
-// If it returns true, the given points belong to a strict hemisphere.
-// Complexity: O(n^4), where n = ssize(vec).
-bool belongToStrictHemisphere(vector<array<Interval, 3>> vec) {
-    auto subroutine = [&]() {
-        int n = ssize(vec);
-        for (int i = 0; i < n; i++)
-        for (int j = i+1; j < n; j++)
-        for (int k = j+1; k < n; k++) {
-            auto normal = (vec[j]-vec[i])^(vec[k]-vec[i]);
-            vector<int> signs;
-            for (auto q: vec) {
-                int s = sign(q * normal);
-                signs.push_back(s);
-            }
-            bool same_sign = true;
-            for (int s: signs)
-                same_sign &= s != 0 and s == signs[0];
-            if (same_sign)
-                return true;
-        }
-        return false;
-    };
-    if (subroutine())
-        return true;
-
-    // If all points in vec are coplanar, subroutine returns false.
-    // To solve this issue, we add a "random" point to vec and we
-    // call subroutine again.
-    vec.push_back({0.84395, 0.19283, 0.96591});
-    return subroutine();
 }
 
 // For each concave angle, it returns an upperbound on the length of
@@ -651,7 +436,7 @@ vector<double> maxDistanceToPin(const MetrizedNet& net) {
             if (to_pin.to == d.from or to_pin.to == d.to)
                 continue;
 
-            if (applyIsometry(T, {1, 0, 0})[2].r < 0)
+            if (T({1, 0, 0})[2].r < 0)
                 len = min(len, firstIntersectionWithEquator(conj(T)).r);
         }
         len_to_pin.push_back(len);
@@ -699,7 +484,7 @@ bool checkPinsSpecial(const MetrizedNet& net) {
 
             vector<array<Interval, 3>> vec;
             for (auto p: {path1, path2, path1_end, path2_end}) {
-                auto pt = applyIsometry(net.isometryFromPath(p), {1, 0, 0});
+                auto pt = net.isometryFromPath(p)({1, 0, 0});
                 vec.push_back(pt);
             }
 
@@ -735,7 +520,7 @@ bool checkPinIsVertex(const MetrizedNet& net) {
             const Dart& to_pin = A.concaveAngles()[i];
 
             auto T = net.getIsometryToPin(root, to_pin);
-            auto equator = applyIsometry(T, {0, 0, 1});
+            auto equator = T({0, 0, 1});
             can_be_pin &= (equator * array<Interval, 3>{1, 0, 0}).containsZero();
 
             if (!can_be_pin)
@@ -752,7 +537,7 @@ bool checkPinIsVertex(const MetrizedNet& net) {
 
             vector<array<Interval, 3>> vec;
             for (auto p: {{}, path_begin, path_end}) {
-                auto pt = applyIsometry(net.isometryFromPath(p), {1, 0, 0});
+                auto pt = net.isometryFromPath(p)({1, 0, 0});
                 vec.push_back(pt);
             }
 
@@ -814,7 +599,7 @@ bool checkFacesNotIdentical(const MetrizedNet& net) {
         if (!identical)
             continue;
 
-        Quaternion<Interval> T = net.getIsometry(d, e);
+        ApproximateIsometry T = net.getIsometry(d, e);
         if (!interval_is_point(T[0], 1) and !interval_is_point(T[0], -1))
             continue;
 
@@ -903,7 +688,7 @@ bool checkFacesAreBoundaries(const MetrizedNet& net) {
     StopWatch _("checkFacesAreBoundaries");
 
     for (int _ = 0; _ < 100; _++) {
-        Quaternion<Interval> T = randomIsometry();
+        ApproximateIsometry T = randomIsometry();
         int pos = 0, neg = 0;
         bool ambiguous = false;
         const Dart& root = net.A.dart(0);

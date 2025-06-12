@@ -5,6 +5,8 @@
 #include <bits/stdc++.h>
 using namespace std;
 
+static const int INDETERMINATE = -9832521;
+
 // Struct maintaining a closed interval [l, r].
 // In many of our applications, the interval is a subset of [0, pi].
 struct Interval {
@@ -154,6 +156,8 @@ Interval cos(const Interval& I) {
 //Returns 1, -1, 0 if respectively I is an interval of positive values,
 // an interval of negative values, or it contains zero.
 int sign(const Interval& I) {
+    if (I.l <= 0 and I.r >= 0)
+        return INDETERMINATE;
     return (I.l > 0) - (I.r < 0);
 }
 

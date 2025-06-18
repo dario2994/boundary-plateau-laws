@@ -8,56 +8,50 @@ using namespace std;
 #include "metrization_constraints.cpp"
 #include "metrized_nets.cpp"
 
-
-#include "spherical_geometry.cpp"
+typedef array<double, 3> pt;
+pt make_deterministic(array<Interval, 3> p) {
+    return {p[0].mid(), p[1].mid(), p[2].mid()};
+}
+ostream& operator<<(ostream& out, pt p) {
+    out << p[0] << " " << p[1] << " " << p[2];
+    return out;
+}
 
 void savePicture(vector<pair<pt, string>> vertices,
-                 vector<GeodesicSegment> edges, string out_file) {
+                 vector<tuple<pt, pt, double>> edges, string out_file) {
     ofstream out(out_file);
     out << ssize(vertices) << " " << ssize(edges) << endl;
     for (auto pp: vertices) {
-        pp.first.serialize(out);
-        out << " " << pp.second << endl;
+        out << pp.first << " " << pp.second << endl;
     }
-    for (const GeodesicSegment& side: edges) {
-        side.serialize(out);
-        out << endl;
+    for (const auto& side: edges) {
+        auto [p, v, len] = side;
+        out << p << " " << v << " " << len << endl;
     }
     out.close();
 }
 
-// TODO: Translate this in the quaternion language.
-pair<vector<pair<pt, string>>, vector<GeodesicSegment>>
+pair<vector<pair<pt, string>>, vector<tuple<pt, pt, double>>>
         embedNet(const MetrizedNet& net) {
     const DerivedOnceNet& A = net.A;
 
-    int n = 2*A.E();
-    vector<GeodesicSegment> embedding(n);
-    vector<bool> visited(n, false);
-    function<void(Dart)> dfs = [&](Dart d) {
-        GeodesicSegment& curr = embedding[d.id];
-        double len = net.length(d).mid();
-        curr.len = len;
-        visited[d.id] = true;
-        // Assuming that rev != next. True if there are no self-loops.
-        if (!visited[A.next(d).id]) {
-            embedding[A.next(d).id] = GeodesicSegment(curr.rot(A.nextAngle(d)), 0);
-            dfs(A.next(d));
-        }
-        if (!visited[A.rev(d).id]) {
-            embedding[A.rev(d).id] = GeodesicSegment(curr.exp(len).rot(M_PI), 0);
-            dfs(A.rev(d));
-        }
-    };
-    embedding[0] = GeodesicSegment(TangentVector(), 0);
-    dfs(A.dart(0));
-
-    vector<pair<pt, string>> vertices(A.V());
+    vector<pair<pt, string>> vertex_embedding(A.V());
+    vector<tuple<pt, pt, double>> dart_embedding(2 * A.E());
+    Dart root = A.dart(0);
     for (Dart d: A.darts()) {
-        vertices[d.from] = {embedding[d.id].P, to_string(d.from)};
+        ApproximateIsometry q = net.getIsometry(root, d);
+        vertex_embedding[d.from] = {
+            make_deterministic(q({1, 0, 0})),
+            to_string(d.from)
+        };
+        dart_embedding[d.id] = {
+            make_deterministic(q({1, 0, 0})),
+            make_deterministic(q({0, 1, 0})),
+            net.length(d).mid()
+        };
     }
 
-    return {vertices, embedding};
+    return {vertex_embedding, dart_embedding};
 }
 
 
@@ -207,7 +201,7 @@ bool run_pathological_checks;
 //  1: The current approximate metrization is precise enough (error 1e-5) and
 //     the metrized net has antipodal pins, correct angles, and no side
 //     extremely short.
-//  INDETERMINATE: The program stopped because the computation was taking
+//  INDETERMINATE: The program stopped because the execution was taking
 //                 too long.
 int searchApproximateMetrization(MetrizedNet net,
                                  const vector<Dart>& convex_fixed_darts,

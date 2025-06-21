@@ -16,7 +16,7 @@ if not net_id.isdigit():
 # Paths
 derived_png = f"data/derived_once_images/{net_id}.png"
 derived_script = "visualize_derived_once_net.py"
-metrization_txt = f"data/metrization/{net_id}.txt"
+metrization_txt = f"data/metrized_nets/{net_id}_visualization.txt"
 output_html = f"data/images3d/{net_id}.html"
 spherical_script = "visualize_spherical_geodesics.py"
 

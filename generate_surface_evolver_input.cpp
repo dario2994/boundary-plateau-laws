@@ -220,7 +220,7 @@ int main() {
     CombinatorialMap A = A2;
     vector<pair<pt, vector<int>>> pins_data;
 
-    // AD-HOC (can be automated for some
+    // AD-HOC (can be automated if the pins are uniquely determined).
     pt normal1 = embedding[2] ^ embedding[3];
     pt normal2 = embedding[4] ^ embedding[5];
     pt pin1 = normal1 ^ normal2;
@@ -284,7 +284,15 @@ int main() {
         faces_after_pop.push_back({d.from, d.to, d.to+n, d.from+n});
     }
 
+
+    // AD-HOC
+    // Here we describe the "pop".
+    // Use python run_visualization net_id as well as the faces' list
+    // (printed by this program) to come up with a reasonable choice.
+    // This choice, which is crucial, can be informed by experiments.
     const vector<int> excluded_faces = {2, 4};
+    const vector<int> path_to_add = {pins[0], 3, 1, 5, pins[1], 4, 2, pins[0]};
+
     auto faces = A.faces();
     cout << "Faces: " << endl;
     for (int i = 0; i < ssize(faces); i++) {
@@ -305,9 +313,6 @@ int main() {
             half_face.push_back(d.from + n);
         faces_after_pop.push_back(half_face);
     }
-
-    // AD-HOC
-    vector<int> path_to_add = {pins[0], 3, 1, 5, pins[1], 4, 2, pins[0]};
 
     for (int i = 0; i < ssize(path_to_add)-1; i++) {
         faces_after_pop.push_back(

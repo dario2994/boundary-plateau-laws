@@ -122,13 +122,14 @@ subroutine := {
     g 2000;
     areaweed 0.001;
     u 4;
+    print total_area;
 }
 
 gogo := {
+    print total_area;
+    quiet;
     r 2;
     subroutine 10;
 }
 
-s;
-q
-gogo;
+showq;

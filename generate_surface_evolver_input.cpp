@@ -323,8 +323,8 @@ int main() {
     for (int i = 0; i < n; i++)
         is_vertex_fixed[i] = true;
 
-    saveSurfaceEvolverFormat(embedding, pins[0], is_vertex_fixed, faces_before_pop, "triangular_prism_before_pop.fe");
-    saveSurfaceEvolverFormat(embedding, pins[0], is_vertex_fixed, faces_after_pop, "triangular_prism_after_pop_2.fe");
+    saveSurfaceEvolverFormat(embedding, pins[0], is_vertex_fixed, faces_before_pop, "surface_before_pop.fe");
+    saveSurfaceEvolverFormat(embedding, pins[0], is_vertex_fixed, faces_after_pop, "surface_after_pop_2.fe");
 
 }
 

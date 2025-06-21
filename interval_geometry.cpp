@@ -89,6 +89,15 @@ Interval intersectWithCircle(const Interval& I, const Interval& J, const Interva
     return hull({inter1, inter2});
 }
 
+template<typename T>
+array<T, 3> operator*(const array<T, 3>& X, T lambda) {
+    return {X[0] * lambda, X[1] * lambda, X[2] * lambda};
+}
+
+template<typename T>
+array<T, 3> operator/(const array<T, 3>& X, T lambda) {
+    return X * (T(1)/lambda);
+}
 
 template<typename T>
 T operator*(const array<T, 3>& X, const array<T, 3>& Y) {
@@ -101,6 +110,11 @@ array<T, 3> operator-(const array<T, 3>& X, const array<T, 3>& Y) {
 }
 
 template<typename T>
+array<T, 3> operator-(const array<T, 3>& X) {
+    return {-X[0], -X[1], -X[2]};
+}
+
+template<typename T>
 array<T, 3> operator^(const array<T, 3>& X, const array<T, 3>& Y) {
     return {X[1]*Y[2]-X[2]*Y[1], X[2]*Y[0]-X[0]*Y[2], X[0]*Y[1]-X[1]*Y[0]};
 }
@@ -108,6 +122,11 @@ array<T, 3> operator^(const array<T, 3>& X, const array<T, 3>& Y) {
 template <typename T>
 T det(const array<T, 3>& A, const array<T, 3>& B, const array<T, 3>& C) {
     return A * (B ^ C);
+}
+
+template <typename T>
+T norm(const array<T, 3>& X) {
+    return sqrt(pow(X[0], 2) + pow(X[1], 2) + pow(X[2], 2));
 }
 
 

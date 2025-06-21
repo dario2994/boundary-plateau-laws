@@ -43,3 +43,4 @@ __pycache__/
 data/images3d/*.html
 embed_or_exclude_nets
 .vscode/
+generate_surface_evolver_input

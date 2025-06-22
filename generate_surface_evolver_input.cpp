@@ -314,11 +314,15 @@ const map<int, pair<vector<int>, vector<int>>> pop_description = {
     {1829, {
         {1, 7},
         {PIN_ZERO, 12, 5, 6, 15, PIN_ONE, 14, 10, 11, 9, 13, PIN_ZERO}
+    }},
+    {691, {
+        {6, 8},
+        {PIN_ZERO, 7, 6, 13, PIN_ONE, 0, 1, 4, 11, PIN_ZERO}
     }}
 };
 
 int main() {
-    const int net_id = 1829;
+    const int net_id = 691;
     assert(possible_nets.count(net_id));
 
     const DerivedOnceNet A2 =
@@ -372,8 +376,9 @@ int main() {
                 break;
             }
         }
-        if (pin_is_vertex)
-            continue;
+        if (pin_is_vertex and A2.degree(pins_id[i]) == 3)
+                continue;
+
         assert(!concave_faces.empty());
 
         vector<Dart> face = concave_faces[0];
@@ -385,6 +390,17 @@ int main() {
                 face = concave_faces[1];
         }
         vector<Dart> concave_angles = getConcaveAngles(A2, face);
+        if (pin_is_vertex) {
+            if (ssize(concave_angles) == 1) {
+                assert(concave_angles[0].to == pins_id[i]);
+                continue;
+            }
+            assert(ssize(concave_angles) == 2);
+            if (concave_angles[0].to != pins_id[i])
+                swap(concave_angles[0], concave_angles[1]);
+            A.addEdge(concave_angles[0], A.phi(concave_angles[1]));
+            continue;
+        }
         if (ssize(concave_angles) == 2)
             concave_angles[1] = A2.phi(concave_angles[1]);
         int pin_id = addPin(A, concave_angles);

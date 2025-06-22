@@ -9,9 +9,6 @@ using namespace std;
 #include "metrized_nets.cpp"
 
 typedef array<double, 3> pt;
-pt make_deterministic(array<Interval, 3> p) {
-    return {p[0].mid(), p[1].mid(), p[2].mid()};
-}
 ostream& operator<<(ostream& out, pt p) {
     out << p[0] << " " << p[1] << " " << p[2];
     return out;
@@ -27,6 +24,15 @@ void savePicture(vector<pair<pt, string>> vertices,
     for (const auto& side: edges) {
         auto [p, v, len] = side;
         out << p << " " << v << " " << len << endl;
+    }
+    out.close();
+}
+
+void saveMetrization(const MetrizedNet& net, string out_file) {
+    ofstream out(out_file);
+    for (const Dart& d: net.A.darts()) {
+        Interval I = net.length(d);
+        out << I.l << " " << I.r << endl;
     }
     out.close();
 }
@@ -270,8 +276,8 @@ int searchApproximateMetrization(MetrizedNet net,
     // end the search.
     if (net.totalError() < 1e-5) {
         auto pp = embedNet(net);
-        savePicture(pp.first, pp.second, "data/metrization/" + to_string(current_net_id) + ".txt");
-
+        savePicture(pp.first, pp.second, "data/metrized_nets/" + to_string(current_net_id) + "_visualization.txt");
+        saveMetrization(net, "data/metrized_nets/" + to_string(current_net_id) + ".txt");
         return 1;
     }
 
@@ -369,8 +375,8 @@ int main() {
     // Slow possible nets: 72, 521, 949, 1829
     vector<int> new_survivors;
     for (int id: survivors) {
-        // We skip pathological checks for net 1002 because it completes in roughly 2 hours without
-        // them, but takes 10 hours with them.
+        // We skip pathological checks for net 1002 because it completes
+        // in roughly 2 hours without them, but takes 10 hours with them.
         run_pathological_checks = !possible_nets.count(id) and id != 1002;
 
         clog << "net id = " << setw(4) << id << ":\t";

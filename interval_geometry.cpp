@@ -129,6 +129,10 @@ T norm(const array<T, 3>& X) {
     return sqrt(pow(X[0], 2) + pow(X[1], 2) + pow(X[2], 2));
 }
 
+array<double, 3> make_deterministic(array<Interval, 3> p) {
+    return {p[0].mid(), p[1].mid(), p[2].mid()};
+}
+
 
 // T is an approximate isometry.
 // Let a be the oriented half-equator starting from (e_1, e_2).

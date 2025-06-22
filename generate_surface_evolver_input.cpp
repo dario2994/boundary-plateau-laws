@@ -302,11 +302,23 @@ const map<int, pair<vector<int>, vector<int>>> pop_description = {
     {3295, {
         {0},
         {PIN_ZERO, 10, 1, 5, 11, PIN_ONE}
+    }},
+    {521, {
+        {1, 11},
+        {PIN_ZERO, 21, 4, 3, 2, 18, PIN_ONE, 19, 6, 9, 13, 20, PIN_ZERO}
+    }},
+    {1351, {
+        {3, 5},
+        {PIN_ZERO, 12, 1, 0, 14, PIN_ONE, 15, 7, 6, 13, PIN_ZERO}
+    }},
+    {1829, {
+        {1, 7},
+        {PIN_ZERO, 12, 5, 6, 15, PIN_ONE, 14, 10, 11, 9, 13, PIN_ZERO}
     }}
 };
 
 int main() {
-    const int net_id = 3295;
+    const int net_id = 1829;
     assert(possible_nets.count(net_id));
 
     const DerivedOnceNet A2 =

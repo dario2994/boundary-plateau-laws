@@ -1,0 +1,25 @@
+Trigonometric System:
+Eq(cos(c), -sin(a)*sin(b)/2 + cos(a)*cos(b))
+
+Eq(sin(beta), sqrt(3)*sin(b)/(2*sin(c)))
+
+Eq(cos(alpha), sin(beta + pi/6)**2 + cos(c)*cos(beta + pi/6)**2)
+
+Polynomial System:
+Poly(8*tb**4 - 6*tb**2*tc**2 + 4*tb**2 + 2, tb, tc, domain='ZZ')
+
+Poly(-(sqrt(3))*tb*tbeta**2*tc**2 - (sqrt(3))*tb*tbeta**2 - (sqrt(3))*tb*tc**2 - (sqrt(3))*tb + 4*tb**2*tbeta*tc + 4*tbeta*tc, sqrt(3), tb, tbeta, tc, domain='ZZ')
+
+Poly(4*(sqrt(3))*talpha**2*tbeta**3*tc**2 - 4*(sqrt(3))*talpha**2*tbeta*tc**2 + 4*(sqrt(3))*tbeta**3*tc**2 - 4*(sqrt(3))*tbeta*tc**2 - talpha**2*tbeta**4*tc**2 - 4*talpha**2*tbeta**4 - 10*talpha**2*tbeta**2*tc**2 - 8*talpha**2*tbeta**2 - talpha**2*tc**2 - 4*talpha**2 + 3*tbeta**4*tc**2 - 2*tbeta**2*tc**2 + 3*tc**2, sqrt(3), talpha, tbeta, tc, domain='ZZ')
+
+Equation relating tan(b/2) and tan(alpha/2):
+Poly(talpha**4*tb**14 + 9/2*talpha**4*tb**12 + 15/2*talpha**4*tb**10 + 49/8*talpha**4*tb**8 + 45/16*talpha**4*tb**6 + 3/4*talpha**4*tb**4 + 1/16*talpha**4*tb**2 - 2/3*talpha**2*tb**14 - 7/3*talpha**2*tb**12 - 4*talpha**2*tb**10 - 13/3*talpha**2*tb**8 - 35/12*talpha**2*tb**6 - 19/16*talpha**2*tb**4 - 7/24*talpha**2*tb**2 - 1/48*talpha**2 + 1/9*tb**14 + 5/18*tb**12 + 1/6*tb**10 - 5/72*tb**8 - 13/144*tb**6 - 1/48*tb**4 + 1/144*tb**2 + 1/144, talpha, tb, domain='QQ')
+
+Derivative of the previous equation with respect to tb:
+Poly(14*talpha**4*tb**13 + 54*talpha**4*tb**11 + 75*talpha**4*tb**9 + 49*talpha**4*tb**7 + 135/8*talpha**4*tb**5 + 3*talpha**4*tb**3 + 1/8*talpha**4*tb - 28/3*talpha**2*tb**13 - 28*talpha**2*tb**11 - 40*talpha**2*tb**9 - 104/3*talpha**2*tb**7 - 35/2*talpha**2*tb**5 - 19/4*talpha**2*tb**3 - 7/12*talpha**2*tb + 14/9*tb**13 + 10/3*tb**11 + 5/3*tb**9 - 5/9*tb**7 - 13/24*tb**5 - 1/12*tb**3 + 1/72*tb, talpha, tb, domain='QQ')
+
+Any value of tan(b/2) such at this value tan(alpha/2) has null derivative is a root of the following polynomial
+Poly(4096/729*tb**92 + 90112/729*tb**90 + 959488/729*tb**88 + 6589952/729*tb**86 + 32828768/729*tb**84 + 126457184/729*tb**82 + 392091916/729*tb**80 + 1005691330/729*tb**78 + 34817559937/11664*tb**76 + 16119477745/2916*tb**74 + 206584097705/23328*tb**72 + 72128956949/5832*tb**70 + 2825006790179/186624*tb**68 + 94951505767/5832*tb**66 + 717860119859/46656*tb**64 + 2374740639721/186624*tb**62 + 27214874687677/2985984*tb**60 + 64436059603/11664*tb**58 + 5331854983063/1990656*tb**56 + 427443531403/497664*tb**54 - 652158643681/15925248*tb**52 - 1293410937959/3981312*tb**50 - 1209579430373/3981312*tb**48 - 1529207299417/7962624*tb**46 - 23701002335167/254803968*tb**44 - 541111391653/15925248*tb**42 - 3852141582989/509607936*tb**40 + 680255485531/764411904*tb**38 + 25614142973953/12230590464*tb**36 + 1066447796593/764411904*tb**34 + 1018183352539/1528823808*tb**32 + 197595898895/764411904*tb**30 + 260017077215/3057647616*tb**28 + 18430184017/764411904*tb**26 + 9060291887/1528823808*tb**24 + 965182309/764411904*tb**22 + 1419405539/6115295232*tb**20 + 27898171/764411904*tb**18 + 7406741/1528823808*tb**16 + 407309/764411904*tb**14 + 144515/3057647616*tb**12 + 2483/764411904*tb**10 + 31/191102976*tb**8 + 1/191102976*tb**6 + 1/12230590464*tb**4, tb, domain='QQ')
+
+The possible values of tan(b/2) are:
+[-sqrt(2)/2, -sqrt(2)/2, 0, 0, 0, 0, sqrt(2)/2, sqrt(2)/2]

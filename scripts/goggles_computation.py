@@ -75,6 +75,3 @@ print()
 tb_values = res_tb.real_roots()
 print("The possible values of tan(b/2) are:")
 print(res_tb.real_roots())
-
-# print(pol.subs(tb, sqrt(2)/2).real_roots())
-# print()

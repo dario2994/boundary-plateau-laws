@@ -62,7 +62,7 @@ for i in range(2):
         print()
 
 sqrt3 = symbols('sqrt3')
-poly_system = [[Poly(sqrt3**2-3)], [Poly(sqrt3**2-3)]]
+poly_system = [[], []]
 for i in range(2):
     for eq in trig_system[i]:
         rational_eq = substitute_sin_cos(expand_trig(eq.expand())).simplify()
@@ -71,6 +71,7 @@ for i in range(2):
         poly_expr = rational_expr.expand().together().as_numer_denom()[0].expand()
 
         poly_system[i].append(Poly(poly_expr))
+    poly_system[i].append(Poly(sqrt3**2-3))
 
 
 for i in range(0, 4):

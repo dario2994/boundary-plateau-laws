@@ -14,14 +14,14 @@ Eq(sqrt(3)*sin(DEX)*cos(EX)/2, -cos(DEX)/2)
 
 The two trigonometric systems are equivalent, to the following algebraic systems. (Variables starting with s and c are respectively sines and cosines of the variables appearing above.)
 Polynomial System 0 :
-sqrt3**2 - 3 = 0
 c0 - c1*s0*sqrt3 + 1 = 0
 -s1*sqrt3 + 2*s2*s3 = 0
+2*c0*c2*s3 - 2*c3*s0 - 1 = 0
 
 Polynomial System 1 :
-sqrt3**2 - 3 = 0
 4*c2*s2*s3 - s4*sqrt3 = 0
 -2*c2**2*c5*s3*s4 - 2*c2*c4*s2*s3 + c3*s4*s5 + c5*s3*s4 = 0
+c4*s5*sqrt3 + c5 = 0
 
 The polynomial system 1 implies (as can be proven via Groebner basis):
 16*c2**7*c3**7 - 48*c2**7*c3**5 + 48*c2**7*c3**3 - 16*c2**7*c3 - 32*c2**5*c3**7 + 96*c2**5*c3**5 - 96*c2**5*c3**3 + 32*c2**5*c3 + 16*c2**3*c3**7 - 52*c2**3*c3**5 + 55*c2**3*c3**3 - 19*c2**3*c3 + 4*c2*c3**5 - 7*c2*c3**3 + 3*c2*c3 = 0

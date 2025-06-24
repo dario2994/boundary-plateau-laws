@@ -38,6 +38,15 @@ ostream& operator <<(ostream& out, const Interval& I) {
     return out;
 }
 
+// Returns whether I \subseteq J.
+bool isSubset(const Interval& I, const Interval& J) {
+    if (I.empty())
+        return true;
+    if (J.empty())
+        return false;
+    return J.l <= I.l and I.r <= J.r;
+}
+
 // Returns the smallest interval containing all the given values.
 Interval hull(const vector<double>& vec) {
     if (vec.empty())

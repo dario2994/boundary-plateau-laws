@@ -1,0 +1,50 @@
+Trigonometric System 0 :
+Eq(1/2, sqrt(3)*sin(theta)*cos(AC)/2 - cos(theta)/2)
+
+Eq(sin(AD)*sin(ADC), sqrt(3)*sin(AC)/2)
+
+Eq(1/2, sin(ADC)*cos(AD)*cos(theta) - sin(theta)*cos(ADC))
+
+Trigonometric System 1 :
+Eq(sin(2*AD)*sin(ADC), sqrt(3)*sin(EX)/2)
+
+Eq(-sin(ADC)*sin(EX)*cos(2*AD)*cos(DEX), sin(2*AD)*sin(ADC)*cos(EX) - sin(DEX)*sin(EX)*cos(ADC))
+
+Eq(sqrt(3)*sin(DEX)*cos(EX)/2, -cos(DEX)/2)
+
+The two trigonometric systems are equivalent, to the following algebraic systems. (Variables starting with s and c are respectively sines and cosines of the variables appearing above.)
+Polynomial System 0 :
+sqrt3**2 - 3 = 0
+c0 - c1*s0*sqrt3 + 1 = 0
+-s1*sqrt3 + 2*s2*s3 = 0
+
+Polynomial System 1 :
+sqrt3**2 - 3 = 0
+4*c2*s2*s3 - s4*sqrt3 = 0
+-2*c2**2*c5*s3*s4 - 2*c2*c4*s2*s3 + c3*s4*s5 + c5*s3*s4 = 0
+
+The polynomial system 1 implies (as can be proven via Groebner basis):
+16*c2**7*c3**7 - 48*c2**7*c3**5 + 48*c2**7*c3**3 - 16*c2**7*c3 - 32*c2**5*c3**7 + 96*c2**5*c3**5 - 96*c2**5*c3**3 + 32*c2**5*c3 + 16*c2**3*c3**7 - 52*c2**3*c3**5 + 55*c2**3*c3**3 - 19*c2**3*c3 + 4*c2*c3**5 - 7*c2*c3**3 + 3*c2*c3 = 0
+We can factor this polynomial and evaluate each factor in the case of the cubical configuration, which corresponds to c2 = sqrt(3)/3 and c3 = -1/2
+c2  ->  0.577350269189626
+
+c3  ->  -0.500000000000000
+
+c2 - 1  ->  -0.422649730810374
+
+c2 + 1  ->  1.57735026918963
+
+c3 - 1  ->  -1.50000000000000
+
+c3 + 1  ->  0.500000000000000
+
+4*c2**2*c3**2 - 4*c2**2 + 1  ->  0
+
+4*c2**2*c3**2 - 4*c2**2 - 4*c3**2 + 3  ->  1.00000000000000
+
+Observe that all factors are nonzero apart from 4*c2**2*c3**2 - 4*c2**2 + 1 which can be rewritten as -4*c2**2*s3**2 + 1 = (-2*c2*s3 + 1)*(2*c2*s3 + 1)
+Only one of the two factors is zero in the cubical configuration, namely the first factor and thus we can add the polynomial 2*c2*s3 - 1 to polynomial system 0.
+By doing so, the polynomial system 0 (as can be proven via Groebner basis) implies that: c0 is 0.
+From this point it is easy to conclude that the cubical configuration is rigid.
+
+Let us remark that simply joining the two trigonometric/polynomial system does not yield the result effortlessly because the resulting algebraic system has a zero-set of dimension 1.

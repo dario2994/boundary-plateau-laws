@@ -196,10 +196,6 @@ vector<Dart> findFreeParametersNonConvex(const DerivedOnceNet& A) {
     return res;
 }
 
-// TODO: Keeping these globally is horrible.
-long long begin_time;
-int current_net_id;
-bool run_pathological_checks;
 
 // Takes an approximately metrized once-derived net and returns:
 //  0: No refinement of the given approximate metrization can be realized by
@@ -209,9 +205,12 @@ bool run_pathological_checks;
 //     extremely short.
 //  INDETERMINATE: The program stopped because the execution was taking
 //                 too long.
-int searchApproximateMetrization(MetrizedNet net,
-                                 const vector<Dart>& convex_fixed_darts,
-                                 const vector<Dart>& non_convex_fixed_darts) {
+pair<int, optional<MetrizedNet>> searchApproximateMetrization(
+        MetrizedNet net,
+        const vector<Dart>& convex_fixed_darts,
+        const vector<Dart>& non_convex_fixed_darts,
+        long long begin_time,
+        bool run_pathological_checks) {
     const DerivedOnceNet& A = net.A;
 
     // If the computation takes too long, we skip.
@@ -219,32 +218,32 @@ int searchApproximateMetrization(MetrizedNet net,
     static const long long one_second = 1e9;
     static const long long one_minute = 60*one_second;
     [[maybe_unused]] static const long long one_hour = 60*one_minute;
-    if (get_time() - begin_time > 100 * one_hour)
-        return INDETERMINATE;
+    if (get_time() - begin_time > 100*one_hour)
+        return {INDETERMINATE, nullopt};
 
     if (net.totalError() < -0.5)
-        return 0;
+        return {0, nullopt};
 
     if (!refineMetrizationConvexContinent(net, convex_fixed_darts))
-        return 0;
+        return {0, nullopt};
 
     if (!refineMetrizationNonConvexFaces(net))
-        return 0;
+        return {0, nullopt};
 
     if (!canPinsBeAntipodal(net))
-        return 0;
+        return {0, nullopt};
 
     if (!checkPinAngles(net))
-        return 0;
+        return {0, nullopt};
 
     if (!checkNonIntersection(net))
-        return 0;
+        return {0, nullopt};
 
     if (!checkPinOutsideConvexFaces(net))
-        return 0;
+        return {0, nullopt};
 
     if (!checkLengthLowerbound(net))
-        return 0;
+        return {0, nullopt};
 
     bool run_now_pathological_checks = net.totalError() < 1e-2
                                        and run_pathological_checks;
@@ -257,29 +256,26 @@ int searchApproximateMetrization(MetrizedNet net,
         //  - They are almost always implied by other checks.
         //  - They are slow.
         if (!checkVerticesOutsideConvexFaces(net))
-            return 0;
+            return {0, nullopt};
 
         if (!checkFacesNotIdentical(net))
-            return 0;
+            return {0, nullopt};
 
         if (!checkPinIsVertex(net))
-            return 0;
+            return {0, nullopt};
 
         if (!checkPinsSpecial(net))
-            return 0;
+            return {0, nullopt};
 
         if (!checkFacesAreBoundaries(net))
-            return 0;
+            return {0, nullopt};
     }
 
     // If we reached the desired precision of the metrization, we
     // end the search.
-    if (net.totalError() < 1e-5) {
-        auto pp = embedNet(net);
-        savePicture(pp.first, pp.second, "data/metrized_nets/" + to_string(current_net_id) + "_visualization.txt");
-        saveMetrization(net, "data/metrized_nets/" + to_string(current_net_id) + ".txt");
-        return 1;
-    }
+    if (net.totalError() < 1e-5)
+        return {1, net};
+
 
     // Computes the maximum error on the lengths at the boundary of
     // the continent made of convex faces.
@@ -325,13 +321,13 @@ int searchApproximateMetrization(MetrizedNet net,
         // It could be part of a custom copy constructor, but it
         // would be even more annoying.
         new_net.incrementVersion();
-        int outcome = searchApproximateMetrization(new_net,
-            convex_fixed_darts, non_convex_fixed_darts);
-        if (outcome != 0)
+        auto outcome = searchApproximateMetrization(new_net,
+            convex_fixed_darts, non_convex_fixed_darts, begin_time, run_pathological_checks);
+        if (outcome.first != 0)
             return outcome;
     }
 
-    return 0;
+    return {0, nullopt};
 }
 
 // Takes a once-derived net and returns:
@@ -340,7 +336,8 @@ int searchApproximateMetrization(MetrizedNet net,
 //     antipodal pins, correct angles, and no side extremely short.
 //  INDETERMINATE: The program was not able to show either of the previous
 //                 two possibilities.
-int isApproximateMetrizationPossible(const DerivedOnceNet& A) {
+pair<int, optional<MetrizedNet>> isApproximateMetrizationPossible(
+        const DerivedOnceNet& A, bool run_pathological_checks) {
     vector<Dart> convex = findFreeParametersConvex(A);
     vector<Dart> non_convex = findFreeParametersNonConvex(A);
 
@@ -350,9 +347,10 @@ int isApproximateMetrizationPossible(const DerivedOnceNet& A) {
 
     auto net = MetrizedNet(A);
     if (!refineMetrizationConvexContinent(net, A.darts()))
-        return 0;
+        return {0, nullopt};
 
-    return searchApproximateMetrization(net, convex, non_convex);
+    return searchApproximateMetrization(
+            net, convex, non_convex, get_time(), run_pathological_checks);
 }
 
 int main() {
@@ -377,19 +375,28 @@ int main() {
     for (int id: survivors) {
         // We skip pathological checks for net 1002 because it completes
         // in roughly 2 hours without them, but takes 10 hours with them.
-        run_pathological_checks = !possible_nets.count(id) and id != 1002;
+        bool run_pathological_checks = !possible_nets.count(id) and id != 1002;
 
         clog << "net id = " << setw(4) << id << ":\t";
-        current_net_id = id;
         clog.flush();
         auto A = parseDerivedOnceNets("data/derived_once_computer.txt")[id];
 
-        begin_time = get_time();
-        int outcome = isApproximateMetrizationPossible(A);
+        long long begin_time = get_time();
+        auto [outcome, net] =
+            isApproximateMetrizationPossible(A, run_pathological_checks);
         double duration_s = (get_time() - begin_time) / 1e9;
 
         if (outcome != INDETERMINATE)
             assert(outcome == (int)possible_nets.count(id));
+
+        if (outcome == 1) {
+            assert(net.has_value());
+            auto pp = embedNet(*net);
+            savePicture(pp.first, pp.second,
+                        "data/metrized_nets/" + to_string(id) + "_visualization.txt");
+            saveMetrization(*net,
+                            "data/metrized_nets/" + to_string(id) + ".txt");
+        }
 
         clog.precision(2);
         clog << "(time = " << fixed << setw(6) << duration_s << ") ";

@@ -210,7 +210,8 @@ pair<int, optional<MetrizedNet>> searchApproximateMetrization(
         const vector<Dart>& convex_fixed_darts,
         const vector<Dart>& non_convex_fixed_darts,
         long long begin_time,
-        bool run_pathological_checks) {
+        bool run_pathological_checks,
+        const optional<MetrizedNet>& forbidden_metrization) {
     const DerivedOnceNet& A = net.A;
 
     // If the computation takes too long, we skip.
@@ -223,6 +224,16 @@ pair<int, optional<MetrizedNet>> searchApproximateMetrization(
 
     if (net.totalError() < -0.5)
         return {0, nullopt};
+
+    if (forbidden_metrization.has_value()) {
+        bool is_refinement = true;
+        for (const Dart& d: A.darts()) {
+            is_refinement &= isSubset(net.length(d),
+                                      forbidden_metrization->length(d));
+        }
+        if (is_refinement)
+            return {0, nullopt};
+    }
 
     if (!refineMetrizationConvexContinent(net, convex_fixed_darts))
         return {0, nullopt};
@@ -322,7 +333,7 @@ pair<int, optional<MetrizedNet>> searchApproximateMetrization(
         // would be even more annoying.
         new_net.incrementVersion();
         auto outcome = searchApproximateMetrization(new_net,
-            convex_fixed_darts, non_convex_fixed_darts, begin_time, run_pathological_checks);
+            convex_fixed_darts, non_convex_fixed_darts, begin_time, run_pathological_checks, forbidden_metrization);
         if (outcome.first != 0)
             return outcome;
     }
@@ -337,7 +348,7 @@ pair<int, optional<MetrizedNet>> searchApproximateMetrization(
 //  INDETERMINATE: The program was not able to show either of the previous
 //                 two possibilities.
 pair<int, optional<MetrizedNet>> isApproximateMetrizationPossible(
-        const DerivedOnceNet& A, bool run_pathological_checks) {
+        const DerivedOnceNet& A, bool run_pathological_checks, const optional<MetrizedNet>& forbidden_metrization) {
     vector<Dart> convex = findFreeParametersConvex(A);
     vector<Dart> non_convex = findFreeParametersNonConvex(A);
 
@@ -350,7 +361,7 @@ pair<int, optional<MetrizedNet>> isApproximateMetrizationPossible(
         return {0, nullopt};
 
     return searchApproximateMetrization(
-            net, convex, non_convex, get_time(), run_pathological_checks);
+            net, convex, non_convex, get_time(), run_pathological_checks, forbidden_metrization);
 }
 
 int main() {
@@ -383,7 +394,7 @@ int main() {
 
         long long begin_time = get_time();
         auto [outcome, net] =
-            isApproximateMetrizationPossible(A, run_pathological_checks);
+            isApproximateMetrizationPossible(A, run_pathological_checks, nullopt);
         double duration_s = (get_time() - begin_time) / 1e9;
 
         if (outcome != INDETERMINATE)

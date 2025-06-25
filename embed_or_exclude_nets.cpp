@@ -195,7 +195,7 @@ pair<int, optional<MetrizedNet>> searchApproximateMetrization(
     static const long long one_second = 1e9;
     static const long long one_minute = 60*one_second;
     [[maybe_unused]] static const long long one_hour = 60*one_minute;
-    if (get_time() - begin_time > 10*one_minute)
+    if (get_time() - begin_time > 10*one_hour)
         return {INDETERMINATE, nullopt};
 
     if (net.totalError() < -0.5)
@@ -367,10 +367,6 @@ int main() {
     // Slow possible nets: 72, 521, 949, 1829
     vector<int> new_survivors;
     for (int id: survivors) {
-        if (!possible_nets.count(id))
-            continue;
-        if (set<int>{72, 521, 949, 1829}.count(id))
-            continue;
         clog << "net id = " << setw(4) << id << ":\t";
         clog.flush();
         auto A = parseDerivedOnceNets("data/derived_once_computer.txt")[id];

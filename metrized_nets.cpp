@@ -85,7 +85,7 @@ ostream& operator<<(ostream& out, const PathStep& x) {
 
 class MetrizedNet {
   public:
-    const DerivedOnceNet& A;
+    const DerivedOnceNet A;
 
   private:
     vector<Interval> _lengths;
@@ -284,19 +284,20 @@ class MetrizedNet {
     void serialize(ostream& out) const {
         A.serialize(out);
 
+        auto old_precision = out.precision();
+        out.precision(17);
         for (const Dart& d: A.darts()) {
             Interval I = length(d);
             out << I.l << " " << I.r << endl;
         }
+        out.precision(old_precision);
     }
 
 };
 
-// We need to pass the derived-once net to avoid ownership issues.
-MetrizedNet parseMetrizedNet(
-        istream& in, const DerivedOnceNet& A) {
+MetrizedNet parseMetrizedNet(istream& in) {
+    DerivedOnceNet A = parseDerivedOnceNet(in);
     MetrizedNet net(A);
-
     for (Dart d: A.darts()) {
         double l, r;
         in >> l >> r;

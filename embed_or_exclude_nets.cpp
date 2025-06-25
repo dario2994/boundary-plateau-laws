@@ -195,7 +195,7 @@ pair<int, optional<MetrizedNet>> searchApproximateMetrization(
     static const long long one_second = 1e9;
     static const long long one_minute = 60*one_second;
     [[maybe_unused]] static const long long one_hour = 60*one_minute;
-    if (get_time() - begin_time > 100*one_hour)
+    if (get_time() - begin_time > 10*one_minute)
         return {INDETERMINATE, nullopt};
 
     if (net.totalError() < -0.5)
@@ -340,6 +340,13 @@ pair<int, optional<MetrizedNet>> isApproximateMetrizationPossible(
             net, convex, non_convex, get_time(), run_pathological_checks, forbidden_metrization);
 }
 
+void saveMetrizedNet(const MetrizedNet& net, string picture, string data) {
+    auto pp = embedNet(net);
+    savePicture(pp.first, pp.second, picture);
+    ofstream metrized_net_out(data);
+    net.serialize(metrized_net_out);
+}
+
 int main() {
     ifstream in("data/derived_once_survivors.txt");
     int cnt_survivors;
@@ -360,37 +367,72 @@ int main() {
     // Slow possible nets: 72, 521, 949, 1829
     vector<int> new_survivors;
     for (int id: survivors) {
-        // We skip pathological checks for net 1002 because it completes
-        // in roughly 2 hours without them, but takes 10 hours with them.
-        bool run_pathological_checks = !possible_nets.count(id) and id != 1002;
-
+        if (!possible_nets.count(id))
+            continue;
+        if (set<int>{72, 521, 949, 1829}.count(id))
+            continue;
         clog << "net id = " << setw(4) << id << ":\t";
         clog.flush();
         auto A = parseDerivedOnceNets("data/derived_once_computer.txt")[id];
 
+        // We skip pathological checks for net 1002 because it completes
+        // in roughly 2 hours without them, but takes 10 hours with them.
+        bool run_pathological_checks = !possible_nets.count(id) and id != 1002;
+
+        optional<MetrizedNet> forbidden_metrization;
+        string metrized_net_filename = "data/metrized_nets/" + to_string(id) + ".txt";
+        if (possible_nets.count(id) and
+                filesystem::exists(metrized_net_filename)) {
+            ifstream metrized_net_in(metrized_net_filename);
+            MetrizedNet net2 = parseMetrizedNet(metrized_net_in);
+            forbidden_metrization.emplace(net2);
+
+            for (const Dart& d: A.darts()) {
+                const Interval I = net2.length(d);
+                assert(!I.empty());
+                double m = I.mid();
+                double len = I.len();
+                assert(len < 1e-5);
+                len = 2e-4;
+                forbidden_metrization->length(d) = Interval(m-len/2, m + len/2);
+            }
+        }
+
         long long begin_time = get_time();
         auto [outcome, net] =
-            isApproximateMetrizationPossible(A, run_pathological_checks, nullopt);
+            isApproximateMetrizationPossible(A, run_pathological_checks, forbidden_metrization);
         double duration_s = (get_time() - begin_time) / 1e9;
-
-        if (outcome != INDETERMINATE)
-            assert(outcome == (int)possible_nets.count(id));
-
-        if (outcome == 1) {
-            assert(net.has_value());
-            auto pp = embedNet(*net);
-            savePicture(pp.first, pp.second,
-                        "data/metrized_nets/" + to_string(id) + "_visualization.txt");
-            ofstream metrized_net_out("data/metrized_nets/" + to_string(id) + ".txt");
-            net->serialize(metrized_net_out);
-        }
 
         clog.precision(2);
         clog << "(time = " << fixed << setw(6) << duration_s << ") ";
-        if (outcome == INDETERMINATE) clog << "SKIPPED";
-        if (outcome == 1) clog << "POSSIBLE";
-        if (outcome != 0)
+
+        if (outcome == INDETERMINATE) {
+            clog << "SKIPPED" << endl;
             new_survivors.push_back(id);
+            continue;
+        }
+
+        if (outcome == 1)
+            assert(net.has_value());
+
+        if (forbidden_metrization.has_value()) {
+            if (outcome == 0)
+                clog << "RIGID" << endl;
+            else {
+                clog << "NOT RIGID" << endl;
+                saveMetrizedNet(*net, "picture_wrong.txt", "data_wrong.txt");
+            }
+            new_survivors.push_back(id);
+            continue;
+        }
+
+        assert(outcome == (int)possible_nets.count(id));
+
+        if (outcome == 1) {
+            saveMetrizedNet(*net, "data/metrized_nets/" + to_string(id) + "_visualization.txt", "data/metrized_nets/" + to_string(id) + ".txt");
+            clog << "POSSIBLE";
+            new_survivors.push_back(id);
+        }
         clog << endl;
     }
 

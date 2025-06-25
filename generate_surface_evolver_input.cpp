@@ -308,8 +308,7 @@ int main() {
 
     ifstream metrized_net_in("data/metrized_nets/"+ to_string(net_id) + ".txt");
     assert(metrized_net_in.is_open());
-    const DerivedOnceNet& A_tmp = parseDerivedOnceNet(metrized_net_in);
-    MetrizedNet net = parseMetrizedNet(metrized_net_in, A_tmp);
+    MetrizedNet net = parseMetrizedNet(metrized_net_in);
     metrized_net_in.close();
     net.incrementVersion();
     vector<pt> embedding = getVertexEmbedding(net);

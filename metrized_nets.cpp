@@ -281,6 +281,28 @@ class MetrizedNet {
         return isometryFromPath((*to_pins)[from.id][A.concaveAngleId(to)]);
     }
 
+    void serialize(ostream& out) const {
+        A.serialize(out);
+
+        for (const Dart& d: A.darts()) {
+            Interval I = length(d);
+            out << I.l << " " << I.r << endl;
+        }
+    }
+
 };
+
+// We need to pass the derived-once net to avoid ownership issues.
+MetrizedNet parseMetrizedNet(
+        istream& in, const DerivedOnceNet& A) {
+    MetrizedNet net(A);
+
+    for (Dart d: A.darts()) {
+        double l, r;
+        in >> l >> r;
+        net.length(d) = Interval(l, r);
+    }
+    return net;
+}
 
 #endif

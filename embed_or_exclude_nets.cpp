@@ -28,15 +28,6 @@ void savePicture(vector<pair<pt, string>> vertices,
     out.close();
 }
 
-void saveMetrization(const MetrizedNet& net, string out_file) {
-    ofstream out(out_file);
-    for (const Dart& d: net.A.darts()) {
-        Interval I = net.length(d);
-        out << I.l << " " << I.r << endl;
-    }
-    out.close();
-}
-
 pair<vector<pair<pt, string>>, vector<tuple<pt, pt, double>>>
         embedNet(const MetrizedNet& net) {
     const DerivedOnceNet& A = net.A;
@@ -58,21 +49,6 @@ pair<vector<pair<pt, string>>, vector<tuple<pt, pt, double>>>
     }
 
     return {vertex_embedding, dart_embedding};
-}
-
-
-
-vector<DerivedOnceNet> parseDerivedOnceNets(string in_file) {
-    ifstream in(in_file);
-    int cnt;
-    in >> cnt;
-    vector<DerivedOnceNet> res;
-    for (int i = 0; i < cnt; i++) {
-        DerivedOnceNet A = parseDerivedOnceNet(in);
-        A.checkConsistency();
-        res.push_back(A);
-    }
-    return res;
 }
 
 
@@ -405,8 +381,8 @@ int main() {
             auto pp = embedNet(*net);
             savePicture(pp.first, pp.second,
                         "data/metrized_nets/" + to_string(id) + "_visualization.txt");
-            saveMetrization(*net,
-                            "data/metrized_nets/" + to_string(id) + ".txt");
+            ofstream metrized_net_out("data/metrized_nets/" + to_string(id) + ".txt");
+            net->serialize(metrized_net_out);
         }
 
         clog.precision(2);

@@ -15,33 +15,6 @@ ostream& operator<<(ostream& out, pt p) {
     return out;
 }
 
-vector<DerivedOnceNet> parseDerivedOnceNets(string in_file) {
-    ifstream in(in_file);
-    int cnt;
-    in >> cnt;
-    vector<DerivedOnceNet> res;
-    for (int i = 0; i < cnt; i++) {
-        DerivedOnceNet A = parseDerivedOnceNet(in);
-        A.checkConsistency();
-        res.push_back(A);
-    }
-    return res;
-}
-
-MetrizedNet parseMetrizedNet(const DerivedOnceNet& A, string in_file) {
-    MetrizedNet net(A);
-    ifstream in(in_file);
-    assert(in.is_open());
-
-    for (Dart d: A.darts()) {
-        double l, r;
-        in >> l >> r;
-        net.length(d) = Interval(l, r);
-    }
-    return net;
-}
-
-
 vector<pt> getVertexEmbedding(const MetrizedNet& net) {
     const DerivedOnceNet& A = net.A;
     const Dart root = A.dart(0);
@@ -322,27 +295,32 @@ const map<int, pair<vector<int>, vector<int>>> pop_description = {
     {949, {
         {3, 1, 9},
         {PIN_ZERO, 4, 3, 2, 6, PIN_ONE, 19, 9, 12, 17 , PIN_ZERO, 14, 13, 7, 5, PIN_ONE}
+    }},
+    {3048, {
+        {5, 0},
+        {PIN_ZERO, 5, 2, 7, PIN_ONE,6, 0, 4, PIN_ZERO}
     }}
 };
 
 int main() {
-    const int net_id = 949;
+    const int net_id = 3048;
     assert(possible_nets.count(net_id));
 
-    const DerivedOnceNet A2 =
-            parseDerivedOnceNets("data/derived_once_computer.txt")[net_id];
-    const MetrizedNet net = parseMetrizedNet(A2,
-            "data/metrized_nets/"+ to_string(net_id) + ".txt");
+    ifstream metrized_net_in("data/metrized_nets/"+ to_string(net_id) + ".txt");
+    assert(metrized_net_in.is_open());
+    const DerivedOnceNet& A_tmp = parseDerivedOnceNet(metrized_net_in);
+    MetrizedNet net = parseMetrizedNet(metrized_net_in, A_tmp);
+    metrized_net_in.close();
     net.incrementVersion();
     vector<pt> embedding = getVertexEmbedding(net);
 
     // We locate the two pins metrically.
     // Their coordinates are stored in pins_coord.
     // They both belong to the unit sphere and they are antipodal.
-    const Dart root = A2.dart(0);
+    const Dart root = net.A.dart(0);
     vector<pt> equators_with_pins;
-    vector<Dart> concave_angles = A2.concaveAngles();
-    for (Dart d: A2.concaveAngles())
+    vector<Dart> concave_angles = net.A.concaveAngles();
+    for (Dart d: net.A.concaveAngles())
         equators_with_pins.push_back(
                 make_deterministic(net.getIsometryToPin(root, d)({0, 0, 1})));
     vector<pt> pins_coord;
@@ -360,15 +338,15 @@ int main() {
     // Doing so, we obtain a CombinatorialMap (as the result is not
     // DerivedOnce anymore) and we save the indexes of the pins in pins_id.
     vector<vector<Dart>> concave_faces;
-    for (auto face: A2.faces()) {
-        if (!A2.isConvexFace(face))
+    for (auto face: net.A.faces()) {
+        if (!net.A.isConvexFace(face))
             concave_faces.push_back(face);
     }
 
     assert(ssize(pins_coord) == 2);
     assert(ssize(concave_faces) <= 2);
 
-    CombinatorialMap A = A2;
+    CombinatorialMap A = net.A;
     vector<int> pins_id(2);
     for (int i = 0; i < 2; i++) {
         pt pin = pins_coord[i];
@@ -380,20 +358,20 @@ int main() {
                 break;
             }
         }
-        if (pin_is_vertex and A2.degree(pins_id[i]) == 3)
+        if (pin_is_vertex and net.A.degree(pins_id[i]) == 3)
                 continue;
 
         assert(!concave_faces.empty());
 
         vector<Dart> face = concave_faces[0];
         if (concave_faces.size() == 2) {
-            double cost0 = pinAverageDistance(A2, embedding, pin, concave_faces[0]);
-            double cost1 = pinAverageDistance(A2, embedding, pin, concave_faces[1]);
+            double cost0 = pinAverageDistance(net.A, embedding, pin, concave_faces[0]);
+            double cost1 = pinAverageDistance(net.A, embedding, pin, concave_faces[1]);
 
             if (cost1 < cost0)
                 face = concave_faces[1];
         }
-        vector<Dart> concave_angles = getConcaveAngles(A2, face);
+        vector<Dart> concave_angles = getConcaveAngles(net.A, face);
         if (pin_is_vertex) {
             if (ssize(concave_angles) == 1) {
                 assert(concave_angles[0].to == pins_id[i]);
@@ -406,7 +384,7 @@ int main() {
             continue;
         }
         if (ssize(concave_angles) == 2)
-            concave_angles[1] = A2.phi(concave_angles[1]);
+            concave_angles[1] = net.A.phi(concave_angles[1]);
         int pin_id = addPin(A, concave_angles);
         assert(ssize(embedding) == pin_id);
         embedding.push_back(pins_coord[i]);

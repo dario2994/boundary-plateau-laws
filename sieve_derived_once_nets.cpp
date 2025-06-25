@@ -8,19 +8,6 @@ typedef unsigned long long ULL;
 //#include "metrization.cpp"
 
 
-vector<DerivedOnceNet> parseDerivedOnceNets(string in_file) {
-    ifstream in(in_file);
-    int cnt;
-    in >> cnt;
-    vector<DerivedOnceNet> res;
-    for (int i = 0; i < cnt; i++) {
-        DerivedOnceNet A = parseDerivedOnceNet(in);
-        A.checkConsistency();
-        res.push_back(A);
-    }
-    return res;
-}
-
 int pinContribution(const DerivedOnceNet& A, Dart d) {
     if (A.faceType(d).second != 2)
         return 0;

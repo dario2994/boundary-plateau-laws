@@ -1,0 +1,17 @@
+// Ring definition
+ring R = 0, (ta, tb, tc, td, te), (dp(2), dp(3));
+
+// Original ideal
+ideal I =
+-4*ta**2*tb**2*td**2 + 8*ta**2*tb**2 - 4*ta**2*td**2 + 8*ta**2 + 24*ta*tb*td**2 + 24*ta*tb - 4*tb**2*td**2 + 8*tb**2 - 16*td**2 - 4,
+-4*tb**2*tc**2*te**2 + 8*tb**2*tc**2 - 4*tb**2*te**2 + 8*tb**2 + 24*tb*tc*te**2 + 24*tb*tc - 4*tc**2*te**2 + 8*tc**2 - 16*te**2 - 4,
+-4*ta**2*tc**2*td**2 - 4*ta**2*tc**2 + 24*ta**2*tc*td - 4*ta**2*td**2 - 16*ta**2 + 8*tc**2*td**2 + 8*tc**2 + 24*tc*td + 8*td**2 - 4,
+-4*tb**2*td**2*te**2 - 4*tb**2*td**2 + 24*tb**2*td*te - 4*tb**2*te**2 - 16*tb**2 + 8*td**2*te**2 + 8*td**2 + 24*td*te + 8*te**2 - 4,
+-4*ta**2*tc**2*te**2 - 4*ta**2*tc**2 + 8*ta**2*te**2 + 8*ta**2 + 24*ta*tc**2*te + 24*ta*te - 4*tc**2*te**2 - 16*tc**2 + 8*te**2 - 4;
+
+// Compute the Groebner basis
+ideal G = groebner(I);
+
+// Access the first polynomial of the basis
+G[1];
+print(factorize(G[1]));

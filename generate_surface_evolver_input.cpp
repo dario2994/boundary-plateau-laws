@@ -85,6 +85,115 @@ double pinAverageDistance(const DerivedOnceNet& A, vector<pt> embedding,
     return sqrt(res) / ssize(concave_angles);
 }
 
+// We locate the two pins metrically.
+//
+// The pins are antipodal points on the unit sphere.
+vector<pt> findPinsEmbedding(const MetrizedNet& net) {
+    const Dart root = net.A.dart(0);
+    vector<pt> equators_with_pins;
+    vector<Dart> concave_angles = net.A.concaveAngles();
+    for (Dart d: net.A.concaveAngles())
+        equators_with_pins.push_back(
+                make_deterministic(net.getIsometryToPin(root, d)({0, 0, 1})));
+    vector<pt> pins;
+    for (pt eq1: equators_with_pins)
+            for (pt eq2: equators_with_pins) {
+        pt z = eq1 ^ eq2;
+        if (norm(z) > 0.1) {
+            z = z / norm(z);
+            pins = {z, -z};
+            break;
+        }
+    }
+
+    return pins;
+}
+
+
+// This function is for the nets such that the associated once-derived net
+// is metrically rigid but the pins are not rigid.
+//
+// dist denotes the length of the edge connecting one pin to
+// net.A.concaveAngles()[0].
+//
+// The pins are antipodal points on the unit sphere.
+vector<pt> choosePinsEmbedding(const MetrizedNet& net, double dist) {
+    assert(!net.A.concaveAngles().empty());
+
+    const Dart root = net.A.dart(0);
+    Dart concave_angle = net.A.concaveAngles()[0];
+    vector<PathStep> path_to_pin = net.getPathToPin(root, concave_angle);
+
+    path_to_pin.push_back(PathStep('E', dist));
+
+    pt pin = make_deterministic(net.isometryFromPath(path_to_pin)({1, 0, 0}));
+
+    return {pin, -pin};
+}
+
+// We add the pins to the DerivedOnceNet.
+// Doing so, we obtain a CombinatorialMap (as the result is not
+// DerivedOnce anymore) and we save the indexes of the pins in pins_id.
+pair<vector<int>, CombinatorialMap> addPinsToCombinatorialMap(
+        const MetrizedNet& net,
+        vector<pt>& embedding, const vector<pt>& pins_coord) {
+    vector<vector<Dart>> concave_faces;
+    for (auto face: net.A.faces()) {
+        if (!net.A.isConvexFace(face))
+            concave_faces.push_back(face);
+    }
+
+    assert(ssize(pins_coord) == 2);
+    assert(ssize(concave_faces) <= 2);
+
+    CombinatorialMap A = net.A;
+    vector<int> pins_id(2);
+    for (int i = 0; i < 2; i++) {
+        pt pin = pins_coord[i];
+        bool pin_is_vertex = false;
+        for (int v = 0; v < ssize(embedding); v++) {
+            if (norm(embedding[v] - pin) < 0.001) {
+                pins_id[i] = v;
+                pin_is_vertex = true;
+                break;
+            }
+        }
+        if (pin_is_vertex and net.A.degree(pins_id[i]) == 3)
+                continue;
+
+        assert(!concave_faces.empty());
+
+        vector<Dart> face = concave_faces[0];
+        if (concave_faces.size() == 2) {
+            double cost0 = pinAverageDistance(net.A, embedding, pin, concave_faces[0]);
+            double cost1 = pinAverageDistance(net.A, embedding, pin, concave_faces[1]);
+
+            if (cost1 < cost0)
+                face = concave_faces[1];
+        }
+        vector<Dart> concave_angles = getConcaveAngles(net.A, face);
+        if (pin_is_vertex) {
+            if (ssize(concave_angles) == 1) {
+                assert(concave_angles[0].to == pins_id[i]);
+                continue;
+            }
+            assert(ssize(concave_angles) == 2);
+            if (concave_angles[0].to != pins_id[i])
+                swap(concave_angles[0], concave_angles[1]);
+            A.addEdge(concave_angles[0], A.phi(concave_angles[1]));
+            continue;
+        }
+        if (ssize(concave_angles) == 2)
+            concave_angles[1] = net.A.phi(concave_angles[1]);
+        int pin_id = addPin(A, concave_angles);
+        assert(ssize(embedding) == pin_id);
+        embedding.push_back(pins_coord[i]);
+        pins_id[i] = pin_id;
+    }
+
+    return {pins_id, A};
+}
+
 
 
 void saveSurfaceEvolverFormat(const vector<pt>& coords,
@@ -218,9 +327,46 @@ print total_area;
     out.close();
 }
 
+pair<vector<pt>, vector<pt>> embed3048(double q) {
+    auto rotate = [&](pt U) {
+        return pt{U[0]*cos(q)-U[1]*sin(q), U[1]*cos(q)+U[0]*sin(q), U[2]};
+    };
 
+    auto sym_x = [&](pt U) {
+        return pt{-U[0], U[1], U[2]};
+    };
+    auto sym_z = [&](pt U) {
+        return pt{U[0], U[1], -U[2]};
+    };
 
-const set<int> possible_nets = {
+    pt pin0 = {0.6, 0, sqrt(3)};
+    pt pin1 = -pin0;
+
+    vector<pt> P(8);
+    // Face of the cube
+    P[1] = pt{1, sqrt(2), 0};
+    P[4] = pt{1, 0, sqrt(2)};
+    P[6] = sym_z(P[4]);
+    P[0] = pt{1, -sqrt(2), 0};
+
+    for (int i: {1, 4, 6, 0})
+        P[i] = rotate(P[i]);
+
+    P[5] = sym_x(P[4]);
+    P[3] = sym_x(P[0]);
+    P[7] = sym_x(P[6]);
+    P[2] = sym_x(P[1]);
+
+    pin0 = pin0 / norm(pin0);
+    pin1 = pin1 / norm(pin1);
+
+    for (pt& U: P)
+        U = U / norm(U);
+
+    return {P, {pin0, pin1}};
+}
+
+const set<int>& possible_nets = {
     72,     278,    434,    521,    691,
     936,    949,    1011,   1034,   1223,
     1351,   1405,   1514,   1829,   2017,
@@ -299,11 +445,27 @@ const map<int, pair<vector<int>, vector<int>>> pop_description = {
     {3048, {
         {5, 0},
         {PIN_ZERO, 5, 2, 7, PIN_ONE,6, 0, 4, PIN_ZERO}
-    }}
+    }},
+    {278, {
+        {1},
+        {PIN_ZERO, 14, 7, 13, 11, 10, 15, PIN_ONE}
+    }},
+    {1011, {
+        {1},
+        {PIN_ZERO, 12, 0, 4, 3, 13, PIN_ONE}
+    }},
+    {2312, {
+        {1},
+        {PIN_ZERO, 10, 1, 2, 3, 11, PIN_ONE}
+    }},
+    {3222, {
+        {6},
+        {PIN_ZERO, 16, 2, 3, 10, 17, PIN_ONE}
+    }},
 };
 
 int main() {
-    const int net_id = 3048;
+    const int net_id = 3222;
     assert(possible_nets.count(net_id));
 
     ifstream metrized_net_in("data/metrized_nets/"+ to_string(net_id) + ".txt");
@@ -312,83 +474,12 @@ int main() {
     metrized_net_in.close();
     net.incrementVersion();
     vector<pt> embedding = getVertexEmbedding(net);
+    // vector<pt> pins_coord = findPinsEmbedding(net);
+    vector<pt> pins_coord = choosePinsEmbedding(net, 0.2);
 
-    // We locate the two pins metrically.
-    // Their coordinates are stored in pins_coord.
-    // They both belong to the unit sphere and they are antipodal.
-    const Dart root = net.A.dart(0);
-    vector<pt> equators_with_pins;
-    vector<Dart> concave_angles = net.A.concaveAngles();
-    for (Dart d: net.A.concaveAngles())
-        equators_with_pins.push_back(
-                make_deterministic(net.getIsometryToPin(root, d)({0, 0, 1})));
-    vector<pt> pins_coord;
-    for (pt eq1: equators_with_pins)
-            for (pt eq2: equators_with_pins) {
-        pt z = eq1 ^ eq2;
-        if (norm(z) > 0.1) {
-            z = z / norm(z);
-            pins_coord = {z, -z};
-            break;
-        }
-    }
+    // auto [embedding, pins_coord] = embed3048(0.00);
 
-    // We add the pins to the DerivedOnceNet.
-    // Doing so, we obtain a CombinatorialMap (as the result is not
-    // DerivedOnce anymore) and we save the indexes of the pins in pins_id.
-    vector<vector<Dart>> concave_faces;
-    for (auto face: net.A.faces()) {
-        if (!net.A.isConvexFace(face))
-            concave_faces.push_back(face);
-    }
-
-    assert(ssize(pins_coord) == 2);
-    assert(ssize(concave_faces) <= 2);
-
-    CombinatorialMap A = net.A;
-    vector<int> pins_id(2);
-    for (int i = 0; i < 2; i++) {
-        pt pin = pins_coord[i];
-        bool pin_is_vertex = false;
-        for (int v = 0; v < ssize(embedding); v++) {
-            if (norm(embedding[v] - pin) < 0.001) {
-                pins_id[i] = v;
-                pin_is_vertex = true;
-                break;
-            }
-        }
-        if (pin_is_vertex and net.A.degree(pins_id[i]) == 3)
-                continue;
-
-        assert(!concave_faces.empty());
-
-        vector<Dart> face = concave_faces[0];
-        if (concave_faces.size() == 2) {
-            double cost0 = pinAverageDistance(net.A, embedding, pin, concave_faces[0]);
-            double cost1 = pinAverageDistance(net.A, embedding, pin, concave_faces[1]);
-
-            if (cost1 < cost0)
-                face = concave_faces[1];
-        }
-        vector<Dart> concave_angles = getConcaveAngles(net.A, face);
-        if (pin_is_vertex) {
-            if (ssize(concave_angles) == 1) {
-                assert(concave_angles[0].to == pins_id[i]);
-                continue;
-            }
-            assert(ssize(concave_angles) == 2);
-            if (concave_angles[0].to != pins_id[i])
-                swap(concave_angles[0], concave_angles[1]);
-            A.addEdge(concave_angles[0], A.phi(concave_angles[1]));
-            continue;
-        }
-        if (ssize(concave_angles) == 2)
-            concave_angles[1] = net.A.phi(concave_angles[1]);
-        int pin_id = addPin(A, concave_angles);
-        assert(ssize(embedding) == pin_id);
-        embedding.push_back(pins_coord[i]);
-        pins_id[i] = pin_id;
-    }
+    auto [pins_id, A] = addPinsToCombinatorialMap(net, embedding, pins_coord);
 
     // We build the cone *outside* of the ball of radius 1/3.
     int n = ssize(embedding);

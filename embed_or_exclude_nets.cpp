@@ -172,6 +172,16 @@ vector<Dart> findFreeParametersNonConvex(const DerivedOnceNet& A) {
     return res;
 }
 
+struct SAMParams {
+    vector<Dart> convex_fixed_darts;
+    vector<Dart> non_convex_fixed_darts;
+    long long begin_time;
+    bool run_pathological_checks;
+    optional<MetrizedNet> forbidden_metrization;
+    bool is_2192_step1;
+    bool is_2192_step2;
+};
+
 
 // Takes an approximately metrized once-derived net and returns:
 //  0: No refinement of the given approximate metrization can be realized by
@@ -183,35 +193,35 @@ vector<Dart> findFreeParametersNonConvex(const DerivedOnceNet& A) {
 //                 too long.
 pair<int, optional<MetrizedNet>> searchApproximateMetrization(
         MetrizedNet net,
-        const vector<Dart>& convex_fixed_darts,
-        const vector<Dart>& non_convex_fixed_darts,
-        long long begin_time,
-        bool run_pathological_checks,
-        const optional<MetrizedNet>& forbidden_metrization) {
+        const SAMParams& params) {
     const DerivedOnceNet& A = net.A;
+    // Net 2192
+    // net.length(A.dart(16)).intersect(net.length(A.dart(12)));
+    // net.length(A.dart(12)).intersect(net.length(A.dart(16)));
 
     // If the computation takes too long, we skip.
     // The slowest net, which is 72, requires 38 hours.
     static const long long one_second = 1e9;
     static const long long one_minute = 60*one_second;
     [[maybe_unused]] static const long long one_hour = 60*one_minute;
-    if (get_time() - begin_time > 10*one_hour)
+    if (get_time() - params.begin_time > 1000*one_hour)
         return {INDETERMINATE, nullopt};
 
     if (net.totalError() < -0.5)
         return {0, nullopt};
 
-    if (forbidden_metrization.has_value()) {
+    if (params.forbidden_metrization.has_value()) {
         bool is_refinement = true;
         for (const Dart& d: A.darts()) {
-            is_refinement &= isSubset(net.length(d),
-                                      forbidden_metrization->length(d));
+            is_refinement &= isSubset(
+                net.length(d),
+                params.forbidden_metrization->length(d));
         }
         if (is_refinement)
             return {0, nullopt};
     }
 
-    if (!refineMetrizationConvexContinent(net, convex_fixed_darts))
+    if (!refineMetrizationConvexContinent(net, params.convex_fixed_darts))
         return {0, nullopt};
 
     if (!refineMetrizationNonConvexFaces(net))
@@ -233,7 +243,7 @@ pair<int, optional<MetrizedNet>> searchApproximateMetrization(
         return {0, nullopt};
 
     bool run_now_pathological_checks = net.totalError() < 1e-2
-                                       and run_pathological_checks;
+                                       and params.run_pathological_checks;
     if (net.totalError() < 1e-5)
         run_now_pathological_checks = true;
 
@@ -276,16 +286,16 @@ pair<int, optional<MetrizedNet>> searchApproximateMetrization(
 
     // Computes the maximum error among the non_convex_fixed_darts.
     double max_non_convex = 0;
-    for (const Dart& d: non_convex_fixed_darts) {
+    for (const Dart& d: params.non_convex_fixed_darts) {
         double l = net.length(d).len();
         max_non_convex = max(max_non_convex, l);
     }
 
     // Decide whether we want to refine (i.e., half) the precision
     // only on convex_fixed_darts or also on non_convex_fixed_darts.
-    vector<Dart> fixed_darts = convex_fixed_darts;
+    vector<Dart> fixed_darts = params.convex_fixed_darts;
     if (max_non_convex > max_error_boundary_continent) {
-        for (const Dart& d: non_convex_fixed_darts)
+        for (const Dart& d: params.non_convex_fixed_darts)
             fixed_darts.push_back(d);
     }
 
@@ -308,8 +318,7 @@ pair<int, optional<MetrizedNet>> searchApproximateMetrization(
         // It could be part of a custom copy constructor, but it
         // would be even more annoying.
         new_net.incrementVersion();
-        auto outcome = searchApproximateMetrization(new_net,
-            convex_fixed_darts, non_convex_fixed_darts, begin_time, run_pathological_checks, forbidden_metrization);
+        auto outcome = searchApproximateMetrization(new_net, params);
         if (outcome.first != 0)
             return outcome;
     }
@@ -336,8 +345,15 @@ pair<int, optional<MetrizedNet>> isApproximateMetrizationPossible(
     if (!refineMetrizationConvexContinent(net, A.darts()))
         return {0, nullopt};
 
-    return searchApproximateMetrization(
-            net, convex, non_convex, get_time(), run_pathological_checks, forbidden_metrization);
+    SAMParams params;
+    params.convex_fixed_darts = convex;
+    params.non_convex_fixed_darts = non_convex;
+    params.begin_time = get_time();
+    params.run_pathological_checks = run_pathological_checks;
+    if (forbidden_metrization.has_value())
+        params.forbidden_metrization.emplace(*forbidden_metrization);
+
+    return searchApproximateMetrization(net, params);
 }
 
 void saveMetrizedNet(const MetrizedNet& net, string picture, string data) {
@@ -391,6 +407,9 @@ int main() {
                 assert(len < 1e-5);
                 len = 2e-4;
                 forbidden_metrization->length(d) = Interval(m-len/2, m + len/2);
+                // if (id == 2192 and set<int>{16, 17, 12, 13}.count(d.id)) {
+                //     forbidden_metrization->length(d) = Interval(0, 10);
+                // }
             }
         }
 

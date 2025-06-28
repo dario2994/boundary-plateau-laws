@@ -377,6 +377,11 @@ int processNet(int net_id) {
     params.forbidden_metrization = nullopt;
 
     MetrizedNet net(A);
+
+    // Necessary to take care of nets that are metrically fixed obviously.
+    if (!refineMetrizationConvexContinent(net, A.darts()))
+        return 0;
+
     if (possible_nets.count(net_id)) {
         // We use the following lines to use an already existing metrization
         // as a way to skip the existence proof.

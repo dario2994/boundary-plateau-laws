@@ -383,8 +383,8 @@ int processNet(int net_id) {
         return 0;
 
     if (possible_nets.count(net_id)) {
-        // We use the following lines to use an already existing metrization
-        // as a way to skip the existence proof.
+        // The following lines use an existing metrization to skip the
+        // existence proof.
         // string metrized_net_filename = "data/metrized_nets/" + to_string(net_id) + ".txt";
         // if (possible_nets.count(net_id) and
         //         filesystem::exists(metrized_net_filename)) {

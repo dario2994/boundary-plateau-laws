@@ -54,7 +54,15 @@ bool isShorterThanPi(const DerivedOnceNet& A, const Dart& d) {
     return false;
 }
 
-
+// A step in a path on a sphere made of rotations and translations.
+//
+// - PathStep('R', t): Corresponds to a rotation by t (\rot_t in the paper).
+// - PathStep('E', t): Corresponds to the exponential for time t
+//   (\exp_t in the paper).
+//
+// Additionally, there's also PathStep(Dart) which corresponds is equivalent
+// to PathStep('E', Dart.len()).
+// This is a trick necessary to speed up some computation.
 struct PathStep {
     char type;
     double t;

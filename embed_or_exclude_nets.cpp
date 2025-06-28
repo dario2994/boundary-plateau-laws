@@ -178,8 +178,7 @@ struct SAMParams {
     long long begin_time;
     bool run_pathological_checks;
     optional<MetrizedNet> forbidden_metrization;
-    bool is_2192_step1;
-    bool is_2192_step2;
+    bool special_rigidity_2192;
 };
 
 
@@ -195,9 +194,11 @@ pair<int, optional<MetrizedNet>> searchApproximateMetrization(
         MetrizedNet net,
         const SAMParams& params) {
     const DerivedOnceNet& A = net.A;
-    // Net 2192
-    // net.length(A.dart(16)).intersect(net.length(A.dart(12)));
-    // net.length(A.dart(12)).intersect(net.length(A.dart(16)));
+
+    if (params.special_rigidity_2192) {
+        net.length(A.dart(16)).intersect(net.length(A.dart(12)));
+        net.length(A.dart(12)).intersect(net.length(A.dart(16)));
+    }
 
     // If the computation takes too long, we skip.
     // The slowest net, which is 72, requires 38 hours.
@@ -326,41 +327,114 @@ pair<int, optional<MetrizedNet>> searchApproximateMetrization(
     return {0, nullopt};
 }
 
-// Takes a once-derived net and returns:
-//  0: The net cannot be realized by a stable cone.
-//  1: The net admits an approximate embedding (up to precision 1e-5) with
-//     antipodal pins, correct angles, and no side extremely short.
-//  INDETERMINATE: The program was not able to show either of the previous
-//                 two possibilities.
-pair<int, optional<MetrizedNet>> isApproximateMetrizationPossible(
-        const DerivedOnceNet& A, bool run_pathological_checks, const optional<MetrizedNet>& forbidden_metrization) {
-    vector<Dart> convex = findFreeParametersConvex(A);
-    vector<Dart> non_convex = findFreeParametersNonConvex(A);
-
-    clog << "# of parameters = " << ssize(convex) << " "
-                                 << ssize(non_convex) << ", ";
-    clog.flush();
-
-    auto net = MetrizedNet(A);
-    if (!refineMetrizationConvexContinent(net, A.darts()))
-        return {0, nullopt};
-
-    SAMParams params;
-    params.convex_fixed_darts = convex;
-    params.non_convex_fixed_darts = non_convex;
-    params.begin_time = get_time();
-    params.run_pathological_checks = run_pathological_checks;
-    if (forbidden_metrization.has_value())
-        params.forbidden_metrization.emplace(*forbidden_metrization);
-
-    return searchApproximateMetrization(net, params);
-}
-
 void saveMetrizedNet(const MetrizedNet& net, string picture, string data) {
     auto pp = embedNet(net);
     savePicture(pp.first, pp.second, picture);
     ofstream metrized_net_out(data);
     net.serialize(metrized_net_out);
+}
+
+void relaxMetrization(MetrizedNet& net, double len) {
+    for (const Dart& d: net.A.darts()) {
+        const Interval I = net.length(d);
+        assert(!I.empty());
+        double m = I.mid();
+        net.length(d) = Interval(m-len/2, m + len/2);
+        // if (id == 2192 and set<int>{16, 17, 12, 13}.count(d.id)) {
+        //     forbidden_metrization->length(d) = Interval(0, 10);
+        // }
+    }
+}
+
+// Return values:
+// 0: Impossible.
+// 1: Possible.
+// 2: Possible and rigid.
+// INDETERMINATE: The computation was taking too long and it was interrupted
+//                before it could prove anything.
+int processNet(int net_id) {
+    static const set<int> possible_nets = {
+        72,     278,    434,    521,    691,
+        936,    949,    1011,   1034,   1223,
+        1351,   1405,   1514,   1829,   2017,
+        2119,   2192,   2312,   2454,   2676,
+        2700,   2769,   2799,   2891,   3048,
+        3222,   3233,   3295,   3338};
+
+    static const set<int> flexible_nets = {2454,   3048};
+
+    auto A = parseDerivedOnceNets("data/derived_once_computer.txt")[net_id];
+
+    SAMParams params;
+
+    // We skip pathological checks for net 1002 because it completes
+    // in roughly 2 hours without them, but takes 10 hours with them.
+    params.run_pathological_checks = !possible_nets.count(net_id)
+                                     and net_id != 1002;
+    params.convex_fixed_darts = findFreeParametersConvex(A);
+    params.non_convex_fixed_darts = findFreeParametersNonConvex(A);
+    params.special_rigidity_2192 = false;
+    params.forbidden_metrization = nullopt;
+
+    MetrizedNet net(A);
+    if (possible_nets.count(net_id)) {
+        // We use the following lines to use an already existing metrization
+        // as a way to skip the existence proof.
+        // string metrized_net_filename = "data/metrized_nets/" + to_string(net_id) + ".txt";
+        // if (possible_nets.count(net_id) and
+        //         filesystem::exists(metrized_net_filename)) {
+        //     ifstream metrized_net_in(metrized_net_filename);
+        //     MetrizedNet net2 = parseMetrizedNet(metrized_net_in);
+        // }
+
+        // Existence
+        params.begin_time = get_time();
+        auto res = searchApproximateMetrization(net, params);
+        assert(res.first == 1 or res.first == INDETERMINATE);
+        if (res.first == INDETERMINATE)
+            return INDETERMINATE;
+        assert(res.second.has_value());
+        MetrizedNet net2 = *res.second;
+        saveMetrizedNet(net2,
+            "data/metrized_nets/" + to_string(net_id) + "_visualization.txt",
+            "data/metrized_nets/" + to_string(net_id) + ".txt");
+        if (flexible_nets.count(net_id))
+            return 1;
+
+        // Rigidity
+        relaxMetrization(net2, 2e-4);
+        // For net 2192, we prove rigidity by first proving that all lengths
+        // but two are rigid.
+        // Then, with this information, we prove algebraically that the
+        // two missing lengths must be equal.
+        // Finally, we rerun the rigidity-algorithm with this additional
+        // information to finally obtain the desired rigidity.
+        if (net_id == 2192) {
+            net2.length(A.dart(16)) = Interval(0, 10);
+            net2.length(A.dart(12)) = Interval(0, 10);
+        }
+        params.forbidden_metrization.emplace(net2);
+        params.begin_time = get_time();
+        int res2 = searchApproximateMetrization(net, params).first;
+        assert(res2 == 0 or res2 == INDETERMINATE);
+        if (res2 == INDETERMINATE)
+            return INDETERMINATE; // We might also decide to return 1.
+        if (net_id == 2192) {
+            params.special_rigidity_2192 = true;
+            params.begin_time = get_time();
+            int res3 = searchApproximateMetrization(net, params).first;
+            assert(res3 == INDETERMINATE or res3 == 0);
+            if (res3 == INDETERMINATE)
+                return INDETERMINATE;
+            return 2;
+        }
+        return 2;
+    } else {
+        params.begin_time = get_time();
+        int res = searchApproximateMetrization(net, params).first;
+        assert(res == 0 or res == INDETERMINATE);
+        return res;
+    }
 }
 
 int main() {
@@ -372,84 +446,35 @@ int main() {
         in >> survivors[i];
     in.close();
 
-    set<int> possible_nets = {
-        72,     278,    434,    521,    691,
-        936,    949,    1011,   1034,   1223,
-        1351,   1405,   1514,   1829,   2017,
-        2119,   2192,   2312,   2454,   2676,
-        2700,   2769,   2799,   2891,   3048,
-        3222,   3233,   3295,   3338};
     // Slow impossible nets: 729, 1002
-    // Slow possible nets: 72, 521, 949, 1829
+    // Slow possible nets: 72, 521, 949, 1829, 2192
     vector<int> new_survivors;
-    for (int id: survivors) {
+    for (int id: {278, 279, 280, 2454, 434, 2700, 3233}) {
         clog << "net id = " << setw(4) << id << ":\t";
         clog.flush();
-        auto A = parseDerivedOnceNets("data/derived_once_computer.txt")[id];
-
-        // We skip pathological checks for net 1002 because it completes
-        // in roughly 2 hours without them, but takes 10 hours with them.
-        bool run_pathological_checks = !possible_nets.count(id) and id != 1002;
-
-        optional<MetrizedNet> forbidden_metrization;
-        string metrized_net_filename = "data/metrized_nets/" + to_string(id) + ".txt";
-        if (possible_nets.count(id) and
-                filesystem::exists(metrized_net_filename)) {
-            ifstream metrized_net_in(metrized_net_filename);
-            MetrizedNet net2 = parseMetrizedNet(metrized_net_in);
-            forbidden_metrization.emplace(net2);
-
-            for (const Dart& d: A.darts()) {
-                const Interval I = net2.length(d);
-                assert(!I.empty());
-                double m = I.mid();
-                double len = I.len();
-                assert(len < 1e-5);
-                len = 2e-4;
-                forbidden_metrization->length(d) = Interval(m-len/2, m + len/2);
-                // if (id == 2192 and set<int>{16, 17, 12, 13}.count(d.id)) {
-                //     forbidden_metrization->length(d) = Interval(0, 10);
-                // }
-            }
-        }
 
         long long begin_time = get_time();
-        auto [outcome, net] =
-            isApproximateMetrizationPossible(A, run_pathological_checks, forbidden_metrization);
+        int outcome = processNet(id);
         double duration_s = (get_time() - begin_time) / 1e9;
 
         clog.precision(2);
         clog << "(time = " << fixed << setw(6) << duration_s << ") ";
 
-        if (outcome == INDETERMINATE) {
-            clog << "SKIPPED" << endl;
-            new_survivors.push_back(id);
-            continue;
-        }
-
-        if (outcome == 1)
-            assert(net.has_value());
-
-        if (forbidden_metrization.has_value()) {
-            if (outcome == 0)
-                clog << "RIGID" << endl;
-            else {
-                clog << "NOT RIGID" << endl;
-                saveMetrizedNet(*net, "picture_wrong.txt", "data_wrong.txt");
-            }
-            new_survivors.push_back(id);
-            continue;
-        }
-
-        assert(outcome == (int)possible_nets.count(id));
-
-        if (outcome == 1) {
-            saveMetrizedNet(*net, "data/metrized_nets/" + to_string(id) + "_visualization.txt", "data/metrized_nets/" + to_string(id) + ".txt");
+        if (outcome == 0)
+            clog << "IMPOSSIBLE";
+        else if (outcome == 1)
             clog << "POSSIBLE";
-            new_survivors.push_back(id);
-        }
+        else if (outcome == 2)
+            clog << "RIGID";
+        else if (outcome == INDETERMINATE)
+            clog << "INDETERMINATE";
+        else assert(0);
         clog << endl;
+
+        if (outcome != 0)
+            new_survivors.push_back(id);
     }
+    clog << endl;
 
     StopWatch::printState();
 

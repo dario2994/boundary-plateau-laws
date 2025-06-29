@@ -99,6 +99,7 @@ class MetrizedNet {
     vector<Interval> _lengths;
     // TODO: If these are too slow, we can use raw pointers.
     // Defined as shared_ptr to avoid the cost of copying.
+    // This complicates the logic quite a bit. Shall we simplify?
     shared_ptr<vector<vector<vector<PathStep>>>> optimal_path;
     shared_ptr<vector<vector<vector<PathStep>>>> to_pins;
     // Indexed by initial dart.

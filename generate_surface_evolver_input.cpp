@@ -310,16 +310,26 @@ void saveSurfaceEvolverFormat(const vector<pt>& coords,
     out << R"(read
 showq;
 subroutine := {
+    quiet;
     g 2000;
     areaweed 0.0005;
     u 4;
     print total_area;
+    quiet off;
 }
 
 gogo := {
-    quiet;
     r 2;
-    subroutine 10;
+    subroutine 5;
+    o;
+    subroutine 3;
+    o;
+    subroutine 3;
+    r;
+    u 4;
+    subroutine 5;
+    o;
+    subroutine 3;
 }
 print total_area;
 )";

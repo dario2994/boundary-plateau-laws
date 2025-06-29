@@ -384,6 +384,10 @@ const set<int>& possible_nets = {
     2700,   2769,   2799,   2891,   3048,
     3222,   3233,   3295,   3338};
 
+const set<int>& pins_are_flexible = {
+    72,     278,    1011,   2312,   3222
+};
+
 // AD-HOC
 // Here we describe the "pop".
 // Use python run_visualization net_id as well as the faces' list
@@ -474,8 +478,7 @@ const map<int, pair<vector<int>, vector<int>>> pop_description = {
     }},
 };
 
-int main() {
-    const int net_id = 3222;
+void processNet(int net_id, vector<double> params={}) {
     assert(possible_nets.count(net_id));
 
     ifstream metrized_net_in("data/metrized_nets/"+ to_string(net_id) + ".txt");
@@ -483,13 +486,24 @@ int main() {
     MetrizedNet net = parseMetrizedNet(metrized_net_in);
     metrized_net_in.close();
     net.incrementVersion();
-    vector<pt> embedding = getVertexEmbedding(net);
-    // vector<pt> pins_coord = findPinsEmbedding(net);
-    vector<pt> pins_coord = choosePinsEmbedding(net, 0.2);
 
-    // auto [embedding, pins_coord] = embed3048(0.00);
+    vector<pt> embedding, pins_coord;
+
+    if (net_id == 3048) {
+        assert(ssize(params) == 1);
+        tie(embedding, pins_coord) = embed3048(params[0]);
+    } else if (pins_are_flexible.count(net_id)) {
+        assert(ssize(params) == 1);
+        embedding = getVertexEmbedding(net);
+        pins_coord = choosePinsEmbedding(net, params[0]);
+    } else {
+        assert(params.empty());
+        embedding = getVertexEmbedding(net);
+        pins_coord = findPinsEmbedding(net);
+    }
 
     auto [pins_id, A] = addPinsToCombinatorialMap(net, embedding, pins_coord);
+    auto faces = A.faces();
 
     // We build the cone *outside* of the ball of radius 1/3.
     int n = ssize(embedding);
@@ -516,23 +530,21 @@ int main() {
         faces_after_pop.push_back({d.from, d.to, d.to+n, d.from+n});
     }
 
-    // We print some info which is useful for humans to come up with
-    // a reasonable pop.
-    auto faces = A.faces();
-    cout << "Faces: " << endl;
-    for (int i = 0; i < ssize(faces); i++) {
-        cout << "Face " << i << ": ";
-        for (Dart d: faces[i])
-            cout << d.from << ", ";
-        cout << endl;
-    }
-
-    cout << "Pin ids (in order): " << pins_id[0] << ", " << pins_id[1] << endl;
-
     if (!pop_description.contains(net_id)) {
+        // We print some info which is useful for humans to come up with
+        // a reasonable pop.
+        cout << "Faces: " << endl;
+        for (int i = 0; i < ssize(faces); i++) {
+            cout << "Face " << i << ": ";
+            for (Dart d: faces[i])
+                cout << d.from << ", ";
+            cout << endl;
+        }
+        cout << "Pin ids (in order): " << pins_id[0] << ", " << pins_id[1] << endl;
+
         cout << "The description of the pop for this net (" << net_id << ") "
              << "is missing." << endl;
-        return 0;
+        return;
     }
 
     // We build the pop (inside the ball of radius 1/3)
@@ -580,7 +592,10 @@ int main() {
     saveSurfaceEvolverFormat(embedding, pins_id[0], is_vertex_fixed,
                              faces_after_pop,
                              filename_prefix + "_after_pop.fe");
+}
 
+int main() {
+    processNet(1223);
 }
 
 // 5.7821

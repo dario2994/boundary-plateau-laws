@@ -1,7 +1,7 @@
 boundary 1 parameters 1
-x1:  -0.675438 * p1
-x2:  0.735271 * p1
-x3:  0.0562109 * p1
+x1:  -0.732085 * p1
+x2:  0.681188 * p1
+x3:  -0.00590143 * p1
 
 vertices
 1 1 0 0 fixed
@@ -20,8 +20,8 @@ vertices
 14 -0.461991 -0.489166 -0.739785 fixed
 15 -0.781416 0.620299 -0.0679548 fixed
 16 0.663905 -0.744723 -0.0679575 fixed
-17 -0.675438 0.735271 0.0562109 fixed
-18 0.675438 -0.735271 -0.0562109 fixed
+17 -0.732085 0.681188 -0.00590143 fixed
+18 0.732085 -0.681188 0.00590143 fixed
 19 0.333333 0 0
 20 -0.0190323 0.33279 3.23815e-17
 21 -0.140588 0.204083 -0.222926
@@ -259,15 +259,25 @@ faces
 read
 showq;
 subroutine := {
+    quiet;
     g 2000;
     areaweed 0.0005;
     u 4;
     print total_area;
+    quiet off;
 }
 
 gogo := {
-    quiet;
     r 2;
-    subroutine 10;
+    subroutine 5;
+    o;
+    subroutine 3;
+    o;
+    subroutine 3;
+    r;
+    u 4;
+    subroutine 5;
+    o;
+    subroutine 3;
 }
 print total_area;

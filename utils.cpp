@@ -74,18 +74,19 @@ class StopWatch {
   private:
     static map<string,long long> total_time;
     static map<string,long long> cnt_calls;
+    static map<string, bool> is_active;
     string name;
-    bool is_active;
   public:
-    StopWatch(string _name): name(_name), is_active(true) {
+    StopWatch(string _name): name(_name) {
         total_time[name] -= get_time();
         cnt_calls[name]++;
+        is_active[name] = true;
     }
 
     void stop() {
-        if (!is_active)
+        if (!is_active[name])
             return;
-        is_active = false;
+        is_active[name] = false;
         total_time[name] += get_time();
     }
 
@@ -95,7 +96,9 @@ class StopWatch {
 
     static void printState() {
         for (auto pp: total_time) {
-            double sec = pp.second / 1e9;
+            long long elapsed = pp.second;
+            if (is_active[pp.first]) elapsed += get_time();
+            double sec = elapsed / 1e9;
             cout << pp.first << ": " << sec << "s, "
                  << cnt_calls[pp.first] << " calls" << endl;
         }
@@ -103,6 +106,7 @@ class StopWatch {
 };
 map<string,long long> StopWatch::total_time;
 map<string,long long> StopWatch::cnt_calls;
+map<string,bool> StopWatch::is_active;
 
 
 #endif

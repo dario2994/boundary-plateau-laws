@@ -72,41 +72,69 @@ long long get_time() {
 
 class StopWatch {
   private:
-    static map<string,long long> total_time;
-    static map<string,long long> cnt_calls;
-    static map<string, bool> is_active;
+    struct TimerData {
+        long long total_time = 0;
+        long long call_count = 0;
+        bool is_active = false;
+        bool is_anonymous = false;
+    };
+    inline static map<string,TimerData> timers;
     string name;
+
+    static string randomName() {
+        const string charset = "abcdefghijklmnopqrstuvwxyz";
+        string result = "";
+        for (int i = 0; i < 6; i++)
+            result += charset[rand() % charset.size()];
+        return result;
+    }
   public:
     StopWatch(string _name): name(_name) {
-        total_time[name] -= get_time();
-        cnt_calls[name]++;
-        is_active[name] = true;
+        TimerData& td = timers[name];
+        td.total_time -= get_time();
+        td.call_count++;
+        td.is_active = true;
+    }
+
+    StopWatch(): StopWatch(randomName()) {
+        timers[name].is_anonymous = true;
     }
 
     void stop() {
-        if (!is_active[name])
+        TimerData& td = timers[name];
+        if (!td.is_active)
             return;
-        is_active[name] = false;
-        total_time[name] += get_time();
+        td.is_active = false;
+        td.total_time += get_time();
     }
 
     ~StopWatch() {
         stop();
     }
 
+    static double get(string _name) { // Returns seconds
+        assert(timers.count(_name));
+        TimerData& td = timers[_name];
+        long long elapsed = td.total_time;
+        if (td.is_active) elapsed += get_time();
+        double sec = elapsed / 1e9;
+        return sec;
+    }
+
+    double get() {
+        return get(name);
+    }
+
+
     static void printState() {
-        for (auto pp: total_time) {
-            long long elapsed = pp.second;
-            if (is_active[pp.first]) elapsed += get_time();
-            double sec = elapsed / 1e9;
-            cout << pp.first << ": " << sec << "s, "
-                 << cnt_calls[pp.first] << " calls" << endl;
+        for (auto [name, td]: timers) {
+            if (td.is_anonymous)
+                continue;
+            cout << name << ": " << get(name) << "s, "
+                 << td.call_count << " calls" << endl;
         }
     }
 };
-map<string,long long> StopWatch::total_time;
-map<string,long long> StopWatch::cnt_calls;
-map<string,bool> StopWatch::is_active;
 
 
 #endif

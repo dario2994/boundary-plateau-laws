@@ -117,7 +117,7 @@ Interval acos(Interval I) {
     double l = acos(I.r);
     double r = acos(I.l);
 
-    const static double eps = 1e-7;
+    const static double eps = 1e-10;
     Interval J(l-eps, r+eps);
     J.intersect(Interval(0, M_PI));
     return J;
@@ -162,7 +162,7 @@ Interval cos(const Interval& I) {
     return Interval(l, r);
 }
 
-//Returns 1, -1, 0 if respectively I is an interval of positive values,
+// Returns 1, -1, INDETERMINATE if respectively I is an interval of positive values,
 // an interval of negative values, or it contains zero.
 int sign(const Interval& I) {
     if (I.l <= 0 and I.r >= 0)

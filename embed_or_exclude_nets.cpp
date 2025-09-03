@@ -172,6 +172,13 @@ vector<Dart> findFreeParametersNonConvex(const DerivedOnceNet& A) {
     return res;
 }
 
+vector<pair<long long, MetrizedNet>> virtual_stack;
+long long begin_timestamp = 0;
+long long last_timestamp = 0;
+const long long timestamp_diff = 10*60; // Ten minutes.
+const long long interesting_duration = 60; // One minute.
+
+// Parameters for searchApproximateMetrization.
 struct SAMParams {
     vector<Dart> convex_fixed_darts;
     vector<Dart> non_convex_fixed_darts;
@@ -193,6 +200,32 @@ struct SAMParams {
 pair<int, optional<MetrizedNet>> searchApproximateMetrization(
         MetrizedNet net,
         const SAMParams& params) {
+    if (get_time() - last_timestamp > timestamp_diff * 1e9) {
+        last_timestamp = get_time(); // Even if nothing is printed.
+        int it = -1;
+        for (int i = 0; i < ssize(virtual_stack); i++) {
+            if (get_time() - virtual_stack[i].first > interesting_duration * 1e9)
+                it = i;
+        }
+        for (int i = 0; i <= it; i++) {
+            long long duration = get_time() - virtual_stack[i].first;
+            duration /= 1e9;
+            duration /= 60; // In minutes.
+            auto zet = virtual_stack[i].second;
+            cout << duration << "min: ";
+            for (auto d: params.convex_fixed_darts)
+                cout << zet.length(d) << " ";
+            cout << endl;
+        }
+        if (it != -1) {
+            auto zet = virtual_stack[it].second;
+            for (auto d: net.A.darts())
+                if (d.from < d.to)
+                    cout << d << ": " << zet.length(d) << endl;
+            cout << endl;
+        }
+    }
+
     const DerivedOnceNet& A = net.A;
 
     if (params.special_rigidity_2192) {
@@ -319,7 +352,9 @@ pair<int, optional<MetrizedNet>> searchApproximateMetrization(
         // It could be part of a custom copy constructor, but it
         // would be even more annoying.
         new_net.incrementVersion();
+        virtual_stack.emplace_back(get_time(), new_net);
         auto outcome = searchApproximateMetrization(new_net, params);
+        virtual_stack.pop_back();
         if (outcome.first != 0)
             return outcome;
     }
@@ -340,9 +375,6 @@ void relaxMetrization(MetrizedNet& net, double len) {
         assert(!I.empty());
         double m = I.mid();
         net.length(d) = Interval(m-len/2, m + len/2);
-        // if (id == 2192 and set<int>{16, 17, 12, 13}.count(d.id)) {
-        //     forbidden_metrization->length(d) = Interval(0, 10);
-        // }
     }
 }
 
@@ -442,7 +474,63 @@ int processNet(int net_id) {
     }
 }
 
+
+void testingSearchApproximateMetrization(int test_num = -1) {
+    struct TestCase {
+        int net_id;
+        bool run_pathological_checks;
+        optional<vector<Interval>> initial_metrization;
+        int expected_outcome;
+        double expected_duration; // seconds;
+    };
+    vector<TestCase> cases;
+    cases.emplace_back(278, false, nullopt, 1, 0.28);
+    cases.emplace_back(279, true, nullopt, 0, 1.69);
+
+    for (int test_id = 0; test_id < ssize(cases); test_id++) {
+        if (test_num != -1 and test_id != test_num)
+            continue;
+        const TestCase& tc = cases[test_id];
+        cout << "Test " << test_id+1 << ", net " << tc.net_id << ": ";
+        auto A = parseDerivedOnceNets("data/derived_once_computer.txt")[tc.net_id];
+
+        SAMParams params;
+
+        params.run_pathological_checks = tc.run_pathological_checks;
+        params.convex_fixed_darts = findFreeParametersConvex(A);
+        params.non_convex_fixed_darts = findFreeParametersNonConvex(A);
+        params.special_rigidity_2192 = false;
+        params.forbidden_metrization = nullopt;
+
+        MetrizedNet net(A);
+
+        if (tc.initial_metrization) {
+            assert(ssize(*tc.initial_metrization) == ssize(params.convex_fixed_darts));
+            for (int i = 0; i < ssize(*tc.initial_metrization); i++) {
+                Dart d = params.convex_fixed_darts[i];
+                net.length(d).intersect(tc.initial_metrization.value()[i]);
+            }
+        }
+
+        StopWatch stopwatch;
+        int outcome = searchApproximateMetrization(net, params).first;
+        double elapsed_time = stopwatch.get();
+
+        assert(outcome == tc.expected_outcome);
+        cout << "outcome = " << outcome << ", ";
+        cout << "elapsed = "<< elapsed_time;
+        double time_diff = (tc.expected_duration - elapsed_time) / tc.expected_duration;
+        if (time_diff > 0.1)
+            cout << " (improved from " << tc.expected_duration << ")";
+        if (time_diff < -0.1)
+            cout << " (degraded from " << tc.expected_duration << ")";
+        cout << endl;
+    }
+}
+
 int main() {
+    // testingSearchApproximateMetrization();
+    // return 0;
     ifstream in("data/derived_once_survivors.txt");
     int cnt_survivors;
     in >> cnt_survivors;
@@ -454,7 +542,7 @@ int main() {
     // Slow impossible nets: 729, 1002
     // Slow possible nets: 72, 521, 949, 1829, 2192
     vector<int> new_survivors;
-    for (int id: {278, 279, 280, 2454, 434, 2700, 3233}) {
+    for (int id: {72}) {
         clog << "net id = " << setw(4) << id << ":\t";
         clog.flush();
 

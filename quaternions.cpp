@@ -8,7 +8,7 @@ using namespace std;
 #include "interval_arithmetic.cpp"
 
 template<typename T>
-struct Quaternion{
+struct Quaternion {
     T q[4];
     Quaternion(): q{T(0),T(0),T(0),T(0)} {}
     Quaternion(T a, T b, T c, T d): q{a,b,c,d} {}

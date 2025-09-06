@@ -234,7 +234,7 @@ pair<int, optional<MetrizedNet>> searchApproximateMetrization(
     }
 
     // If the computation takes too long, we skip.
-    // The slowest net, which is 72, requires 38 hours.
+    // The slowest net, which is 72, requires TODO hours.
     static const long long one_second = 1e9;
     static const long long one_minute = 60*one_second;
     [[maybe_unused]] static const long long one_hour = 60*one_minute;
@@ -284,13 +284,8 @@ pair<int, optional<MetrizedNet>> searchApproximateMetrization(
     if (run_now_pathological_checks) {
         // The following checks are run only here because:
         //  - They handle rare pathological situations.
-        //  - They are almost always implied by other checks.
+        //  - They are _almost_ always implied by other checks.
         //  - They are slow.
-        if (!checkVerticesOutsideConvexFaces(net))
-            return {0, nullopt};
-
-        if (!checkFacesNotIdentical(net))
-            return {0, nullopt};
 
         if (!checkPinIsVertex(net))
             return {0, nullopt};
@@ -482,16 +477,34 @@ void testingSearchApproximateMetrization(int test_num = -1) {
         optional<vector<Interval>> initial_metrization;
         int expected_outcome;
         double expected_duration; // seconds;
+        optional<vector<double>> expected_metrization;
     };
     vector<TestCase> cases;
-    cases.emplace_back(278, false, nullopt, 1, 0.28);
-    cases.emplace_back(279, true, nullopt, 0, 1.69);
+
+    cases.emplace_back(278, false, nullopt, 1, 0.28, vector<double>{1.627925,1.627925,0.882358,0.882358,1.627925,1.627925,0.882358,0.882358,0.882358,0.882358,0.882358,0.882358,0.145808,0.145808,0.632887,0.632887,0.145810,0.145810,1.627925,1.627925,0.882358,0.882358,1.627925,1.627925,0.882358,0.882358,0.145810,0.145810,1.093351,1.093351,1.093353,1.093353,0.632888,0.632888,0.145808,0.145808,0.323185,0.323185,1.093353,1.093353,1.093351,1.093351,0.632884,0.632884,0.632884,0.632884});
+
+    cases.emplace_back(279, true, nullopt, 0, 1.69, nullopt);
+
+    cases.emplace_back(19, true, nullopt, 0, 5, nullopt);
+
+    cases.emplace_back(105, true, nullopt, 0, 5, nullopt);
+
+    cases.emplace_back(2119, false, nullopt, 1, 4.6, vector<double>{1.462616,1.462616,1.462616,1.462616,1.016773,1.016773,1.016773,1.016773,1.462616,1.462616,0.236659,0.236659,1.016775,1.016775,1.462614,1.462614,0.236655,0.236655,1.462614,1.462614,1.016775,1.016775,1.462614,1.462614,1.016773,1.016773,1.016775,1.016775,1.016775,1.016775,1.016773,1.016773});
+
+    cases.emplace_back(1025, true, nullopt, 0, 11.5, nullopt);
+
+    cases.emplace_back(115, true, nullopt, 0, 200, nullopt);
+
+    cases.emplace_back(3233, false, nullopt, 1, 200, vector<double>{1.230960,1.230960,1.230960,1.230960,1.230959,1.230959,1.230961,1.230961,1.230960,1.230960,1.230960,1.230960,1.230959,1.230959,1.230960,1.230960,1.230959,1.230959,1.230958,1.230958});
+
+    // cases.emplace_back(3091, true, nullopt, 0, 200, nullopt); // SLOW
 
     for (int test_id = 0; test_id < ssize(cases); test_id++) {
         if (test_num != -1 and test_id != test_num)
             continue;
         const TestCase& tc = cases[test_id];
-        cout << "Test " << test_id+1 << ", net " << tc.net_id << ": ";
+        cout << "Test " << test_id << ", net " << tc.net_id << ": ";
+        cout.flush();
         auto A = parseDerivedOnceNets("data/derived_once_computer.txt")[tc.net_id];
 
         SAMParams params;
@@ -513,7 +526,7 @@ void testingSearchApproximateMetrization(int test_num = -1) {
         }
 
         StopWatch stopwatch;
-        int outcome = searchApproximateMetrization(net, params).first;
+        auto [outcome, maybe_metrized_net] = searchApproximateMetrization(net, params);
         double elapsed_time = stopwatch.get();
 
         assert(outcome == tc.expected_outcome);
@@ -524,13 +537,42 @@ void testingSearchApproximateMetrization(int test_num = -1) {
             cout << " (improved from " << tc.expected_duration << ")";
         if (time_diff < -0.1)
             cout << " (degraded from " << tc.expected_duration << ")";
+
+        if (outcome == 1) {
+            const double acceptable_total_error = 1e-5;
+            assert(maybe_metrized_net->totalError() < acceptable_total_error);
+            if (tc.expected_metrization) {
+                for (Dart d: A.darts()) {
+                    double expected_len = (*tc.expected_metrization)[d.id];
+                    Interval outcome_len = maybe_metrized_net->length(d);
+                    const double acceptable_error = 1e-4;
+                    assert(outcome_len.l - acceptable_error < expected_len);
+                    assert(expected_len < outcome_len.r + acceptable_error);
+                }
+            } else {
+                vector<double> lens;
+                for (auto d: maybe_metrized_net->A.darts())
+                    lens.push_back(maybe_metrized_net->length(d).mid());
+                cout << " Info to add to the test: ";
+                cout << "vector<double>{";
+                cout.precision(6);
+                cout << fixed << lens[0];
+                for (int i = 1; i < ssize(lens); i++)
+                    cout << fixed << "," << lens[i];
+                cout << "}";
+            }
+        }
         cout << endl;
     }
+
+    cout << endl;
+    StopWatch::printState();
 }
 
 int main() {
     // testingSearchApproximateMetrization();
     // return 0;
+
     ifstream in("data/derived_once_survivors.txt");
     int cnt_survivors;
     in >> cnt_survivors;
@@ -551,7 +593,7 @@ int main() {
         double duration_s = (get_time() - begin_time) / 1e9;
 
         clog.precision(2);
-        clog << "(time = " << fixed << setw(6) << duration_s << ") ";
+        clog << "(time = " << fixed << setw(10) << duration_s << ") ";
 
         if (outcome == 0)
             clog << "IMPOSSIBLE";

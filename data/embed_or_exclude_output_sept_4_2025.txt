@@ -1179,3 +1179,5 @@ checkPinOutsideConvexFaces: 14642.5s, 78862643 calls
 isometryFromPath: 16180.9s, 10479376758 calls
 refineMetrizationConvexContinent: 40182s, 1245466916 calls
 refineMetrizationNonConvexFaces: 6602.85s, 959808151 calls
+
+Total time: Approximately 23 hours.

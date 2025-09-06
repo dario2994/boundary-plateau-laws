@@ -269,14 +269,23 @@ bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
             path.emplace_back(PathStep('R', A.phiAngle(e)));
         }
         ApproximateIsometry T = net.isometryFromPath(path);
-        // T is, up to sign, (cos(l/2), 0, 0, -sin(l/2)), where
-        // l is the length of d.
-        if (!T[1].containsZero() or !T[2].containsZero()) {
+        // Let l be the length of d.
+        // T(e_1) = (cos l, -sin l, 0)
+        // T(e_2) = (sin l,  cos l, 0)
+        // T(e_3) = (0,          0, 0)
+        array<Interval, 3> T0 = T({1, 0, 0});
+        array<Interval, 3> T1 = T({0, 1, 0});
+        array<Interval, 3> T2 = T({0, 0, 1});
+        if (!T0[2].containsZero() or !T1[2].containsZero()
+              or !T2[0].containsZero() or !T2[1].containsZero()
+              or !(T2[2]-1).containsZero()) {
             net.length(d) = EMPTY_INTERVAL;
             return false;
         }
-        Interval I = 2*intersectWithCircle(T[0], -T[3], 0.5 * net.length(d));
-        net.length(d).intersect(I);
+        Interval constraint1 = intersectWithCircle(T0[0], -T0[1], net.length(d));
+        Interval constraint2 = intersectWithCircle(T1[1],  T1[0], net.length(d));
+        Interval total_constraint = intersection(constraint1, constraint2);
+        net.length(d).intersect(total_constraint);
         if (net.length(d).empty())
             return false;
     }
@@ -296,7 +305,7 @@ bool checkNonIntersection(MetrizedNet& net) {
         double sum_theta = 0;
         sum_theta += M_PI;
         const vector<Dart>& f = A.face(d);
-        ApproximateIsometry iso(1);
+        ApproximateIsometry iso(1, 0);
 
         for (int i = 0; i < ssize(f)-2; i++) {
             sum_theta += A.phiAngle(f[i]);
@@ -311,9 +320,7 @@ bool checkNonIntersection(MetrizedNet& net) {
             }
             iso *= basicTranslation(sum_theta, net.length(f[i+1]));
 
-            double total_error =
-                iso[0].len() + iso[1].len() + iso[2].len() + iso[3].len();
-            if (total_error > 1)
+            if (iso.getUncertainty() > 0.5)
                 break;
         }
     }
@@ -397,7 +404,7 @@ vector<double> maxDistanceToPin(const MetrizedNet& net) {
             int x = halfEquatorsIntersection(T);
             if (x == 1 or x == -1) {
                 if (firstIntersectionWithEquator(T).r < net.length(d).l)
-                    len = min(len, firstIntersectionWithEquator(conj(T)).r);
+                    len = min(len, firstIntersectionWithEquator(inverse(T)).r);
             }
 
             if (!A.isConcaveAngle(d) and !A.isConcaveAngle(A.rev(d)))
@@ -410,7 +417,7 @@ vector<double> maxDistanceToPin(const MetrizedNet& net) {
                 continue;
 
             if (T({1, 0, 0})[2].r < 0)
-                len = min(len, firstIntersectionWithEquator(conj(T)).r);
+                len = min(len, firstIntersectionWithEquator(inverse(T)).r);
         }
         len_to_pin.push_back(len);
     }
@@ -522,83 +529,6 @@ bool checkPinIsVertex(const MetrizedNet& net) {
     }
     return false;
 }
-
-
-// Checks that there are no two distinct darts d, e such that:
-//  1. The faces corresponding to d and e are convex and with the
-//     same number of sides.
-//  2. The lengths of the sides of the face of d are very close to the
-//     lengths of the sides of the face of e.
-//  3. The direction of the d is very close to the direction of e.
-//
-// This check is sufficient to rule out a few embedding with "overlapping"
-// convex faces. (as in a "double cover")
-//
-// TODO: This should be strictly weaker than checkFacesAreBoundaries
-//       Should be removed. (unless checkFacesAreBoundaries is too slow)
-bool checkFacesNotIdentical(const MetrizedNet& net) {
-    auto interval_is_point = [&](const Interval& I, double z) {
-        const double eps = 0.001;
-        return z - eps <= I.l and I.r <= z + eps;
-    };
-
-    const DerivedOnceNet& A = net.A;
-
-    for (const Dart& d: A.darts()) for (const Dart& e: A.darts()) {
-        if (d == e)
-            continue;
-
-        bool special = d.from == 11 and d.to == 4;
-        special &= e.from == 5 and e.to == 1;
-
-        if (!A.isConvexFace(d) or !A.isConvexFace(e))
-            continue;
-        if (ssize(A.face(d)) != ssize(A.face(e)))
-            continue;
-
-        bool identical = true;
-        int q = ssize(A.face(d));
-        for (int i = 0; i < q; i++) {
-            const Dart& d2 = A.phi(d, i);
-            const Dart& e2 = A.phi(e, i);
-            const Interval& I = net.length(d2);
-            const Interval& J = net.length(e2);
-            if (abs(J.r-I.l) > 0.001)
-                identical = false;
-            if (abs(I.r-J.l) > 0.001)
-                identical = false;
-        }
-
-        if (!identical)
-            continue;
-
-        ApproximateIsometry T = net.getIsometry(d, e);
-        if (!interval_is_point(T[0], 1) and !interval_is_point(T[0], -1))
-            continue;
-
-        for (int i = 1; i < 3; i++)
-            identical &= interval_is_point(T[i], 0);
-        if (identical)
-            return false;
-    }
-    return true;
-}
-
-// No vertex can belong to the interior of a convex face.
-// TODO: This should be strictly weaker than checkFacesAreBoundaries
-//       Should be removed. (unless checkFacesAreBoundaries is too slow)
-bool checkVerticesOutsideConvexFaces(const MetrizedNet& net) {
-    for (const Dart& root: net.A.darts()) {
-        for (const auto& face: net.A.faces()) {
-            if (!net.A.isConvexFace(face))
-                continue;
-            if (strictlyInsideConvexFace(net, array<Interval,3>{1, 0, 0}, root, face))
-                return false;
-        }
-    }
-    return true;
-}
-
 
 
 

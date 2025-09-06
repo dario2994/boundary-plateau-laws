@@ -60,7 +60,7 @@ bool isShorterThanPi(const DerivedOnceNet& A, const Dart& d) {
 // - PathStep('E', t): Corresponds to the exponential for time t
 //   (\exp_t in the paper).
 //
-// Additionally, there's also PathStep(Dart) which corresponds is equivalent
+// Additionally, there's also PathStep(Dart) which corresponds
 // to PathStep('E', Dart.len()).
 // This is a trick necessary to speed up some computation.
 struct PathStep {
@@ -168,7 +168,7 @@ class MetrizedNet {
         StopWatch _("isometryFromPath");
 
         double sum_theta = 0;
-        ApproximateIsometry res(1);
+        ApproximateIsometry res(1, 0);
         for (auto op: path) {
             if (op.type == 'R')
                 sum_theta += op.t;

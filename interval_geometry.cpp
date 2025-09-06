@@ -11,39 +11,61 @@ using namespace std;
 
 // A quaternion with q with unit norm induces an isometry on R^3 via
 // v -> qv\bar q, through the identification R^3 \cong <i, j, k> \subseteq Quaternions.
-class ApproximateIsometry : public Quaternion<Interval> {
-  public:
-    ApproximateIsometry(Quaternion<Interval> _x): Quaternion<Interval>(_x) {}
-    ApproximateIsometry(Interval _a)
-        : Quaternion<Interval>(_a) {}
-    ApproximateIsometry(Interval _a, Interval _b, Interval _c, Interval _d)
-        : Quaternion<Interval>(_a, _b, _c, _d) {}
+class ApproximateIsometry {
+  private:
+    Quaternion<double> q;
+    double uncertainty;
 
-    array<Interval, 3> operator()(array<Interval, 3> vec) const {
-        Quaternion<Interval> vec2(0, vec[0], vec[1], vec[2]);
-        Quaternion<Interval> res = (*this)*vec2*conj(*this);
-        return {res[1], res[2], res[3]};
+    // Make interval with uncertainty
+    Interval miwu(double mid) const {
+        return Interval(mid - uncertainty, mid + uncertainty);
+    }
+  public:
+    ApproximateIsometry(const Quaternion<double>& _q, double _uncertainty) : q(_q), uncertainty(_uncertainty) {}
+
+    array<Interval, 3> operator()(array<double, 3> vec) const {
+        Quaternion<double> vec4(0, vec[0], vec[1], vec[2]);
+        Quaternion<double> res = q * vec4 * conj(q);
+        return {miwu(res[1]), miwu(res[2]), miwu(res[3])};
     }
 
-    // array<Interval, 3> operator()(const array<double, 3>& vec) {
-    //     Quaternion<Interval> vec2(0, vec[0], vec[1], vec[2]);
-    //     Quaternion<Interval> res = (*this)*vec2*conj(*this);
-    //     return {res[1], res[2], res[3]};
-    // }
+    // Quaternion<Interval> getQuaternion() const { return q; }
+
+    ApproximateIsometry& operator *=(const ApproximateIsometry& S) {
+        q *= S.q;
+        uncertainty += S.uncertainty;
+        return *this;
+    }
+    friend ApproximateIsometry operator *(const ApproximateIsometry&, const ApproximateIsometry&);
+    friend ApproximateIsometry inverse(const ApproximateIsometry&);
+
+    double getUncertainty() { return uncertainty; }
 };
+
+// Here we are implicitly using that (S, T) -> S*T is 1-Lip in both its
+// arguments when SO(3) is endowed with the operator norm.
+ApproximateIsometry operator *(const ApproximateIsometry& S, const ApproximateIsometry& T) {
+    return {S.q * T.q, S.uncertainty + T.uncertainty};
+}
+
+// Here we are implicitly using that the inverse is an isometry of SO(3)
+// endowed with the operator norm.
+ApproximateIsometry inverse(const ApproximateIsometry& S) {
+    return {conj(S.q), S.uncertainty};
+}
 
 // Set v = (e_1, e_2).
 // This function returns R(v, theta).
-ApproximateIsometry basicRotation(Interval theta) {
-    Interval theta2 = 0.5 * theta;
-    return ApproximateIsometry(cos(theta2), sin(theta2), 0, 0);
+ApproximateIsometry basicRotation(double theta) {
+    double theta2 = 0.5 * theta;
+    return ApproximateIsometry({cos(theta2), sin(theta2), 0, 0}, 0);
 }
 
 // This function returns E(\rot_\theta v, len)
-ApproximateIsometry basicTranslation(Interval theta, Interval len) {
+ApproximateIsometry basicTranslation(double theta, Interval len) {
     Interval len2 = 0.5 * len;
-    return ApproximateIsometry(cos(len2), 0,
-            -sin(theta) * sin(len2), cos(theta) * sin(len2));
+    return ApproximateIsometry({cos(len2.mid()), 0,
+            -sin(theta) * sin(len2.mid()), cos(theta) * sin(len2.mid())}, len.len() / 2);
 }
 
 
@@ -58,35 +80,44 @@ ApproximateIsometry randomIsometry() {
     if (z < 0.1)
         return randomIsometry();
     a /= z, b /= z, c /= z, d /= z;
-    return ApproximateIsometry(a, b, c, d);
+    return ApproximateIsometry({a, b, c, d}, 0);
 }
 
 
-// If (cos l, sin l) \in IxJ \cup (-I)x(-J) with l \in domain,
-// then l belongs to the interval returned by this function.
-// domain is a subinterval of [0, pi].
-Interval intersectWithCircle(const Interval& I, const Interval& J, const Interval& domain) {
-    if (I.empty() or J.empty())
+// (superset of the) Intersection of the unit circle with a rectangle.
+// It returns a superset of
+// \{l \in domain: (cos l, sin l) \in XxY \}
+// Assumption: domain \subseteq [0, 2pi].
+//
+// TODO: This shall be tested. It can be robustly tested as follows:
+//  1. Generate a two random intervals X, Y in [-10, 10].
+//  2. Generate a random 0 <= theta <= 2*pi. If cos(theta) \in X
+//     and sin(\theta) \in Y, then call this function and check that theta
+//     belongs to the returned interval.
+Interval intersectWithCircle(Interval X, Interval Y, const Interval& domain) {
+    X.intersect({-1, 1});
+    Y.intersect({-1, 1});
+    if (X.empty() or Y.empty())
         return EMPTY_INTERVAL;
-
-    // We shall return the interval of 0 <= l < pi such that:
-    // (cos l, sin l) belongs to IxJ or -(IxJ).
-    auto intersectWithCircleQuadrant = [](Interval X, Interval Y) {
-        X.intersect(Interval(-1, 1));
-        Y.intersect(Interval(0, 1));
-        if (X.empty() or Y.empty())
-            return EMPTY_INTERVAL;
-        Interval inv_c = Interval(acos(X.r), acos(X.l));
-        Interval inv_s = Interval(asin(Y.l), asin(Y.r));
-        return hull({intersection(inv_c, inv_s), intersection(inv_c, M_PI-inv_s)});
-    };
-
-    Interval inter1 = intersectWithCircleQuadrant(I, J);
-    Interval inter2 = intersectWithCircleQuadrant(-I, -J);
-    inter1 = intersection(inter1, domain);
-    inter2 = intersection(inter2, domain);
-
-    return hull({inter1, inter2});
+    Interval I = {acos(X.r), acos(X.l)}; // Subset of [0, pi].
+    Interval J = {asin(Y.l), asin(Y.r)}; // Subset of [-pi/2, pi/2].
+    vector<Interval> lI = {I, {2*M_PI-I.r, 2*M_PI-I.l}};
+    vector<Interval> lJ = {{M_PI-J.r, M_PI-J.l}};
+    if (J.containsZero()) {
+        lJ.emplace_back(0, J.r);
+        lJ.emplace_back(2*M_PI + J.l, 2*M_PI);
+    } else if (J.l > 0) {
+        lJ.push_back(J);
+    } else if (J.r < 0) {
+        lJ.emplace_back(2*M_PI + J.l, 2*M_PI + J.r);
+    }
+    vector<Interval> lK;
+    for (const Interval& i: lI) for (const Interval& j: lJ) {
+        Interval k = intersection(intersection(i, j), domain);
+        if (!k.empty())
+            lK.push_back(k);
+    }
+    return hull(lK);
 }
 
 template<typename T>
@@ -210,7 +241,7 @@ int internalIntersectionSign(const ApproximateIsometry& T,
         return INDETERMINATE;
 
     Interval I2 = firstIntersectionWithEquator(T);
-    Interval J2 = firstIntersectionWithEquator(conj(T));
+    Interval J2 = firstIntersectionWithEquator(inverse(T));
 
     if (I2.l > I.r or J2.l > J.r)
         return 0;
@@ -226,7 +257,7 @@ int internalIntersectionSign(const ApproximateIsometry& T,
 // Let b be the geodesic segment with length J starting from (Te_1, Te_2).
 // We assume that I, J \subseteq [0, 2pi].
 //
-// a and b may have zero or one or two intersections. Moreover, since we don't know b exactly,
+// a and b may have zero or one or two intersections. Moreover, since we don't know them exactly,
 // we may not be able to tell how many intersections they have.
 //
 // The return values of this function are:
@@ -244,7 +275,7 @@ int intersectionSign(const ApproximateIsometry& T,
         Interval I2 = intersection(pi, i == 0 ? I : I-M_PI);
         Interval J2 = intersection(pi, j == 0 ? J : J-M_PI);
         ApproximateIsometry S = T;
-        ApproximateIsometry k = {0, 0, 0, 1};
+        ApproximateIsometry k({0, 0, 0, 1}, 0);
         if (i == 1)
             S = k * S;
         if (j == 1)
@@ -285,7 +316,7 @@ bool checkNonIntersection(const ApproximateIsometry& T,
     double lenI = firstIntersectionWithEquator(T).r;
     if (lenI >= I.r) // for performance
         return true;
-    double lenJ = firstIntersectionWithEquator(conj(T)).r;
+    double lenJ = firstIntersectionWithEquator(inverse(T)).r;
 
     if (I.l >= lenI)
         J.intersect(Interval(0, lenJ));
@@ -297,6 +328,10 @@ bool checkNonIntersection(const ApproximateIsometry& T,
 
 // If it returns true, the given points belong to a strict hemisphere.
 // Complexity: O(n^4), where n = ssize(vec).
+//
+// TODO: This needs to be tested. I don't know how to test it.
+// TODO: Also the naming is unsafe, as it seems to imply that if it returns
+//       false then they cannot belong to the same Hemisphere.
 bool belongToStrictHemisphere(vector<array<Interval, 3>> vec) {
     auto subroutine = [&]() {
         int n = ssize(vec);

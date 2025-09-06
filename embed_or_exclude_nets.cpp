@@ -2,11 +2,10 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-#include "interval_arithmetic.cpp"
-#include "quaternions.cpp"
 #include "derived_once_nets.cpp"
-#include "metrization_constraints.cpp"
+#include "interval_arithmetic.cpp"
 #include "metrized_nets.cpp"
+#include "metrization_constraints.cpp"
 
 typedef array<double, 3> pt;
 ostream& operator<<(ostream& out, pt p) {

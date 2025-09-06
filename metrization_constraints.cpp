@@ -5,12 +5,12 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-#include "interval_arithmetic.cpp"
-#include "quaternions.cpp"
-#include "interval_geometry.cpp"
 #include "derived_once_nets.cpp"
-#include "metrized_nets.cpp"
 #include "utils.cpp"
+#include "interval_arithmetic.cpp"
+#include "interval_geometry.cpp"
+#include "metrized_nets.cpp"
+
 
 
 // TODO: We should make the behavior of the routines more consistent.

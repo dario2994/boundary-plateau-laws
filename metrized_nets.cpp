@@ -7,7 +7,6 @@ using namespace std;
 
 #include "derived_once_nets.cpp"
 #include "interval_arithmetic.cpp"
-#include "quaternions.cpp"
 #include "interval_geometry.cpp"
 #include "utils.cpp"
 

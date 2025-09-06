@@ -61,6 +61,7 @@ ApproximateIsometry basicRotation(double theta) {
     return ApproximateIsometry({cos(theta2), sin(theta2), 0, 0}, 0);
 }
 
+// Set v = (e_1, e_2).
 // This function returns E(\rot_\theta v, len)
 ApproximateIsometry basicTranslation(double theta, Interval len) {
     Interval len2 = 0.5 * len;
@@ -71,6 +72,7 @@ ApproximateIsometry basicTranslation(double theta, Interval len) {
 
 // TODO: This function shall guarantee that it returns an isometry (i.e.,
 //       a quaternion with norm 1 is contained in the 4-dim box).
+//       Should this simply use basicRotation and basicTranslation?
 ApproximateIsometry randomIsometry() {
     static default_random_engine engine(123);
     uniform_real_distribution<double> dist(-1.0, 1.0);

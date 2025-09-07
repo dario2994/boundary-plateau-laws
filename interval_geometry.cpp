@@ -90,12 +90,6 @@ ApproximateIsometry randomIsometry() {
 // It returns a superset of
 // \{l \in domain: (cos l, sin l) \in XxY \}
 // Assumption: domain \subseteq [0, 2pi].
-//
-// TODO: This shall be tested. It can be robustly tested as follows:
-//  1. Generate a two random intervals X, Y in [-10, 10].
-//  2. Generate a random 0 <= theta <= 2*pi. If cos(theta) \in X
-//     and sin(\theta) \in Y, then call this function and check that theta
-//     belongs to the returned interval.
 Interval intersectWithCircle(Interval X, Interval Y, const Interval& domain) {
     X.intersect({-1, 1});
     Y.intersect({-1, 1});

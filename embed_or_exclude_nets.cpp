@@ -257,6 +257,9 @@ pair<int, optional<MetrizedNet>> searchApproximateMetrization(
     if (!refineMetrizationConvexContinent(net, params.convex_fixed_darts))
         return {0, nullopt};
 
+    // if (net.totalError() > 0.1)
+
+
     if (!refineMetrizationNonConvexFaces(net))
         return {0, nullopt};
 
@@ -341,11 +344,6 @@ pair<int, optional<MetrizedNet>> searchApproximateMetrization(
                 I = Interval(m, I.r);
         }
 
-        // This is the only external overhead necessary for
-        // caching minimal paths.
-        // It could be part of a custom copy constructor, but it
-        // would be even more annoying.
-        new_net.incrementVersion();
         virtual_stack.emplace_back(get_time(), new_net);
         auto outcome = searchApproximateMetrization(new_net, params);
         virtual_stack.pop_back();
@@ -496,7 +494,7 @@ void testingSearchApproximateMetrization(int test_num = -1) {
 
     cases.emplace_back(3233, false, nullopt, 1, 0.05, vector<double>{1.230960,1.230960,1.230960,1.230960,1.230959,1.230959,1.230961,1.230961,1.230960,1.230960,1.230960,1.230960,1.230959,1.230959,1.230960,1.230960,1.230959,1.230959,1.230958,1.230958});
 
-    // cases.emplace_back(3091, true, nullopt, 0, 200, nullopt); // SLOW
+    cases.emplace_back(3091, true, nullopt, 0, 200, nullopt); // SLOW
 
     for (int test_id = 0; test_id < ssize(cases); test_id++) {
         if (test_num != -1 and test_id != test_num)
@@ -619,3 +617,23 @@ int main() {
     out << endl;
     out.close();
 }
+
+
+
+// Test 0, net 278: outcome = 1, elapsed = 0.0614798
+// Test 1, net 279: outcome = 0, elapsed = 0.269206 (improved from 0.3)
+// Test 2, net 19: outcome = 0, elapsed = 0.442493
+// Test 3, net 105: outcome = 0, elapsed = 0.332035
+// Test 4, net 2119: outcome = 1, elapsed = 0.1269
+// Test 5, net 1025: outcome = 0, elapsed = 9.78234 (improved from 11)
+// Test 6, net 115: outcome = 0, elapsed = 4.40657
+// Test 7, net 3233: outcome = 1, elapsed = 0.0462779
+
+// canPinsBeAntipodal: 0.201559s, 45826 calls
+// checkPinAngles: 0.105077s, 34895 calls
+// checkPinOutsideConvexFaces: 0.909781s, 31765 calls
+
+
+// canPinsBeAntipodal: 0.82295s, 45719 calls
+// checkPinAngles: 0.39948s, 34586 calls
+// checkPinOutsideConvexFaces: 1.64537s, 31468 calls

@@ -96,16 +96,29 @@ class MetrizedNet {
 
   private:
     vector<Interval> _lengths;
-    // TODO: If these are too slow, we can use raw pointers.
-    // Defined as shared_ptr to avoid the cost of copying.
-    // This complicates the logic quite a bit. Shall we simplify?
-    shared_ptr<vector<vector<vector<PathStep>>>> optimal_path;
-    shared_ptr<vector<vector<vector<PathStep>>>> to_pins;
-    // Indexed by initial dart.
-    shared_ptr<long long> current_version;
-    shared_ptr<vector<long long>> last_update;
+
+    // Cache for the optimal paths (i.e., the ones with smallest total error)
+    // between darts.
+    mutable vector<vector<vector<PathStep>>> optimal_path;
+    mutable vector<vector<vector<PathStep>>> to_pins;
+
+
+    void initOptimalPaths() {
+        optimal_path.clear();
+        to_pins.clear();
+        optimal_path.resize(2*A.E());
+        to_pins.resize(2*A.E());
+    }
 
   public:
+
+    MetrizedNet(const MetrizedNet& other) : A(other.A), _lengths(other._lengths) {
+        initOptimalPaths();
+    }
+
+    // Deleting the copy-assignment operator (since our copy-logic is not the default one).
+    MetrizedNet& operator=(const MetrizedNet& other) = delete;
+
     Interval& length(const Dart& d) {
         return _lengths[d.id>>1];
     }
@@ -113,15 +126,8 @@ class MetrizedNet {
         return _lengths[d.id>>1];
     }
 
-    MetrizedNet(const DerivedOnceNet& _A): A(_A),
-            optimal_path(make_shared<vector<vector<vector<PathStep>>>>()),
-            to_pins(make_shared<vector<vector<vector<PathStep>>>>()),
-            current_version(make_shared<long long>()),
-            last_update(make_shared<vector<long long>>()) {
-        optimal_path->resize(2*A.E());
-        to_pins->resize(2*A.E());
-        *current_version = 1;
-        last_update->resize(2*A.E(), 0);
+    MetrizedNet(const DerivedOnceNet& _A): A(_A) {
+        initOptimalPaths();
 
         _lengths.resize(A.E(), Interval(0, 2*M_PI));
 
@@ -159,10 +165,6 @@ class MetrizedNet {
         return res;
     }
 
-    void incrementVersion() const {
-        (*current_version)++;
-    }
-
     ApproximateIsometry isometryFromPath(const vector<PathStep>& path) const {
         StopWatch _("isometryFromPath");
 
@@ -183,18 +185,11 @@ class MetrizedNet {
     }
 
   private:
-    bool rebuildPolicy(const  Dart& root) const {
-        long long curr = *current_version;
-        long long& last = (*last_update)[root.id];
-        bool outcome = curr - last >= 100 or 2 * last <= curr or curr <= 2;
-        if (outcome)
-            last = curr;
-        return outcome;
-    }
 
-    void rebuildEmbedding(const Dart& root) const {
-        if (!rebuildPolicy(root))
+    void computeOptimalPaths(const Dart& root) const {
+        if (!optimal_path[root.id].empty())
             return;
+        StopWatch _("computeOptimalPaths");
         // Run Dijkstra from the root.
         // The cost of traversing a dart is the length of the corresponding
         // interval.
@@ -237,7 +232,7 @@ class MetrizedNet {
                 path.push_back(op);
         };
 
-        (*optimal_path)[root.id].clear();
+        optimal_path[root.id].clear();
         for (const Dart& d: A.darts()) {
             Dart curr = d;
             vector<PathStep> path;
@@ -254,39 +249,39 @@ class MetrizedNet {
                 } else assert(0);
             }
             reverse(path.begin(), path.end());
-            (*optimal_path)[root.id].push_back(path);
+            optimal_path[root.id].push_back(path);
         }
 
         // If d belongs to dart_to_pin, then rotating d by 120 yields
         // a dart going to a pin.
-        (*to_pins)[root.id].clear();
+        to_pins[root.id].clear();
         for (Dart d: A.concaveAngles()) {
             assert(A.isConcaveAngle(d));
-            vector<PathStep> path = (*optimal_path)[root.id][A.rev(d).id];
+            vector<PathStep> path = optimal_path[root.id][A.rev(d).id];
             append_to_path(path, PathStep('R', 2*M_PI/3));
-            (*to_pins)[root.id].push_back(path);
+            to_pins[root.id].push_back(path);
         }
     }
 
   public:
     vector<PathStep> getPath(const Dart& from, const Dart& to) const {
-        rebuildEmbedding(from);
-        return (*optimal_path)[from.id][to.id];
+        computeOptimalPaths(from);
+        return optimal_path[from.id][to.id];
     }
 
     vector<PathStep> getPathToPin(const Dart& from, const Dart& to) const {
-        rebuildEmbedding(from);
-        return (*to_pins)[from.id][A.concaveAngleId(to)];
+        computeOptimalPaths(from);
+        return to_pins[from.id][A.concaveAngleId(to)];
     }
 
     ApproximateIsometry getIsometry(const Dart& from, const Dart& to) const {
-        rebuildEmbedding(from);
-        return isometryFromPath((*optimal_path)[from.id][to.id]);
+        computeOptimalPaths(from);
+        return isometryFromPath(optimal_path[from.id][to.id]);
     }
 
     ApproximateIsometry getIsometryToPin(const Dart& from, const Dart& to) const {
-        rebuildEmbedding(from);
-        return isometryFromPath((*to_pins)[from.id][A.concaveAngleId(to)]);
+        computeOptimalPaths(from);
+        return isometryFromPath(to_pins[from.id][A.concaveAngleId(to)]);
     }
 
     void serialize(ostream& out) const {

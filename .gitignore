@@ -44,3 +44,6 @@ data/images3d/*.html
 embed_or_exclude_nets
 .vscode/
 generate_surface_evolver_input
+rename_derived_once
+enumerate_derived_once
+enumerate_derived_twice

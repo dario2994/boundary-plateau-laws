@@ -5,8 +5,12 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Arc
 import numpy as np
 import sys
+import pathlib
 
-derived_once_for_visualization_file = '../data/derived_once_for_visualization.txt'
+# Base directory of the project.
+base_dir = pathlib.Path(__file__).resolve().parent.parent
+derived_once_for_visualization = 'data/derived_once_for_visualization.txt'
+derived_once_for_visualization = base_dir / derived_once_for_visualization
 
 # Ensure a net ID is provided
 if len(sys.argv) != 2:
@@ -20,7 +24,7 @@ if not net_id.isdigit():
 
 def parse_derived_once_nets():
     lines = []
-    with open(derived_once_for_visualization_file) as in_file:
+    with open(derived_once_for_visualization) as in_file:
         lines = in_file.readlines()
     cnt = int(lines[0])
 

@@ -494,6 +494,21 @@ CombinatorialMap parseCombinatorialMap(istream& in) {
     return A;
 }
 
+// Reads an entire file and parse all the combinatorial maps listed.
+vector<CombinatorialMap> parseCombinatorialMaps(string in_file) {
+    ifstream in(in_file);
+    assert(in.is_open());
+    int cnt;
+    in >> cnt;
+    vector<CombinatorialMap> res;
+    for (int i = 0; i < cnt; i++) {
+        CombinatorialMap A = parseCombinatorialMap(in);
+        A.checkConsistency();
+        res.push_back(A);
+    }
+    return res;
+}
+
 CombinatorialMap symmetrize(const CombinatorialMap& A) {
     CombinatorialMap B = A;
     swap(B._next, B._prev);

@@ -222,10 +222,7 @@ DerivedOnceNet parseDerivedOnceNet(istream& in) {
     return A;
 }
 
-// This is a higher level routine.
-// It reads an entire file (that is the reason why we pass the filename
-// instead of the istream) and parse all the derived once nets listed in the
-// file.
+// Reads an entire file and parse all the derived once nets listed.
 vector<DerivedOnceNet> parseDerivedOnceNets(string in_file) {
     ifstream in(in_file);
     assert(in.is_open());

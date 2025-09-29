@@ -377,15 +377,15 @@ pair<vector<pt>, vector<pt>> embed3048(double q) {
 }
 
 const set<int>& possible_nets = {
-    72,     278,    434,    521,    691,
-    936,    949,    1011,   1034,   1223,
-    1351,   1405,   1514,   1829,   2017,
-    2119,   2192,   2312,   2454,   2676,
-    2700,   2769,   2799,   2891,   3048,
-    3222,   3233,   3295,   3338};
+    28,     100,    160,    184,    252,
+    322,    328,    350,   365,   426,
+    474,   490,   526,   621,   690,
+    722,   747,   790,   839,   924,
+    935,   954,   963,   993,   1048,
+    1118,   1122,   1147,   1160};
 
 const set<int>& pins_are_flexible = {
-    72,     278,    1011,   2312,   3222
+    28,     100,    350,   790,   1118
 };
 
 // AD-HOC
@@ -400,79 +400,79 @@ const set<int>& pins_are_flexible = {
 const int PIN_ZERO = 342905;
 const int PIN_ONE = 5896232;
 const map<int, pair<vector<int>, vector<int>>> pop_description = {
-    {1405, {
+    {490, {
         {2, 4},
         {PIN_ONE, 3, 1, 5, PIN_ZERO, 4, 2, PIN_ONE}
     }},
-    {2769, {
+    {954, {
         {1, 5},
         {PIN_ZERO, 8, 1, 2, 11, PIN_ONE, 10, 7, 6, 9, PIN_ZERO}
     }},
-    {936, {
+    {322, {
         {5, 2},
         {PIN_ZERO, 6, 1, 2, 8, PIN_ONE, 9, 5, 7, PIN_ZERO}
     }},
-    {1034, {
+    {365, {
         {7, 1},
         {PIN_ONE, 10, 5, 1, 9, PIN_ZERO, 8, 4, 7, 11, PIN_ONE}
     }},
-    {1223, {
+    {426, {
         {2, 8},
         {PIN_ONE, 13, 9, 0, 10, PIN_ZERO, 11, 3, 7, 12, PIN_ONE}
     }},
-    {1514, {
+    {526, {
         {6},
         {PIN_ZERO, 12, 1, 0, 13, PIN_ONE}
     }},
-    {2119, {
+    {722, {
         {6, 7},
         {PIN_ZERO, 9, 5, 7, 10, PIN_ONE, 11, 2, 1, 8, PIN_ZERO}
     }},
-    {2676, {
+    {924, {
         {1},
         {PIN_ZERO, 8, 1, 2, 10, PIN_ONE}
     }},
-    {3295, {
+    {1147, {
         {0},
         {PIN_ZERO, 10, 1, 5, 11, PIN_ONE}
     }},
-    {521, {
+    {184, {
         {1, 11},
         {PIN_ZERO, 21, 4, 3, 2, 18, PIN_ONE, 19, 6, 9, 13, 20, PIN_ZERO}
     }},
-    {1351, {
+    {474, {
         {3, 5},
         {PIN_ZERO, 12, 1, 0, 14, PIN_ONE, 15, 7, 6, 13, PIN_ZERO}
     }},
-    {1829, {
+    {621, {
         {1, 7},
         {PIN_ZERO, 12, 5, 6, 15, PIN_ONE, 14, 10, 11, 9, 13, PIN_ZERO}
     }},
-    {691, {
+    {252, {
         {6, 8},
         {PIN_ZERO, 7, 6, 13, PIN_ONE, 0, 1, 4, 11, PIN_ZERO}
     }},
-    {949, {
+    {328, {
         {3, 1, 9},
         {PIN_ZERO, 4, 3, 2, 6, PIN_ONE, 19, 9, 12, 17 , PIN_ZERO, 14, 13, 7, 5, PIN_ONE}
     }},
-    {3048, {
+    {1048, {
         {5, 0},
         {PIN_ZERO, 5, 2, 7, PIN_ONE,6, 0, 4, PIN_ZERO}
     }},
-    {278, {
+    {100, {
         {1},
         {PIN_ZERO, 14, 7, 13, 11, 10, 15, PIN_ONE}
     }},
-    {1011, {
+    {350, {
         {1},
         {PIN_ZERO, 12, 0, 4, 3, 13, PIN_ONE}
     }},
-    {2312, {
+    {790, {
         {1},
         {PIN_ZERO, 10, 1, 2, 3, 11, PIN_ONE}
     }},
-    {3222, {
+    {1118, {
         {6},
         {PIN_ZERO, 16, 2, 3, 10, 17, PIN_ONE}
     }},
@@ -485,11 +485,10 @@ void processNet(int net_id, vector<double> params={}) {
     assert(metrized_net_in.is_open());
     MetrizedNet net = parseMetrizedNet(metrized_net_in);
     metrized_net_in.close();
-    net.incrementVersion();
 
     vector<pt> embedding, pins_coord;
 
-    if (net_id == 3048) {
+    if (net_id == 1048) {
         assert(ssize(params) == 1);
         tie(embedding, pins_coord) = embed3048(params[0]);
     } else if (pins_are_flexible.count(net_id)) {
@@ -595,7 +594,7 @@ void processNet(int net_id, vector<double> params={}) {
 }
 
 int main() {
-    processNet(1223);
+    processNet(426);
 }
 
 // 5.7821

@@ -184,7 +184,7 @@ struct SAMParams {
     long long begin_time;
     bool run_pathological_checks;
     optional<MetrizedNet> forbidden_metrization;
-    bool special_rigidity_2192;
+    bool special_rigidity_747;
 };
 
 
@@ -227,13 +227,13 @@ pair<int, optional<MetrizedNet>> searchApproximateMetrization(
 
     const DerivedOnceNet& A = net.A;
 
-    if (params.special_rigidity_2192) {
+    if (params.special_rigidity_747) {
         net.length(A.dart(16)).intersect(net.length(A.dart(12)));
         net.length(A.dart(12)).intersect(net.length(A.dart(16)));
     }
 
     // If the computation takes too long, we skip.
-    // The slowest net, which is 72, requires TODO hours.
+    // The slowest net, which is 28, requires TODO hours.
     static const long long one_second = 1e9;
     static const long long one_minute = 60*one_second;
     [[maybe_unused]] static const long long one_hour = 60*one_minute;
@@ -378,26 +378,18 @@ void relaxMetrization(MetrizedNet& net, double len) {
 //                before it could prove anything.
 int processNet(int net_id) {
     static const set<int> possible_nets = {
-        72,     278,    434,    521,    691,
-        936,    949,    1011,   1034,   1223,
-        1351,   1405,   1514,   1829,   2017,
-        2119,   2192,   2312,   2454,   2676,
-        2700,   2769,   2799,   2891,   3048,
-        3222,   3233,   3295,   3338};
+        28, 100, 160, 184, 252, 322, 328, 350, 365, 426, 474, 490, 526, 621, 690, 722, 747, 790, 839, 924, 935, 954, 963, 993, 1048, 1118, 1122, 1147, 1160};
 
-    static const set<int> flexible_nets = {2454,   3048};
+    static const set<int> flexible_nets = {839,   1048};
 
     auto A = parseDerivedOnceNets("data/derived_once_computer.txt")[net_id];
 
     SAMParams params;
 
-    // We skip pathological checks for net 1002 because it completes
-    // in roughly 2 hours without them, but takes 10 hours with them.
-    params.run_pathological_checks = !possible_nets.count(net_id)
-                                     and net_id != 1002;
+    params.run_pathological_checks = !possible_nets.count(net_id);
     params.convex_fixed_darts = findFreeParametersConvex(A);
     params.non_convex_fixed_darts = findFreeParametersNonConvex(A);
-    params.special_rigidity_2192 = false;
+    params.special_rigidity_747 = false;
     params.forbidden_metrization = nullopt;
 
     MetrizedNet net(A);
@@ -432,13 +424,13 @@ int processNet(int net_id) {
 
         // Rigidity
         relaxMetrization(net2, 2e-4);
-        // For net 2192, we prove rigidity by first proving that all lengths
+        // For net 747, we prove rigidity by first proving that all lengths
         // but two are rigid.
         // Then, with this information, we prove algebraically that the
         // two missing lengths must be equal.
         // Finally, we rerun the rigidity-algorithm with this additional
         // information to finally obtain the desired rigidity.
-        if (net_id == 2192) {
+        if (net_id == 747) {
             net2.length(A.dart(16)) = Interval(0, 10);
             net2.length(A.dart(12)) = Interval(0, 10);
         }
@@ -448,8 +440,8 @@ int processNet(int net_id) {
         assert(res2 == 0 or res2 == INDETERMINATE);
         if (res2 == INDETERMINATE)
             return INDETERMINATE; // We might also decide to return 1.
-        if (net_id == 2192) {
-            params.special_rigidity_2192 = true;
+        if (net_id == 747) {
+            params.special_rigidity_747 = true;
             params.begin_time = get_time();
             int res3 = searchApproximateMetrization(net, params).first;
             assert(res3 == INDETERMINATE or res3 == 0);
@@ -478,23 +470,23 @@ void testingSearchApproximateMetrization(int test_num = -1) {
     };
     vector<TestCase> cases;
 
-    cases.emplace_back(278, false, nullopt, 1, 0.06, vector<double>{1.627925,1.627925,0.882358,0.882358,1.627925,1.627925,0.882358,0.882358,0.882358,0.882358,0.882358,0.882358,0.145808,0.145808,0.632887,0.632887,0.145810,0.145810,1.627925,1.627925,0.882358,0.882358,1.627925,1.627925,0.882358,0.882358,0.145810,0.145810,1.093351,1.093351,1.093353,1.093353,0.632888,0.632888,0.145808,0.145808,0.323185,0.323185,1.093353,1.093353,1.093351,1.093351,0.632884,0.632884,0.632884,0.632884});
+    cases.emplace_back(100, false, nullopt, 1, 0.06, vector<double>{1.627925,1.627925,0.882358,0.882358,1.627925,1.627925,0.882358,0.882358,0.882358,0.882358,0.882358,0.882358,0.145808,0.145808,0.632887,0.632887,0.145810,0.145810,1.627925,1.627925,0.882358,0.882358,1.627925,1.627925,0.882358,0.882358,0.145810,0.145810,1.093351,1.093351,1.093353,1.093353,0.632888,0.632888,0.145808,0.145808,0.323185,0.323185,1.093353,1.093353,1.093351,1.093351,0.632884,0.632884,0.632884,0.632884});
 
-    cases.emplace_back(279, true, nullopt, 0, 0.3, nullopt);
+    cases.emplace_back(101, true, nullopt, 0, 0.3, nullopt);
 
-    cases.emplace_back(19, true, nullopt, 0, 0.44, nullopt);
+    cases.emplace_back(11, true, nullopt, 0, 0.44, nullopt);
 
-    cases.emplace_back(105, true, nullopt, 0, 0.33, nullopt);
+    cases.emplace_back(39, true, nullopt, 0, 0.33, nullopt);
 
-    cases.emplace_back(2119, false, nullopt, 1, 0.13, vector<double>{1.462616,1.462616,1.462616,1.462616,1.016773,1.016773,1.016773,1.016773,1.462616,1.462616,0.236659,0.236659,1.016775,1.016775,1.462614,1.462614,0.236655,0.236655,1.462614,1.462614,1.016775,1.016775,1.462614,1.462614,1.016773,1.016773,1.016775,1.016775,1.016775,1.016775,1.016773,1.016773});
+    cases.emplace_back(722, false, nullopt, 1, 0.13, vector<double>{1.462616,1.462616,1.462616,1.462616,1.016773,1.016773,1.016773,1.016773,1.462616,1.462616,0.236659,0.236659,1.016775,1.016775,1.462614,1.462614,0.236655,0.236655,1.462614,1.462614,1.016775,1.016775,1.462614,1.462614,1.016773,1.016773,1.016775,1.016775,1.016775,1.016775,1.016773,1.016773});
 
-    cases.emplace_back(1025, true, nullopt, 0, 11, nullopt);
+    cases.emplace_back(360, true, nullopt, 0, 11, nullopt);
 
-    cases.emplace_back(115, true, nullopt, 0, 4.5, nullopt);
+    cases.emplace_back(45, true, nullopt, 0, 4.5, nullopt);
 
-    cases.emplace_back(3233, false, nullopt, 1, 0.05, vector<double>{1.230960,1.230960,1.230960,1.230960,1.230959,1.230959,1.230961,1.230961,1.230960,1.230960,1.230960,1.230960,1.230959,1.230959,1.230960,1.230960,1.230959,1.230959,1.230958,1.230958});
+    cases.emplace_back(1122, false, nullopt, 1, 0.05, vector<double>{1.230960,1.230960,1.230960,1.230960,1.230959,1.230959,1.230961,1.230961,1.230960,1.230960,1.230960,1.230960,1.230959,1.230959,1.230960,1.230960,1.230959,1.230959,1.230958,1.230958});
 
-    cases.emplace_back(3091, true, nullopt, 0, 200, nullopt); // SLOW
+    cases.emplace_back(1067, true, nullopt, 0, 43, nullopt); // SLOW
 
     for (int test_id = 0; test_id < ssize(cases); test_id++) {
         if (test_num != -1 and test_id != test_num)
@@ -509,7 +501,7 @@ void testingSearchApproximateMetrization(int test_num = -1) {
         params.run_pathological_checks = tc.run_pathological_checks;
         params.convex_fixed_darts = findFreeParametersConvex(A);
         params.non_convex_fixed_darts = findFreeParametersNonConvex(A);
-        params.special_rigidity_2192 = false;
+        params.special_rigidity_747 = false;
         params.forbidden_metrization = nullopt;
 
         MetrizedNet net(A);
@@ -567,8 +559,8 @@ void testingSearchApproximateMetrization(int test_num = -1) {
 }
 
 int main() {
-    testingSearchApproximateMetrization();
-    return 0;
+    // testingSearchApproximateMetrization();
+    // return 0;
 
     ifstream in("data/derived_once_survivors.txt");
     int cnt_survivors;
@@ -578,10 +570,9 @@ int main() {
         in >> survivors[i];
     in.close();
 
-    // Slow impossible nets: 729, 1002
-    // Slow possible nets: 72, 521, 949, 1829, 2192
+    // Slow possible net: 28
     vector<int> new_survivors;
-    for (int id: {72}) {
+    for (int id: {100}) {
         clog << "net id = " << setw(4) << id << ":\t";
         clog.flush();
 
@@ -617,23 +608,3 @@ int main() {
     out << endl;
     out.close();
 }
-
-
-
-// Test 0, net 278: outcome = 1, elapsed = 0.0614798
-// Test 1, net 279: outcome = 0, elapsed = 0.269206 (improved from 0.3)
-// Test 2, net 19: outcome = 0, elapsed = 0.442493
-// Test 3, net 105: outcome = 0, elapsed = 0.332035
-// Test 4, net 2119: outcome = 1, elapsed = 0.1269
-// Test 5, net 1025: outcome = 0, elapsed = 9.78234 (improved from 11)
-// Test 6, net 115: outcome = 0, elapsed = 4.40657
-// Test 7, net 3233: outcome = 1, elapsed = 0.0462779
-
-// canPinsBeAntipodal: 0.201559s, 45826 calls
-// checkPinAngles: 0.105077s, 34895 calls
-// checkPinOutsideConvexFaces: 0.909781s, 31765 calls
-
-
-// canPinsBeAntipodal: 0.82295s, 45719 calls
-// checkPinAngles: 0.39948s, 34586 calls
-// checkPinOutsideConvexFaces: 1.64537s, 31468 calls

@@ -8,6 +8,8 @@ using namespace std;
 #include "interval_arithmetic.cpp"
 #include "quaternions.cpp"
 
+// TODO: Define Point and ApproximatePoint?
+
 
 // A quaternion with q with unit norm induces an isometry on R^3 via
 // v -> qv\bar q, through the identification R^3 \cong <i, j, k> \subseteq Quaternions.

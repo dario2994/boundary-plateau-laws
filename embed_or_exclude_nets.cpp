@@ -562,19 +562,25 @@ int main() {
     // testingSearchApproximateMetrization();
     // return 0;
 
-    ifstream in("data/derived_once_survivors.txt");
-    int cnt_survivors;
-    in >> cnt_survivors;
-    vector<int> survivors(cnt_survivors);
-    for (int i = 0; i < cnt_survivors; i++)
-        in >> survivors[i];
+    ifstream in("data/derived_once_computer.txt");
+    int cnt_derived_once;
+    in >> cnt_derived_once;
+    vector<int> derived_once(cnt_derived_once);
+    for (int i = 0; i < cnt_derived_once; i++)
+        in >> derived_once[i];
     in.close();
 
     // Slow possible net: 28
-    vector<int> new_survivors;
-    for (int id: {100}) {
+    vector<int> embeddable_derived_once;
+
+    for (int id = 0; id < ssize(derived_once); id++) {
         clog << "net id = " << setw(4) << id << ":\t";
         clog.flush();
+        if (id == 28) {
+            embeddable_derived_once.push_back(id);
+            cout << "SKIPPED" << endl;
+            continue;
+        }
 
         long long begin_time = get_time();
         int outcome = processNet(id);
@@ -595,15 +601,15 @@ int main() {
         clog << endl;
 
         if (outcome != 0)
-            new_survivors.push_back(id);
+            embeddable_derived_once.push_back(id);
     }
     clog << endl;
 
     StopWatch::printState();
 
-    ofstream out("data/derived_once_metric_survivors.txt");
-    out << new_survivors.size() << endl;
-    for (int id: new_survivors)
+    ofstream out("data/embeddable_nets.txt");
+    out << embeddable_derived_once.size() << endl;
+    for (int id: embeddable_derived_once)
         out << id << " ";
     out << endl;
     out.close();

@@ -14,10 +14,10 @@ if not net_id.isdigit():
     sys.exit("Error: net_id must be a positive integer.")
 
 # Paths
-derived_png = f"data/derived_once_images/{net_id}.png"
+derived_png = f"../data/derived_once_images/{net_id}.png"
 derived_script = "visualize_derived_once_net.py"
-metrization_txt = f"data/metrized_nets/{net_id}_visualization.txt"
-output_html = f"data/images3d/{net_id}.html"
+metrization_txt = f"../data/metrized_nets/{net_id}_visualization.txt"
+output_html = f"../data/images3d/{net_id}.html"
 spherical_script = "visualize_spherical_geodesics.py"
 
 # Show or generate the derived image

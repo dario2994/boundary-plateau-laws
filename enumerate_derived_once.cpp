@@ -156,6 +156,13 @@ bool checkConcaveAnglesFar(const DerivedOnceNet& A) {
 }
 
 bool validateDerivedOnceNet(const DerivedOnceNet& A) {
+    // By definition, any derived-once net has exactly two non-convex faces.
+    // We perform this sanity check here.
+    int cnt_non_convex_faces = 0;
+    for (const auto& face: A.faces())
+        cnt_non_convex_faces += !A.isConvexFace(face);
+    assert(cnt_non_convex_faces == 2);
+
     if (!checkConvexFaces(A))
         return false;
 

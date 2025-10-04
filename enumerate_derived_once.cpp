@@ -25,8 +25,7 @@ bool checkConvexFaces(const DerivedOnceNet& A) {
     return true;
 }
 
-// Check that any convex face has at most 2 concave angles and its area
-// is positive.
+// Check that any face has at most 2 concave angles and its area is positive.
 bool checkNonConvexFaces(const DerivedOnceNet& A) {
     for (const vector<Dart>& face: A.faces()) {
         if (A.isConvexFace(face))
@@ -205,6 +204,8 @@ vector<DerivedOnceNet> addPin(const DerivedOnceNet& A) {
     vector<DerivedOnceNet> res;
 
     for (const vector<Dart>& face: A.faces()) {
+        if (!A.isConvexFace(face))
+            continue;
         // We add a pin inside face.
         // A pin may generate one or two concave angles.
         for (const Dart& d: face) {

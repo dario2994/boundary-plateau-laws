@@ -379,9 +379,9 @@ void relaxMetrization(MetrizedNet& net, double len) {
 //                before it could prove anything.
 int processNet(int net_id) {
     static const set<int> possible_nets = {
-        28, 100, 160, 184, 252, 322, 328, 350, 365, 426, 474, 490, 526, 621, 690, 722, 747, 790, 839, 924, 935, 954, 963, 993, 1048, 1118, 1122, 1147, 1160};
+        28, 99, 158, 182, 250, 319, 325, 346, 361, 421, 468, 484, 520, 614, 681, 712, 736, 779, 827, 909, 920, 938, 1029, 1096, 1100, 1122};
 
-    static const set<int> flexible_nets = {839,   1048};
+    static const set<int> flexible_nets = {827,   1029};
 
     auto A = parseDerivedOnceNets("data/derived_once_computer.txt")[net_id];
 
@@ -425,13 +425,13 @@ int processNet(int net_id) {
 
         // Rigidity
         relaxMetrization(net2, 2e-4);
-        // For net 747, we prove rigidity by first proving that all lengths
+        // For net 736, we prove rigidity by first proving that all lengths
         // but two are rigid.
         // Then, with this information, we prove algebraically that the
         // two missing lengths must be equal.
         // Finally, we rerun the rigidity-algorithm with this additional
         // information to finally obtain the desired rigidity.
-        if (net_id == 747) {
+        if (net_id == 736) {
             net2.length(A.dart(16)) = Interval(0, 10);
             net2.length(A.dart(12)) = Interval(0, 10);
         }
@@ -441,7 +441,7 @@ int processNet(int net_id) {
         assert(res2 == 0 or res2 == INDETERMINATE);
         if (res2 == INDETERMINATE)
             return INDETERMINATE; // We might also decide to return 1.
-        if (net_id == 747) {
+        if (net_id == 736) {
             params.special_rigidity_747 = true;
             params.begin_time = get_time();
             int res3 = searchApproximateMetrization(net, params).first;
@@ -471,23 +471,23 @@ void testingSearchApproximateMetrization(int test_num = -1) {
     };
     vector<TestCase> cases;
 
-    cases.emplace_back(100, false, nullopt, 1, 0.06, vector<double>{1.627925,1.627925,0.882358,0.882358,1.627925,1.627925,0.882358,0.882358,0.882358,0.882358,0.882358,0.882358,0.145808,0.145808,0.632887,0.632887,0.145810,0.145810,1.627925,1.627925,0.882358,0.882358,1.627925,1.627925,0.882358,0.882358,0.145810,0.145810,1.093351,1.093351,1.093353,1.093353,0.632888,0.632888,0.145808,0.145808,0.323185,0.323185,1.093353,1.093353,1.093351,1.093351,0.632884,0.632884,0.632884,0.632884});
+    cases.emplace_back(99, false, nullopt, 1, 0.06, vector<double>{1.627925,1.627925,0.882358,0.882358,1.627925,1.627925,0.882358,0.882358,0.882358,0.882358,0.882358,0.882358,0.145808,0.145808,0.632887,0.632887,0.145810,0.145810,1.627925,1.627925,0.882358,0.882358,1.627925,1.627925,0.882358,0.882358,0.145810,0.145810,1.093351,1.093351,1.093353,1.093353,0.632888,0.632888,0.145808,0.145808,0.323185,0.323185,1.093353,1.093353,1.093351,1.093351,0.632884,0.632884,0.632884,0.632884});
 
-    cases.emplace_back(101, true, nullopt, 0, 0.3, nullopt);
+    cases.emplace_back(100, true, nullopt, 0, 0.3, nullopt);
 
     cases.emplace_back(11, true, nullopt, 0, 0.44, nullopt);
 
     cases.emplace_back(39, true, nullopt, 0, 0.33, nullopt);
 
-    cases.emplace_back(722, false, nullopt, 1, 0.13, vector<double>{1.462616,1.462616,1.462616,1.462616,1.016773,1.016773,1.016773,1.016773,1.462616,1.462616,0.236659,0.236659,1.016775,1.016775,1.462614,1.462614,0.236655,0.236655,1.462614,1.462614,1.016775,1.016775,1.462614,1.462614,1.016773,1.016773,1.016775,1.016775,1.016775,1.016775,1.016773,1.016773});
+    cases.emplace_back(712, false, nullopt, 1, 0.13, vector<double>{1.462616,1.462616,1.462616,1.462616,1.016773,1.016773,1.016773,1.016773,1.462616,1.462616,0.236659,0.236659,1.016775,1.016775,1.462614,1.462614,0.236655,0.236655,1.462614,1.462614,1.016775,1.016775,1.462614,1.462614,1.016773,1.016773,1.016775,1.016775,1.016775,1.016775,1.016773,1.016773});
 
-    cases.emplace_back(360, true, nullopt, 0, 11, nullopt);
+    cases.emplace_back(356, true, nullopt, 0, 11, nullopt);
 
     cases.emplace_back(45, true, nullopt, 0, 4.5, nullopt);
 
-    cases.emplace_back(1122, false, nullopt, 1, 0.05, vector<double>{1.230960,1.230960,1.230960,1.230960,1.230959,1.230959,1.230961,1.230961,1.230960,1.230960,1.230960,1.230960,1.230959,1.230959,1.230960,1.230960,1.230959,1.230959,1.230958,1.230958});
+    cases.emplace_back(1100, false, nullopt, 1, 0.05, vector<double>{1.230960,1.230960,1.230960,1.230960,1.230959,1.230959,1.230961,1.230961,1.230960,1.230960,1.230960,1.230960,1.230959,1.230959,1.230960,1.230960,1.230959,1.230959,1.230958,1.230958});
 
-    cases.emplace_back(1067, true, nullopt, 0, 43, nullopt); // SLOW
+    cases.emplace_back(1047, true, nullopt, 0, 43, nullopt); // SLOW
 
     for (int test_id = 0; test_id < ssize(cases); test_id++) {
         if (test_num != -1 and test_id != test_num)

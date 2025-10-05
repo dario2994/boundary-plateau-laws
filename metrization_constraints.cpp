@@ -211,7 +211,7 @@ bool checkPinAngles(const MetrizedNet& net) {
     const DerivedOnceNet& A = net.A;
 
     for (const auto& f: A.faces()) {
-        if (A.faceType(f).second != 2) // Two pins
+        if (A.faceType(f).second != 2) // The face does not have two concave angles.
             continue;
 
         vector<Dart> concave_angles;
@@ -320,6 +320,9 @@ bool checkNonIntersection(MetrizedNet& net) {
             }
             iso *= basicTranslation(sum_theta, net.length(f[i+1]));
 
+            // We stop checking when the uncertainty gets so large
+            // that we would not be able to get any reasonable answer
+            // from now on.
             if (iso.getUncertainty() > 0.5)
                 break;
         }
@@ -474,62 +477,6 @@ bool checkPinsSpecial(const MetrizedNet& net) {
     }
     return true;
 }
-
-// If there is exactly one non-convex face, then one of the pins
-// must coincide with a degree-3 vertex of the net.
-bool checkPinIsVertex(const MetrizedNet& net) {
-    const DerivedOnceNet& A = net.A;
-
-    if (A.concaveAngles().empty())
-        return true;
-
-    bool one_concave_face = true;
-    for (const Dart& to_pin: A.concaveAngles())
-        one_concave_face &= A.sameFace(to_pin, A.concaveAngles()[0]);
-
-    if (!one_concave_face)
-        return true;
-
-    vector<double> len_to_pin = maxDistanceToPin(net);
-
-    for (const Dart& root: A.darts()) {
-        if (A.degree(root.from) < 3)
-            continue;
-        bool can_be_pin = true;
-        for (int i = 0; i < ssize(A.concaveAngles()); i++) {
-            const Dart& to_pin = A.concaveAngles()[i];
-
-            auto T = net.getIsometryToPin(root, to_pin);
-            auto equator = T({0, 0, 1});
-            can_be_pin &= (equator * array<Interval, 3>{1, 0, 0}).containsZero();
-
-            if (!can_be_pin)
-                break;
-
-            double l = len_to_pin[i];
-
-            if (l >= M_PI-1e-5)
-                continue;
-
-            vector<PathStep> path_begin = net.getPathToPin(root, to_pin);
-            vector<PathStep> path_end = path_begin;
-            path_end.push_back(PathStep('E', l));
-
-            vector<array<Interval, 3>> vec;
-            for (auto p: {{}, path_begin, path_end}) {
-                auto pt = net.isometryFromPath(p)({1, 0, 0});
-                vec.push_back(pt);
-            }
-
-            can_be_pin &= !belongToStrictHemisphere(vec);
-
-        }
-        if (can_be_pin)
-            return true;
-    }
-    return false;
-}
-
 
 
 // Implementation of the lower bounds on edge lengths that follow from

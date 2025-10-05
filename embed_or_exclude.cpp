@@ -289,10 +289,6 @@ pair<int, optional<MetrizedNet>> searchApproximateMetrization(
         //  - They handle rare pathological situations.
         //  - They are _almost_ always implied by other checks.
         //  - They are slow.
-
-        if (!checkPinIsVertex(net))
-            return {0, nullopt};
-
         if (!checkPinsSpecial(net))
             return {0, nullopt};
 

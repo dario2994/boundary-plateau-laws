@@ -58,7 +58,7 @@ for eq in poly_system[0:5]:
 print()
 
 
-print("Using groebner basis in Singular (Singular < 2192.sing), this algebraic system can be shown to imply P(x, y, z) = P(z, y, x) = 0, where x=tan(a/2), y=tan(b/2), z=tan(c/2) and P is the following polynomial:")
+print("Using groebner basis in Singular (Singular < 736.sing), this algebraic system can be shown to imply P(x, y, z) = P(z, y, x) = 0, where x=tan(a/2), y=tan(b/2), z=tan(c/2) and P is the following polynomial:")
 x, y, z = symbols('x y z')
 pol = 9*x**3*y**4*z**4+13*x**3*y**3*z**5-9*x**2*y**4*z**5+2*x**3*y**2*z**6-2*x**2*y**3*z**6-9*x**3*y**4*z**2-13*x**3*y**3*z**3-45*x**2*y**4*z**3+7*x**3*y**2*z**4-74*x**2*y**3*z**4+36*x*y**4*z**4+13*x**3*y*z**5-19*x**2*y**2*z**5-14*x*y**3*z**5+18*y**4*z**5+2*x**3*z**6-2*x**2*y*z**6-4*x*y**2*z**6+4*y**3*z**6-18*x**3*y**4-26*x**3*y**3*z-36*x**2*y**4*z-13*x**3*y**2*z**2-22*x**2*y**3*z**2+45*x*y**4*z**2-13*x**3*y*z**3+127*x**2*y**2*z**3-13*x*y**3*z**3+9*y**4*z**3-2*x**3*z**4+94*x**2*y*z**4-20*x*y**2*z**4-56*y**3*z**4+14*x**2*z**5-26*x*y*z**5+2*y**2*z**5-4*x*z**6+4*y*z**6-18*x**3*y**2+50*x**2*y**3+9*x*y**4-26*x**3*y*z+146*x**2*y**2*z+x*y**3*z-9*y**4*z-4*x**3*z**2+92*x**2*y*z**2-22*x*y**2*z**2-58*y**3*z**2+10*x**2*z**3-28*x*y*z**3+34*y**2*z**3+4*x*z**4+16*y*z**4-4*z**5-4*x**2*y-6*x*y**2+2*y**3-4*x**2*z-2*x*y*z+32*y**2*z+8*x*z**2+8*y*z**2-8*z**3-4*y-4*z
 print(pol)
@@ -87,7 +87,7 @@ print("We have shown that Q(x, y, z) = 0, where Q is the polynomial")
 print(Q)
 print()
 
-print("Now, we move our attention to the configuration appearing in net 2192. There are two pentagons sharing a side and two other sides with two quadrilaterals. Thus, if a, b, c are the three consecutive sides of one of the pentagons and b is the one shared with the other pentagon, it must hold Q(x, y, z) = Q(1/(2x), y, 1/(2z)=0.")
+print("Now, we move our attention to the configuration appearing in net 736. There are two pentagons sharing a side and two other sides with two quadrilaterals. Thus, if a, b, c are the three consecutive sides of one of the pentagons and b is the one shared with the other pentagon, it must hold Q(x, y, z) = Q(1/(2x), y, 1/(2z)=0.")
 print("By taking the resultant of this two polynomials (with respect to y) we deduce that x, z satisfy R(x, z) = 0 where R is the polynomial:")
 Q2 = (16*x**2*z**2*Q.subs(x, 1/(2*x)).subs(z, 1/(2*z))).expand()
 R = resultant(Q, Q2, y)

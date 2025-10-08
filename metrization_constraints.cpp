@@ -13,11 +13,6 @@ using namespace std;
 
 
 
-// TODO: We should make the behavior of the routines more consistent.
-//       More routines should be able to return either an answer or INDETERMINATE.
-//       Currently the main checks return either true or false, where true means
-//       "ok or INDETERMINATE" and false means "something is surely off, this net is impossible".
-
 // Utility function to enforce the constraint on the sides of a
 // quadrilateral.
 //
@@ -181,8 +176,8 @@ bool refineMetrizationConvexContinent(MetrizedNet& net,
 
 // Checks that the equators corresponding to any three edges going to
 // a pin are concurrent.
-bool canPinsBeAntipodal(const MetrizedNet& net) {
-    StopWatch _("canPinsBeAntipodal");
+bool checkPinsAntipodality(const MetrizedNet& net) {
+    StopWatch _("checkPinsAntipodality");
 
     int q = ssize(net.A.concaveAngles());
     for (int i = 0; i < q; i++)
@@ -311,11 +306,11 @@ bool checkNonIntersection(MetrizedNet& net) {
             sum_theta += A.phiAngle(f[i]);
             if (i != 0) {
                 Dart e = f[i+1];
-                bool ans = checkNonIntersection(
+                int ans = areIntersecting(
                         iso * basicRotation(sum_theta),
                         net.length(d),
                         net.length(e));
-                if (!ans)
+                if (ans == 1)
                     return false;
             }
             iso *= basicTranslation(sum_theta, net.length(f[i+1]));
@@ -330,11 +325,17 @@ bool checkNonIntersection(MetrizedNet& net) {
     return true;
 }
 
-// Returns true if P belongs strictly to the given convex face, where
-// we assume that the dart root is (e_1, e_2).
-// If up_to_symmetry is true, then this returns true if either P or -P
-// belongs strictly to the convex face.
-bool strictlyInsideConvexFace(const MetrizedNet& net,
+// The face must be convex.
+// Set the dart root to (e_1, e_2).
+// According to the data in net, this function returns:
+// - 1 if it can prove that the point P is (strictly) inside the face.
+// - 0 if it can prove that the point P is not (strictly) inside the face.
+// - INDETERMINATE if it cannot prove anything.
+//
+// If up_to_symmetry is true, then this returns 1 if it can show that either
+// P or -P is inside the face, 0 if it can show that both are not inside,
+// and INDETERMINATE if it cannot prove anything.
+int isInsideConvexFace(const MetrizedNet& net,
                               array<Interval, 3> P,
                               const Dart& root,
                               const vector<Dart>& face,
@@ -347,15 +348,12 @@ bool strictlyInsideConvexFace(const MetrizedNet& net,
         int s = sign(P * Z);
         signs.push_back(s);
 
-        if (s == INDETERMINATE or s != signs[0])
-            break; // For performance.
-    }
-    bool same_sign = true;
-    for (int s: signs)
-        same_sign &= s != INDETERMINATE and s == signs[0];
+        if (s == INDETERMINATE)
+            return INDETERMINATE;
 
-    if (!same_sign)
-        return false;
+        if (s != signs[0])
+            return 0;
+    }
 
     return up_to_symmetry or signs[0] == -1;
 }
@@ -377,7 +375,7 @@ bool checkPinOutsideConvexFaces(const MetrizedNet& net) {
 
             // Check that none of the two intersections of X and Y lie
             // in the convex face f.
-            if (strictlyInsideConvexFace(net, P, root, f, true))
+            if (isInsideConvexFace(net, P, root, f, true) == 1)
                 return false;
         }
     }
@@ -428,21 +426,23 @@ vector<double> maxDistanceToPin(const MetrizedNet& net) {
     return len_to_pin;
 }
 
-// This is a check useful only when either:
-//   - All the equators identifying the pins coincide,
-//   - At least one pin falls on an edge.
+// This is a check useful (almost) only when all the equators identifying the
+// pins coincide (as in this case checkPinsAntipodality does not work).
 //
 // Consider two "edges to pins" going to different pins.
 // Let l1, l2 be the upper bounds on their lenghts.
 // And let q1, q2 be the edges extended to have length l1 and l2.
-// Since p\in q1 and -p\in q2 (where p is a pin), q1 and q2 do not
-// belong to a strict hemisphere.
+// Since p\in q1 and -p\in q2 (where p is a pin), it must hold
+// dist(q1, q2) + l1 + l2 >= pi.
 //
-// We check that they do not belong to a strict hemisphere, instead of
-// checking that q1 and -q2 intersect because:
-//  - It involves less special cases.
-//  - It is sufficient for our purposes.
-bool checkPinsSpecial(const MetrizedNet& net) {
+// Why aren't we directly checking whether q1 and -q2 intersect? Because this
+// kind of check is very hard in degenerate cases and this function is interesting
+// almost only in degenerate cases (e.g., when q1, q2 belong to the same
+// equator).
+bool checkPinsAntipodality2(const MetrizedNet& net) {
+    StopWatch _("checkPinsAntipodality2");
+
+    auto eucl_to_sphere = [&](double d) { return 2*asin(d/2); };
     const DerivedOnceNet& A = net.A;
 
     vector<double> len_to_pin = maxDistanceToPin(net);
@@ -466,13 +466,19 @@ bool checkPinsSpecial(const MetrizedNet& net) {
             path2_end.push_back(PathStep('E', l2));
 
             vector<array<Interval, 3>> vec;
-            for (auto p: {path1, path2, path1_end, path2_end}) {
+            for (auto p: {path1, path1_end, path2, path2_end}) {
                 auto pt = net.isometryFromPath(p)({1, 0, 0});
                 vec.push_back(pt);
             }
 
-            if (belongToStrictHemisphere(vec))
-                return false;
+            for (auto p1: {vec[0], vec[1]}) for (auto p2: {vec[2], vec[3]}) {
+                Interval eucl_dist = norm(p1-p2);
+                if (eucl_dist.r > 2-0.1)
+                    continue;
+                double max_sphere_dist = eucl_to_sphere(eucl_dist.r);
+                if (l1 + l2 + max_sphere_dist < M_PI - 1e-5)
+                    return false;
+            }
         }
     }
     return true;

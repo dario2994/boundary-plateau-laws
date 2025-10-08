@@ -264,7 +264,7 @@ pair<int, optional<MetrizedNet>> searchApproximateMetrization(
     if (!refineMetrizationNonConvexFaces(net))
         return {0, nullopt};
 
-    if (!canPinsBeAntipodal(net))
+    if (!checkPinsAntipodality(net))
         return {0, nullopt};
 
     if (!checkPinAngles(net))
@@ -289,7 +289,7 @@ pair<int, optional<MetrizedNet>> searchApproximateMetrization(
         //  - They handle rare pathological situations.
         //  - They are _almost_ always implied by other checks.
         //  - They are slow.
-        if (!checkPinsSpecial(net))
+        if (!checkPinsAntipodality2(net))
             return {0, nullopt};
 
         if (!checkFacesAreBoundaries(net))
@@ -375,7 +375,12 @@ void relaxMetrization(MetrizedNet& net, double len) {
 //                before it could prove anything.
 int processNet(int net_id) {
     static const set<int> possible_nets = {
-        28, 99, 158, 182, 250, 319, 325, 346, 361, 421, 468, 484, 520, 614, 681, 712, 736, 779, 827, 909, 920, 938, 1029, 1096, 1100, 1122};
+        28, 99, 158, 182, 250,
+        319, 325, 346, 361, 421,
+        468, 484, 520, 614, 681,
+        712, 736, 779, 827, 909,
+        920, 938, 1029, 1096, 1100,
+        1122};
 
     static const set<int> flexible_nets = {827,   1029};
 
@@ -481,6 +486,8 @@ void testingSearchApproximateMetrization(int test_num = -1) {
 
     cases.emplace_back(45, true, nullopt, 0, 4.5, nullopt);
 
+    cases.emplace_back(66, true, nullopt, 0, 35, nullopt);
+
     cases.emplace_back(1100, false, nullopt, 1, 0.05, vector<double>{1.230960,1.230960,1.230960,1.230960,1.230959,1.230959,1.230961,1.230961,1.230960,1.230960,1.230960,1.230960,1.230959,1.230959,1.230960,1.230960,1.230959,1.230959,1.230958,1.230958});
 
     cases.emplace_back(1047, true, nullopt, 0, 43, nullopt); // SLOW
@@ -573,11 +580,12 @@ int main() {
     for (int id = 0; id < ssize(derived_once); id++) {
         clog << "net id = " << setw(4) << id << ":\t";
         clog.flush();
-        if (id == 28) {
-            embeddable_derived_once.push_back(id);
-            cout << "SKIPPED" << endl;
-            continue;
-        }
+        // if (id == 28 or id == 182 or id == 325 or id == 342 or id == 430 or id == 614 or id == 736) {
+        // if (id == 28) {
+        //     embeddable_derived_once.push_back(id);
+        //     cout << "SKIPPED" << endl;
+        //     continue;
+        // }
 
         long long begin_time = get_time();
         int outcome = processNet(id);

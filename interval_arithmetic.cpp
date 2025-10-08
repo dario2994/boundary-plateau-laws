@@ -107,6 +107,25 @@ Interval operator-(Interval I) {
     return Interval(-I.r, -I.l);
 }
 
+// {x²: x\in I}
+Interval square(Interval I) {
+    if (I.empty())
+        return EMPTY_INTERVAL; // empty
+    double a = I.l * I.l;
+    double b = I.r * I.r;
+    if (I.containsZero())
+        return Interval(0, max(a, b));
+    return Interval(min(a, b), max(a, b));
+}
+
+// sqrt(I)
+Interval sqrt(Interval I) {
+    if (I.empty())
+        return EMPTY_INTERVAL;
+    assert(I.l >= 0);
+    return Interval(sqrt(I.l), sqrt(I.r));
+}
+
 
 // If cos(theta) \in I, then theta belongs to the returned interval.
 // Returned interval is a subset of [0, pi]

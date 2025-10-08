@@ -191,7 +191,7 @@ T det(const array<T, 3>& A, const array<T, 3>& B, const array<T, 3>& C) {
 
 template <typename T>
 T norm(const array<T, 3>& X) {
-    return sqrt(pow(X[0], 2) + pow(X[1], 2) + pow(X[2], 2));
+    return sqrt(square(X[0]) + square(X[1]) + square(X[2]));
 }
 
 array<double, 3> make_deterministic(array<Interval, 3> p) {
@@ -325,75 +325,34 @@ int intersectionSign(const ApproximateIsometry& T,
     return ans;
 }
 
-
-// Consider the two geodesic segments:
-// - One starting from (e_1, e_2) with length I.
-// - One starting from (Te_1, Te_2) with length J.
-// This function returns false if they necessarily intersect.
-// (it can change I and J to satisfy the non-intersection requirement)
-//
-// If the intersection happens after at least pi along one of the two
-// geodesic segments, it is not detected.
-// The guarantee that "false -> they intersect" is not broken, but it
-// returns true even if the segments are clearly intersecting.
-//
-// TODO: Do we really need to allow this function to change I and J?
-//       It seems like it makes the logic more complicated, without
-//       necessarily improving the performance.
-//       If we change it, it becomes easier (though still somewhat messy) to support the
-//       intersections past pi.
-bool checkNonIntersection(const ApproximateIsometry& T,
-                          Interval& I, Interval& J) {
+// Consider a pair of geodesic segments:
+// - One starting from (e_1, e_2) with length in I.
+// - One starting from (Te_1, Te_2) with length in J.
+// This function returns
+// - 0 If all such pairs intersect.
+// - 1 If all such pairs don't intersect.
+// - INDETERMINATE: If the function does not guarantee intersection or non-intersection.
+int areIntersecting(const ApproximateIsometry& T,
+                    Interval& I, Interval& J) {
+    if (I.r >= M_PI or J.r >= M_PI)
+        return INDETERMINATE; // We do not handle these cases.
     int x = halfEquatorsIntersection(T);
-    if (x != 1 and x != -1)
-        return true;
+    if (x == INDETERMINATE)
+        return INDETERMINATE;
+    if (x == 0)
+        return 0;
+
     double lenI = firstIntersectionWithEquator(T).r;
-    if (lenI >= I.r) // for performance
-        return true;
+    if (lenI >= I.r) // We put this check here to speed up the execution.
+        return 0;
     double lenJ = firstIntersectionWithEquator(inverse(T)).r;
+    if (lenJ >= J.r)
+        return 0;
 
-    if (I.l >= lenI)
-        J.intersect(Interval(0, lenJ));
-    if (J.l >= lenJ)
-        I.intersect(Interval(0, lenI));
+    if (lenI <= I.l and lenJ <= J.l)
+        return 1;
 
-    return !I.empty() and !J.empty();
-}
-
-// If it returns true, the given points belong to a strict hemisphere.
-// Complexity: O(n^4), where n = ssize(vec).
-//
-// TODO: This needs to be tested. I don't know how to test it.
-// TODO: Also the naming is unsafe, as it seems to imply that if it returns
-//       false then they cannot belong to the same Hemisphere.
-bool belongToStrictHemisphere(vector<array<Interval, 3>> vec) {
-    auto subroutine = [&]() {
-        int n = ssize(vec);
-        for (int i = 0; i < n; i++)
-        for (int j = i+1; j < n; j++)
-        for (int k = j+1; k < n; k++) {
-            auto normal = (vec[j]-vec[i])^(vec[k]-vec[i]);
-            vector<int> signs;
-            for (auto q: vec) {
-                int s = sign(q * normal);
-                signs.push_back(s);
-            }
-            bool same_sign = true;
-            for (int s: signs)
-                same_sign &= s != INDETERMINATE and s == signs[0];
-            if (same_sign)
-                return true;
-        }
-        return false;
-    };
-    if (subroutine())
-        return true;
-
-    // If all points in vec are coplanar, subroutine returns false.
-    // To solve this issue, we add a "random" point to vec and we
-    // call subroutine again.
-    vec.push_back({0.84395, 0.19283, 0.96591});
-    return subroutine();
+    return INDETERMINATE;
 }
 
 

@@ -517,8 +517,8 @@ bool checkLengthLowerbound(MetrizedNet& net) {
 
         Interval& X = net.length(d);
         Interval& Y = net.length(A.next(d));
-        double low = fun(min_adjacent(A.rev(d)),
-                         min_adjacent(A.rev(A.next(d))));
+        double low = 0.5 * fun(min_adjacent(A.rev(d)),
+                               min_adjacent(A.rev(A.next(d))));
         if (X.r < low)
             Y.l = max(Y.l, low);
         if (Y.r < low)

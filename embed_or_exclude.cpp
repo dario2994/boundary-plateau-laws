@@ -476,21 +476,21 @@ void testingSearchApproximateMetrization(int test_num = -1) {
 
     cases.emplace_back(100, true, nullopt, 0, 0.3, nullopt);
 
-    cases.emplace_back(11, true, nullopt, 0, 0.44, nullopt);
+    cases.emplace_back(11, true, nullopt, 0, 0.2, nullopt);
 
     cases.emplace_back(39, true, nullopt, 0, 0.33, nullopt);
 
     cases.emplace_back(712, false, nullopt, 1, 0.13, vector<double>{1.462616,1.462616,1.462616,1.462616,1.016773,1.016773,1.016773,1.016773,1.462616,1.462616,0.236659,0.236659,1.016775,1.016775,1.462614,1.462614,0.236655,0.236655,1.462614,1.462614,1.016775,1.016775,1.462614,1.462614,1.016773,1.016773,1.016775,1.016775,1.016775,1.016775,1.016773,1.016773});
 
-    cases.emplace_back(356, true, nullopt, 0, 11, nullopt);
+    cases.emplace_back(356, true, nullopt, 0, 10, nullopt);
 
     cases.emplace_back(45, true, nullopt, 0, 4.5, nullopt);
 
-    cases.emplace_back(66, true, nullopt, 0, 35, nullopt);
+    cases.emplace_back(66, true, nullopt, 0, 20, nullopt);
 
     cases.emplace_back(1100, false, nullopt, 1, 0.05, vector<double>{1.230960,1.230960,1.230960,1.230960,1.230959,1.230959,1.230961,1.230961,1.230960,1.230960,1.230960,1.230960,1.230959,1.230959,1.230960,1.230960,1.230959,1.230959,1.230958,1.230958});
 
-    cases.emplace_back(1047, true, nullopt, 0, 43, nullopt); // SLOW
+    cases.emplace_back(1047, true, nullopt, 0, 10, nullopt);
 
     for (int test_id = 0; test_id < ssize(cases); test_id++) {
         if (test_num != -1 and test_id != test_num)

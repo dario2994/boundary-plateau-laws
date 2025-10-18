@@ -188,7 +188,23 @@ bool checkPinsAntipodality(const MetrizedNet& net) {
                 vector<array<Interval, 3>> equators;
                 for (int z: {i, j, k}) {
                     Dart d = net.A.concaveAngles()[z];
-                    auto isom = net.getIsometryToPin(root, d);
+                    // Here, the natural thing to do would be
+                    // auto isom = net.getIsometryToPin(root, d);
+                    // or, equivalently,
+                    // auto path = net.getPathToPin(root, d);
+                    // path.insert(path.begin(), PathStep('R', 2*M_PI/3));
+                    // auto isom = net.isometryFromPath(path);
+                    // On the other hand, we add at the beginning a rotation
+                    // of 120 degrees. Why? This improves greatly the precision
+                    // of the determinant computation as it makes equator[0]
+                    // equal to (0, 0, 1), thus effectively reducing
+                    // the computation of a 3x3 determinant to a 2x2 determinant.
+                    // In practice, this is important to obtain a satisfactory
+                    // precision for net 28 in a reasonable amount of time.
+                    auto path = net.getPathToPin(root, d);
+                    path.insert(path.begin(), PathStep('R', 2*M_PI/3));
+                    auto isom = net.isometryFromPath(path);
+
                     equators.push_back(isom({0, 0, 1}));
                 }
                 if (!det(equators[0], equators[1], equators[2]).containsZero())

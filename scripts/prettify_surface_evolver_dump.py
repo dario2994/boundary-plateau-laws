@@ -95,7 +95,7 @@ def parse_evolver_dmp(input_filepath, output_filepath):
 
             # Faces
             for e1, e2, e3 in faces:
-                f.write(f"{e1} {e2} {e3}\n")
+                f.write(f"3 {e1} {e2} {e3}\n")
 
         print(f"Successfully parsed file and wrote data to '{output_filepath}'.")
         print(f"Summary: {len(vertices)} vertices, {len(edges)} edges, {len(faces)} faces.")

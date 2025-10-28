@@ -88,7 +88,7 @@ double distanceFromLine(const array<double, 3>& A,
     // The answer is either boundary_distance or it is 0.
     // Determining whether is zero is annoying.
     // We use the Moller-Trumbore algorithm.
-    // The implementation is freely inspired (i.e., copied) from wikipedia.
+    // The implementation is inspired from wikipedia.
     array<double, 3> CD = D - C;
     array<double, 3> CE = E - C;
     array<double, 3> CA = A - C;
@@ -113,24 +113,6 @@ double distanceFromLine(const array<double, 3>& A,
 
     return 0.0;
 }
-
-
-#include <iostream>
-#include <vector>
-#include <string>
-#include <array>
-#include <cassert>
-#include <cmath> // For sqrt
-#include <algorithm> // For min
-
-// --- Assume your corrected function and its dependencies are here ---
-// (e.g., operator-, operator^, norm, dot-product,
-// and the 4-argument distanceFromLine for segments)
-//
-// double distanceFromLine(const array<double, 3>& A, ...);
-// double distanceFromLine(const array<double, 3>& A, ...);
-//
-// --- End of assumed code ---
 
 
 void testTriangleDistanceFromLine() {

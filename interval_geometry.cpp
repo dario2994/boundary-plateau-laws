@@ -31,8 +31,6 @@ class ApproximateIsometry {
         return {miwu(res[1]), miwu(res[2]), miwu(res[3])};
     }
 
-    // Quaternion<Interval> getQuaternion() const { return q; }
-
     ApproximateIsometry& operator *=(const ApproximateIsometry& S) {
         q *= S.q;
         uncertainty += S.uncertainty;
@@ -175,6 +173,11 @@ array<T, 3> operator-(const array<T, 3>& X, const array<T, 3>& Y) {
 }
 
 template<typename T>
+array<T, 3> operator+(const array<T, 3>& X, const array<T, 3>& Y) {
+    return {X[0]+Y[0], X[1]+Y[1], X[2]+Y[2]};
+}
+
+template<typename T>
 array<T, 3> operator-(const array<T, 3>& X) {
     return {-X[0], -X[1], -X[2]};
 }
@@ -192,6 +195,10 @@ T det(const array<T, 3>& A, const array<T, 3>& B, const array<T, 3>& C) {
 template <typename T>
 T norm(const array<T, 3>& X) {
     return sqrt(square(X[0]) + square(X[1]) + square(X[2]));
+}
+
+double norm(const array<double, 3>& X) {
+    return sqrt(X[0]*X[0] + X[1]*X[1] + X[2]*X[2]);
 }
 
 array<double, 3> make_deterministic(array<Interval, 3> p) {

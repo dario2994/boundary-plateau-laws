@@ -284,8 +284,9 @@ struct ImmersedSimplicialComplex {
     }
 
     bool containsSegment(const array<double, 3>& A,
-                         const array<double, 3>& B) {
-        const double eps = 1e-5;
+                         const array<double, 3>& B,
+                         const double eps=1e-5) {
+        array<double, 3> segment_dir = (B-A) * (1.0 / norm(B-A));
 
         // The vertices are mapped on the line AB.
         vector<bool> on_the_line(V(), false);
@@ -300,6 +301,8 @@ struct ImmersedSimplicialComplex {
                 return false;
             points_on_line.push_back(i);
             on_the_line[i] = true;
+            // We move the points so that they are "perfectly" on the line.
+            points[i] = A + segment_dir * (segment_dir * (points[i] - A));
         }
 
         // We save the edges of the simplicial complex in a convenient
@@ -317,7 +320,7 @@ struct ImmersedSimplicialComplex {
         // Sorting the vertices by the order in which they are mapped on AB,
         // we find a path (using edges of the simplicial complex).
         auto position_on_line = [&](int i) {
-            return (B-A) * points[i];
+            return segment_dir * (points[i] - A);
         };
 
         sort(points_on_line.begin(), points_on_line.end(), [&](int i, int j) {
@@ -337,7 +340,18 @@ struct ImmersedSimplicialComplex {
         // The last vertex is mapped onto B.
         if (norm(points[points_on_line.back()]-B) > eps)
             return false;
-        cout << "#Points on segments = " << ssize(points_on_line) << endl;
+
+        // We check that A and B are univocally matched with vertices for the
+        // simplicial complex.
+        for (int i = 0; i < ssize(points_on_line); i++) {
+            array<double, 3> P = points[points_on_line[i]];
+            if (i != 0 and norm(P-A) < 100*eps)
+                return false;
+            if (i != ssize(points_on_line)-1 and norm(P-B) < 100*eps)
+                return false;
+        }
+
+        // cout << "#Points on segments = " << ssize(points_on_line) << endl;
 
         // Any face that has only vertices in the sequence is either a
         // singleton or an edge of the path.
@@ -448,21 +462,43 @@ void testIsCollapsible() {
     cout << "filled_annulus: " << filled_annulus.isCollapsible() << endl;
 }
 
+
+bool isCompetitorValid(ImmersedSimplicialComplex& X,
+                       const vector<pair<int,int>>& fixed_one_skeleton,
+                       const vector<array<double, 3>>& points) {
+    if (!X.isCollapsible())
+        return false;
+
+    for (auto [u, v]: fixed_one_skeleton) {
+        if (!X.containsSegment(points[u], points[v]))
+            return false;
+    }
+    return true;
+}
+
 int main() {
-    testSegmentDistanceFromLine();
-    testTriangleDistanceFromLine();
+    // testSegmentDistanceFromLine();
+    // testTriangleDistanceFromLine();
+    // testIsCollapsible();
     // return 0;
 
-    // testIsCollapsible();
-    ifstream foo_in("todel.txt");
-    ImmersedSimplicialComplex X = parseImmersedSimplicialComplex(foo_in);
-    cout << X.V() << endl;
-    cout << X.isCollapsible() << endl;
-    cout << X.area() << endl;
 
-    array<double, 3> pin1 = {0.647757, -0.761847, 0};
-    array<double, 3> pin2 = {-pin1[0], -pin1[1], -pin1[2]};
-    cout << X.containsSegment(pin1, pin2) << endl;
+    vector<pair<int,int>> edges = {{22, 23}, {0, 1}, {1, 2}, {2, 3}, {3, 4}, {0, 4}, {1, 5}, {5, 6}, {7, 19}, {7, 8}, {8, 9}, {6, 9}, {7, 10}, {10, 11}, {11, 12}, {8, 12}, {13, 20}, {9, 13}, {5, 14}, {0, 14}, {2, 18}, {10, 15}, {13, 14}, {16, 21}, {11, 16}, {3, 17}, {16, 17}, {15, 17}, {15, 18}, {6, 19}, {12, 20}, {4, 21}, {21, 22}, {20, 22}, {19, 23}, {18, 23}, };
+    vector<array<double, 3>> points = {{1, 0, 0}, {0.160836, 0.986981, -5.55112e-17}, {0.0248617, 0.973201, -0.22861}, {0.416452, 0.354083, -0.837373}, {0.96453, -0.131987, -0.228608}, {-0.353093, 0.550021, 0.756837}, {-0.586183, 0.453669, 0.671248}, {-0.955015, 0.140076, -0.26139}, {-0.735364, -0.625231, 0.261392}, {-0.586048, -0.498279, 0.638957}, {-0.85287, 0.125095, -0.506916}, {-0.013706, -0.861885, -0.506918}, {-0.0153461, -0.96511, -0.261393}, {0.353482, -0.65152, 0.671246}, {0.48607, -0.43696, 0.756837}, {-0.723245, 0.337136, -0.602707}, {0.216425, -0.768049, -0.602711}, {0.113592, 0.096581, -0.988822}, {-0.586592, 0.791318, -0.172414}, {-0.761386, 0.642701, 0.0850065}, {0.511874, -0.854845, 0.0849996}, {0.686676, -0.706222, -0.172413}, {0.647757, -0.761847, -7.34244e-06}, {-0.647757, 0.761847, 7.34244e-06}, };
+
+    ifstream foo_in("data/surface_evolver/182_competitor_clean.txt");
+    ImmersedSimplicialComplex X = parseImmersedSimplicialComplex(foo_in);
+
+    cout << "Area before: " << X.area() << endl;
+    cout << "#vertices = " << X.V() << endl;
+
+    // array<double, 3> pin1 = {0.647757, -0.761847, 0};
+    // array<double, 3> pin2 = {-pin1[0], -pin1[1], -pin1[2]};
+    // cout << X.containsSegment(pin1, pin2) << endl;
+
+    cout << isCompetitorValid(X, edges, points) << endl;
+
+    cout << "Area after: " << X.area() << endl;
 }
 
 

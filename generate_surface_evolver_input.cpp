@@ -71,7 +71,7 @@ vector<Dart> getConcaveAngles(const DerivedOnceNet& A,
 // coordinates) in a given face.
 // Returns the average of the (Euclidean) distance from the pin to the
 // concave angles.
-// It is a naive heuristic used to determine the (concave) face a pin belongs to.
+// It is a naive heuristic used to determine the (non-convex) face a pin belongs to.
 double pinAverageDistance(const DerivedOnceNet& A, vector<pt> embedding,
                    pt pin, const vector<Dart>& face) {
     vector<Dart> concave_angles = getConcaveAngles(A, face);
@@ -196,11 +196,13 @@ pair<vector<int>, CombinatorialMap> addPinsToCombinatorialMap(
 
 
 
-void saveSurfaceEvolverFormat(const vector<pt>& coords,
+void saveSurfaceEvolverFormat(int net_id,
+                              const vector<pt>& coords,
                               int pin_id,
                               const vector<bool>& is_vertex_fixed,
                               const vector<vector<int>>& faces,
-                              string out_file) {
+                              string out_file,
+                              bool print_commands) {
     pt line = coords[pin_id];
 
     map<pair<int,int>, int> edge2id;
@@ -309,16 +311,20 @@ void saveSurfaceEvolverFormat(const vector<pt>& coords,
 
     out << R"(read
 showq;
-subroutine := {
+print total_area;
+)";
+
+    constexpr string_view format_str = R"(read
+subroutine := {{
     quiet;
     g 2000;
     areaweed 0.0005;
     u 4;
     print total_area;
     quiet off;
-}
+}}
 
-gogo := {
+gogo := {{
     r 2;
     subroutine 5;
     o;
@@ -330,9 +336,11 @@ gogo := {
     subroutine 5;
     o;
     subroutine 3;
-}
-print total_area;
+    dump "data/surface_evolver/{}_competitor.out";
+}}
 )";
+    if (print_commands)
+        out << format(format_str, net_id);
 
     out.close();
 }
@@ -504,6 +512,27 @@ void processNet(int net_id, vector<double> params={}) {
     auto [pins_id, A] = addPinsToCombinatorialMap(net, embedding, pins_coord);
     auto faces = A.faces();
 
+    // TODO: Remove this part.
+    assert(ssize(pins_id) == 2);
+    vector<pair<int,int>> edges;
+    edges.push_back({pins_id[0], pins_id[1]});
+    for (auto d: A.darts()) {
+        if (d.from > d.to)
+            continue;
+        edges.push_back({d.from, d.to});
+    }
+    cout << "vector<pair<int,int>> edges = {";
+    for (auto pp: edges)
+        cout << "{" << pp.first << ", " << pp.second << "}, ";
+    cout << "};";
+    cout << endl;
+
+    cout << "vector<array<double, 3>> points = {";
+    for (auto P: embedding)
+        cout << "{" << P[0] << ", " << P[1] << ", " << P[2] << "}, ";
+    cout << "};";
+    cout << endl;
+
     // We build the cone *outside* of the ball of radius 1/3.
     int n = ssize(embedding);
     for (int i = 0; i < n; i++) {
@@ -585,16 +614,16 @@ void processNet(int net_id, vector<double> params={}) {
         is_vertex_fixed[i] = true;
 
     string filename_prefix = "data/surface_evolver/" + to_string(net_id);
-    saveSurfaceEvolverFormat(embedding, pins_id[0], is_vertex_fixed,
+    saveSurfaceEvolverFormat(net_id, embedding, pins_id[0], is_vertex_fixed,
                              faces_before_pop,
-                             filename_prefix + "_before_pop.fe");
-    saveSurfaceEvolverFormat(embedding, pins_id[0], is_vertex_fixed,
+                             filename_prefix + "_before_pop.fe", false);
+    saveSurfaceEvolverFormat(net_id, embedding, pins_id[0], is_vertex_fixed,
                              faces_after_pop,
-                             filename_prefix + "_after_pop.fe");
+                             filename_prefix + "_after_pop.fe", true);
 }
 
 int main() {
-    processNet(421);
+    processNet(182);
 }
 
 // 5.7821

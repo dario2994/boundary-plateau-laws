@@ -209,7 +209,7 @@ struct ImmersedSimplicialComplex {
 
     friend ostream& operator<<(ostream&, const ImmersedSimplicialComplex&);
 
-    double area() {
+    double area() const {
         double total_area = 0;
         for (auto face: faces) {
             if (ssize(face) != 3)
@@ -224,11 +224,16 @@ struct ImmersedSimplicialComplex {
         return total_area;
     }
 
-    bool isCollapsible() {
+    // Whether the simplex can be collapsed on the target subcomplex (on the same vertices).
+    bool isCollapsible(const ImmersedSimplicialComplex& target) const {
         int F = ssize(faces);
         map<set<int>, int> face2id;
         for (const auto& face: faces)
             face2id[face] = ssize(face2id);
+
+        vector<bool> is_target(F, false);
+        for (const set<int>& target_face: target.faces)
+            is_target[face2id[target_face]] = true;
 
         vector<vector<int>> boundary(F);
         vector<vector<int>> coboundary(F);
@@ -246,7 +251,7 @@ struct ImmersedSimplicialComplex {
         queue<int> free_faces;
         vector<bool> removed(F, false);
         for (int id = 0; id < F; id++) {
-            if (ssize(coboundary[id]) == 1)
+            if (ssize(coboundary[id]) == 1 and !is_target[id])
                 free_faces.push(id);
         }
 
@@ -261,7 +266,7 @@ struct ImmersedSimplicialComplex {
             for (int sub_id: boundary[id]) {
                 vector<int>& vec = coboundary[sub_id];
                 vec.erase(remove(vec.begin(), vec.end(), id), vec.end());
-                if (ssize(vec) == 1)
+                if (ssize(vec) == 1 and !is_target[sub_id])
                     free_faces.push(sub_id);
             }
         };
@@ -277,13 +282,23 @@ struct ImmersedSimplicialComplex {
             remove_face(id);
         }
 
-        for (int i = 0; i < F; i++)
-            if (!removed[i])
+        for (int i = 0; i < F; i++) {
+            if (is_target[i])
+                assert(!removed[i]);
+            else if (!removed[i])
                 return false;
+        }
+
         return true;
     }
 
-    bool containsSegment(const array<double, 3>& A,
+    bool isCollapsible() const {
+        ImmersedSimplicialComplex empty_subcomplex(V(), {});
+        return isCollapsible(empty_subcomplex);
+    }
+
+    optional<ImmersedSimplicialComplex> containsSegment(
+                         const array<double, 3>& A,
                          const array<double, 3>& B,
                          const double eps=1e-5) {
         array<double, 3> segment_dir = (B-A) * (1.0 / norm(B-A));
@@ -298,7 +313,7 @@ struct ImmersedSimplicialComplex {
             // We expect a quantitative gap between points on the line and points
             // out of the line.
             if (dist > eps)
-                return false;
+                return nullopt;
             points_on_line.push_back(i);
             on_the_line[i] = true;
             // We move the points so that they are "perfectly" on the line.
@@ -328,27 +343,27 @@ struct ImmersedSimplicialComplex {
         });
 
         if (ssize(points_on_line) < 2)
-            return false;
+            return nullopt;
         for (int i = 0; i < ssize(points_on_line)-1; i++)
             if (!edges.count({points_on_line[i], points_on_line[i+1]}))
-                return false;
+                return nullopt;
 
         // The first vertex is mapped onto A.
         if (norm(points[points_on_line[0]]-A) > eps)
-            return false;
+            return nullopt;
 
         // The last vertex is mapped onto B.
         if (norm(points[points_on_line.back()]-B) > eps)
-            return false;
+            return nullopt;
 
         // We check that A and B are univocally matched with vertices for the
         // simplicial complex.
         for (int i = 0; i < ssize(points_on_line); i++) {
             array<double, 3> P = points[points_on_line[i]];
             if (i != 0 and norm(P-A) < 100*eps)
-                return false;
+                return nullopt;
             if (i != ssize(points_on_line)-1 and norm(P-B) < 100*eps)
-                return false;
+                return nullopt;
         }
 
         // cout << "#Points on segments = " << ssize(points_on_line) << endl;
@@ -360,7 +375,7 @@ struct ImmersedSimplicialComplex {
                 int u = points_on_line[i];
                 int v = points_on_line[j];
                 if (edges.count({u, v}))
-                    return false;
+                    return nullopt;
             }
         }
 
@@ -382,18 +397,23 @@ struct ImmersedSimplicialComplex {
                 array<double, 3> C = points[*face.begin()];
                 array<double, 3> D = points[*face.rbegin()];
                 if (distanceFromLine(A, B, C, D) < 100*eps)
-                    return false;
+                    return nullopt;
             }
             if (ssize(face) == 3) {
                 vector<int> ids(face.begin(), face.end());
                 if (distanceFromLine(A, B,
                                      points[ids[0]], points[ids[1]], points[ids[2]]) < 100*eps)
-                    return false;
+                    return nullopt;
             }
 
         }
 
-        return true;
+        vector<set<int>> segment_edges;
+        for (int i = 0; i < ssize(points_on_line)-1; i++)
+            segment_edges.push_back({points_on_line[i], points_on_line[i+1]});
+
+
+        return ImmersedSimplicialComplex(points, segment_edges);
     }
 };
 
@@ -464,12 +484,20 @@ void testIsCollapsible() {
 
 
 bool isCompetitorValid(ImmersedSimplicialComplex& X,
-                       const vector<pair<int,int>>& fixed_one_skeleton,
+                       const vector<pair<int,int>>& boundary_edges,
+                       const pair<int,int>& pin_ids,
                        const vector<array<double, 3>>& points) {
-    if (!X.isCollapsible())
+    auto pin1 = points[pin_ids.first];
+    auto pin2 = points[pin_ids.second];
+    auto maybe_line = X.containsSegment(pin1, pin2);
+    if (!maybe_line)
+        return false;
+    auto line = *maybe_line;
+
+    if (!X.isCollapsible(line))
         return false;
 
-    for (auto [u, v]: fixed_one_skeleton) {
+    for (auto [u, v]: boundary_edges) {
         if (!X.containsSegment(points[u], points[v]))
             return false;
     }
@@ -483,7 +511,8 @@ int main() {
     // return 0;
 
 
-    vector<pair<int,int>> edges = {{22, 23}, {0, 1}, {1, 2}, {2, 3}, {3, 4}, {0, 4}, {1, 5}, {5, 6}, {7, 19}, {7, 8}, {8, 9}, {6, 9}, {7, 10}, {10, 11}, {11, 12}, {8, 12}, {13, 20}, {9, 13}, {5, 14}, {0, 14}, {2, 18}, {10, 15}, {13, 14}, {16, 21}, {11, 16}, {3, 17}, {16, 17}, {15, 17}, {15, 18}, {6, 19}, {12, 20}, {4, 21}, {21, 22}, {20, 22}, {19, 23}, {18, 23}, };
+    pair<int,int> pin_ids = {22, 23};
+    vector<pair<int,int>> boundary_edges = {{0, 1}, {1, 2}, {2, 3}, {3, 4}, {0, 4}, {1, 5}, {5, 6}, {7, 19}, {7, 8}, {8, 9}, {6, 9}, {7, 10}, {10, 11}, {11, 12}, {8, 12}, {13, 20}, {9, 13}, {5, 14}, {0, 14}, {2, 18}, {10, 15}, {13, 14}, {16, 21}, {11, 16}, {3, 17}, {16, 17}, {15, 17}, {15, 18}, {6, 19}, {12, 20}, {4, 21}, {21, 22}, {20, 22}, {19, 23}, {18, 23}, };
     vector<array<double, 3>> points = {{1, 0, 0}, {0.160836, 0.986981, -5.55112e-17}, {0.0248617, 0.973201, -0.22861}, {0.416452, 0.354083, -0.837373}, {0.96453, -0.131987, -0.228608}, {-0.353093, 0.550021, 0.756837}, {-0.586183, 0.453669, 0.671248}, {-0.955015, 0.140076, -0.26139}, {-0.735364, -0.625231, 0.261392}, {-0.586048, -0.498279, 0.638957}, {-0.85287, 0.125095, -0.506916}, {-0.013706, -0.861885, -0.506918}, {-0.0153461, -0.96511, -0.261393}, {0.353482, -0.65152, 0.671246}, {0.48607, -0.43696, 0.756837}, {-0.723245, 0.337136, -0.602707}, {0.216425, -0.768049, -0.602711}, {0.113592, 0.096581, -0.988822}, {-0.586592, 0.791318, -0.172414}, {-0.761386, 0.642701, 0.0850065}, {0.511874, -0.854845, 0.0849996}, {0.686676, -0.706222, -0.172413}, {0.647757, -0.761847, -7.34244e-06}, {-0.647757, 0.761847, 7.34244e-06}, };
 
     ifstream foo_in("data/surface_evolver/182_competitor_clean.txt");
@@ -496,7 +525,7 @@ int main() {
     // array<double, 3> pin2 = {-pin1[0], -pin1[1], -pin1[2]};
     // cout << X.containsSegment(pin1, pin2) << endl;
 
-    cout << isCompetitorValid(X, edges, points) << endl;
+    cout << isCompetitorValid(X, boundary_edges, pin_ids, points) << endl;
 
     cout << "Area after: " << X.area() << endl;
 }

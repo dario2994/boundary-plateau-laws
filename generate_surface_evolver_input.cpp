@@ -88,14 +88,14 @@ double pinAverageDistance(const DerivedOnceNet& A, vector<pt> embedding,
 // We locate the two pins metrically.
 //
 // The pins are antipodal points on the unit sphere.
-vector<pt> findPinsEmbedding(const MetrizedNet& net) {
+pair<pt, pt> findPinsEmbedding(const MetrizedNet& net) {
     const Dart root = net.A.dart(0);
     vector<pt> equators_with_pins;
     vector<Dart> concave_angles = net.A.concaveAngles();
     for (Dart d: net.A.concaveAngles())
         equators_with_pins.push_back(
                 make_deterministic(net.getIsometryToPin(root, d)({0, 0, 1})));
-    vector<pt> pins;
+    pair<pt, pt> pins;
     for (pt eq1: equators_with_pins)
             for (pt eq2: equators_with_pins) {
         pt z = eq1 ^ eq2;
@@ -117,7 +117,7 @@ vector<pt> findPinsEmbedding(const MetrizedNet& net) {
 // net.A.concaveAngles()[0].
 //
 // The pins are antipodal points on the unit sphere.
-vector<pt> choosePinsEmbedding(const MetrizedNet& net, double dist) {
+pair<pt, pt> choosePinsEmbedding(const MetrizedNet& net, double dist) {
     assert(!net.A.concaveAngles().empty());
 
     const Dart root = net.A.dart(0);
@@ -134,32 +134,32 @@ vector<pt> choosePinsEmbedding(const MetrizedNet& net, double dist) {
 // We add the pins to the DerivedOnceNet.
 // Doing so, we obtain a CombinatorialMap (as the result is not
 // DerivedOnce anymore) and we save the indexes of the pins in pins_id.
-pair<vector<int>, CombinatorialMap> addPinsToCombinatorialMap(
+pair<pair<int,int>, CombinatorialMap> addPinsToCombinatorialMap(
         const MetrizedNet& net,
-        vector<pt>& embedding, const vector<pt>& pins_coord) {
+        vector<pt>& embedding, const pair<pt, pt>& pins_coord) {
     vector<vector<Dart>> concave_faces;
     for (auto face: net.A.faces()) {
         if (!net.A.isConvexFace(face))
             concave_faces.push_back(face);
     }
 
-    assert(ssize(pins_coord) == 2);
-    assert(ssize(concave_faces) <= 2);
+    // assert(ssize(pins_coord) == 2);
+    assert(ssize(concave_faces) == 2);
 
     CombinatorialMap A = net.A;
-    vector<int> pins_id(2);
-    for (int i = 0; i < 2; i++) {
-        pt pin = pins_coord[i];
-        bool pin_is_vertex = false;
-        for (int v = 0; v < ssize(embedding); v++) {
-            if (norm(embedding[v] - pin) < 0.001) {
-                pins_id[i] = v;
-                pin_is_vertex = true;
-                break;
-            }
-        }
-        if (pin_is_vertex and net.A.degree(pins_id[i]) == 3)
-                continue;
+    vector<int> pins_vec;
+    for (const pt& pin: {pins_coord.first, pins_coord.second}) {
+        // pt pin = pins_coord[i];
+        // bool pin_is_vertex = false;
+        // for (int v = 0; v < ssize(embedding); v++) {
+        //     if (norm(embedding[v] - pin) < 0.001) {
+        //         pins_vec.push_back(v);
+        //         pin_is_vertex = true;
+        //         break;
+        //     }
+        // }
+        // if (pin_is_vertex and net.A.degree(pins_id[i]) == 3)
+        //         continue;
 
         assert(!concave_faces.empty());
 
@@ -172,26 +172,26 @@ pair<vector<int>, CombinatorialMap> addPinsToCombinatorialMap(
                 face = concave_faces[1];
         }
         vector<Dart> concave_angles = getConcaveAngles(net.A, face);
-        if (pin_is_vertex) {
-            if (ssize(concave_angles) == 1) {
-                assert(concave_angles[0].to == pins_id[i]);
-                continue;
-            }
-            assert(ssize(concave_angles) == 2);
-            if (concave_angles[0].to != pins_id[i])
-                swap(concave_angles[0], concave_angles[1]);
-            A.addEdge(concave_angles[0], A.phi(concave_angles[1]));
-            continue;
-        }
+        // if (pin_is_vertex) {
+        //     if (ssize(concave_angles) == 1) {
+        //         assert(concave_angles[0].to == pins_id[i]);
+        //         continue;
+        //     }
+        //     assert(ssize(concave_angles) == 2);
+        //     if (concave_angles[0].to != pins_id[i])
+        //         swap(concave_angles[0], concave_angles[1]);
+        //     A.addEdge(concave_angles[0], A.phi(concave_angles[1]));
+        //     continue;
+        // }
         if (ssize(concave_angles) == 2)
             concave_angles[1] = net.A.phi(concave_angles[1]);
         int pin_id = addPin(A, concave_angles);
         assert(ssize(embedding) == pin_id);
-        embedding.push_back(pins_coord[i]);
-        pins_id[i] = pin_id;
+        embedding.push_back(pin);
+        pins_vec.push_back(pin_id);
     }
 
-    return {pins_id, A};
+    return {{pins_vec[0], pins_vec[1]}, A};
 }
 
 
@@ -223,6 +223,8 @@ void saveSurfaceEvolverFormat(int net_id,
         return norm(coords[v] ^ line) < 0.001;
     };
 
+    // TODO: Why do I need this?
+    //       For some reason, we prefer to pivot on the line...
     auto find_pivot_index = [&](vector<int> face) {
         for (int i = 0; i < ssize(face); i++)
             if (is_vertex_on_line(face[i]))
@@ -345,7 +347,7 @@ gogo := {{
     out.close();
 }
 
-pair<vector<pt>, vector<pt>> embed3048(double q) {
+pair<vector<pt>, pair<pt,pt>> embed3048(double q) {
     auto rotate = [&](pt U) {
         return pt{U[0]*cos(q)-U[1]*sin(q), U[1]*cos(q)+U[0]*sin(q), U[2]};
     };
@@ -486,7 +488,14 @@ const map<int, pair<vector<int>, vector<int>>> pop_description = {
     }},
 };
 
-void processNet(int net_id, vector<double> params={}) {
+struct NetEmbeddedWithPins{
+    CombinatorialMap A;
+    vector<pt> embedding;
+    pair<int,int> pins;
+    vector<pair<int,int>> boundary_edges;
+};
+
+NetEmbeddedWithPins computeEmbeddingWithPins(int net_id, vector<double> params = {}) {
     assert(possible_nets.count(net_id));
 
     ifstream metrized_net_in("data/metrized_nets/"+ to_string(net_id) + ".txt");
@@ -494,7 +503,8 @@ void processNet(int net_id, vector<double> params={}) {
     MetrizedNet net = parseMetrizedNet(metrized_net_in);
     metrized_net_in.close();
 
-    vector<pt> embedding, pins_coord;
+    vector<pt> embedding;
+    pair<pt, pt> pins_coord;
 
     if (net_id == 1029) {
         assert(ssize(params) == 1);
@@ -509,29 +519,167 @@ void processNet(int net_id, vector<double> params={}) {
         pins_coord = findPinsEmbedding(net);
     }
 
-    auto [pins_id, A] = addPinsToCombinatorialMap(net, embedding, pins_coord);
+    auto [pins, A] = addPinsToCombinatorialMap(net, embedding, pins_coord);
     auto faces = A.faces();
+    // cout << "PINS: " << pins.first << " " << pins.second << endl;
 
-    // TODO: Remove this part.
-    assert(ssize(pins_id) == 2);
-    vector<pair<int,int>> edges;
-    edges.push_back({pins_id[0], pins_id[1]});
+    // assert(ssize(pins) == 2);
+    vector<pair<int,int>> boundary_edges;
     for (auto d: A.darts()) {
         if (d.from > d.to)
             continue;
-        edges.push_back({d.from, d.to});
+        boundary_edges.push_back({d.from, d.to});
     }
-    cout << "vector<pair<int,int>> edges = {";
-    for (auto pp: edges)
-        cout << "{" << pp.first << ", " << pp.second << "}, ";
-    cout << "};";
-    cout << endl;
 
-    cout << "vector<array<double, 3>> points = {";
-    for (auto P: embedding)
-        cout << "{" << P[0] << ", " << P[1] << ", " << P[2] << "}, ";
-    cout << "};";
-    cout << endl;
+    return {
+        .A = A,
+        .embedding = embedding,
+        .pins = pins,
+        .boundary_edges = boundary_edges
+    };
+}
+
+#include "simplicial_complexes.cpp"
+struct Competitor {
+    ImmersedSimplicialComplex X;
+    pair<int,int> pins;
+    vector<pair<int,int>> boundary_edges;
+    // We need to keep track also of the line somehow?
+};
+
+Competitor generateCone(const NetEmbeddedWithPins& link) {
+    auto embedding = link.embedding;
+    int n = ssize(embedding);
+    int origin = n;
+    embedding.push_back({0, 0, 0});
+
+    vector<pair<int,int>> boundary_edges;
+    vector<set<int>> triangles;
+    for (Dart d: link.A.darts()) {
+        assert(d.from != d.to);
+        if (d.from > d.to)
+            continue;
+        triangles.push_back({d.from, d.to, origin});
+        boundary_edges.push_back({d.from, d.to});
+    }
+
+    return {.X = ImmersedSimplicialComplex(embedding, triangles),
+            .pins = link.pins,
+            .boundary_edges = boundary_edges};
+}
+
+// We print some info which is useful for humans to come up with a reasonable pop.
+void printInfoForHumanPopping(const NetEmbeddedWithPins& link) {
+    auto faces = link.A.faces();
+    cout << "Faces: " << endl;
+    for (int i = 0; i < ssize(faces); i++) {
+        cout << "Face " << i << ": ";
+        for (Dart d: faces[i])
+            cout << d.from << ", ";
+        cout << endl;
+    }
+    cout << "Pin ids (in order): " << link.pins.first << ", "
+                                   << link.pins.second << endl;
+
+    // cout << "The description of the pop for this net (" << net_id << ") "
+    //         << "is missing." << endl;
+    // return;
+}
+
+Competitor generatePoppedCone(const NetEmbeddedWithPins& link,
+                              const vector<int>& excluded_faces,
+                              vector<int> path_to_add) {
+    auto embedding = link.embedding;
+    auto faces = link.A.faces();
+    int n = ssize(embedding);
+    for (int i = 0; i < n; i++) {
+        pt P = embedding[i];
+        embedding.push_back({P[0]/3, P[1]/3, P[2]/3});
+    }
+    int origin = 2*n;
+    embedding.push_back({0, 0, 0});
+
+    vector<pair<int,int>> boundary_edges;
+    vector<set<int>> triangles;
+
+    auto add_face = [&](vector<int> face) {
+        assert(ssize(face) >= 3);
+        int n = ssize(face);
+        for (int i = 1; i < n-1; i++) {
+            int j = (i+1) % n;
+            triangles.push_back({face[0], face[i], face[j]});
+        }
+    };
+
+    for (Dart d: link.A.darts()) {
+        assert(d.from != d.to);
+        if (d.from > d.to)
+            continue;
+        add_face({d.from, d.to, d.to+n, d.from+n});
+        boundary_edges.push_back({d.from, d.to});
+    }
+
+    // We build the pop (inside the ball of radius 1/3)
+    for (int& x: path_to_add) {
+        if (x == PIN_ZERO)
+            x = link.pins.first;
+        if (x == PIN_ONE)
+            x = link.pins.second;
+    }
+
+    for (int i = 0; i < ssize(faces); i++) {
+        bool is_excluded = false;
+        for (int excl: excluded_faces)
+            is_excluded |= i == excl;
+        if (is_excluded)
+            continue;
+        vector<int> half_face;
+        for (Dart d: faces[i])
+            half_face.push_back(d.from + n);
+        add_face(half_face);
+    }
+
+    for (int i = 0; i < ssize(path_to_add)-1; i++) {
+        int u = path_to_add[i], v = path_to_add[i+1];
+        bool existing_dart = false;
+        for (Dart d: link.A.darts())
+            existing_dart |= d.from == u and d.to == v;
+        assert(existing_dart);
+        add_face({u+n, v+n, origin});
+    }
+
+    return {.X = ImmersedSimplicialComplex(embedding, triangles),
+            .pins = link.pins,
+            .boundary_edges = boundary_edges};
+}
+
+void processNet(int net_id, vector<double> params={}) {
+    NetEmbeddedWithPins link = computeEmbeddingWithPins(net_id, params);
+    auto embedding = link.embedding;
+    const auto& A = link.A;
+    const auto& faces = A.faces();
+    const auto& pins = link.pins;
+
+    // TODO: Remove this part.
+    // assert(ssize(pins_id) == 2);
+    // vector<pair<int,int>> edges;
+    // edges.push_back({pins_id[0], pins_id[1]});
+    // for (auto d: A.darts()) {
+    //     if (d.from > d.to)
+    //         continue;
+    //     edges.push_back({d.from, d.to});
+    // }
+    // cout << "vector<pair<int,int>> edges = {";
+    // for (auto pp: edges)
+    //     cout << "{" << pp.first << ", " << pp.second << "}, ";
+    // cout << "};";
+    // cout << endl;
+
+    // cout << "vector<array<double, 3>> points = {";
+    // for (auto P: embedding)
+    //     cout << "{" << P[0] << ", " << P[1] << ", " << P[2] << "}, ";
+    // cout << "};";
+    // cout << endl;
 
     // We build the cone *outside* of the ball of radius 1/3.
     int n = ssize(embedding);
@@ -568,7 +716,7 @@ void processNet(int net_id, vector<double> params={}) {
                 cout << d.from << ", ";
             cout << endl;
         }
-        cout << "Pin ids (in order): " << pins_id[0] << ", " << pins_id[1] << endl;
+        cout << "Pin ids (in order): " << pins.first << ", " << pins.second << endl;
 
         cout << "The description of the pop for this net (" << net_id << ") "
              << "is missing." << endl;
@@ -581,9 +729,9 @@ void processNet(int net_id, vector<double> params={}) {
     vector<int> path_to_add = pop_description.at(net_id).second;
     for (int& x: path_to_add) {
         if (x == PIN_ZERO)
-            x = pins_id[0];
+            x = pins.first;
         if (x == PIN_ONE)
-            x = pins_id[1];
+            x = pins.second;
     }
 
     for (int i = 0; i < ssize(faces); i++) {
@@ -600,6 +748,11 @@ void processNet(int net_id, vector<double> params={}) {
 
     for (int i = 0; i < ssize(path_to_add)-1; i++) {
         int u = path_to_add[i], v = path_to_add[i+1];
+        // cout << u << " " << v << endl;
+        // cout << pins.first << " " << pins.second << endl;
+        // for (Dart d: A.darts())
+        //     cout << d << " ";
+        // cout << endl;
         bool existing_dart = false;
         for (Dart d: A.darts())
             existing_dart |= d.from == u and d.to == v;
@@ -614,10 +767,10 @@ void processNet(int net_id, vector<double> params={}) {
         is_vertex_fixed[i] = true;
 
     string filename_prefix = "data/surface_evolver/" + to_string(net_id);
-    saveSurfaceEvolverFormat(net_id, embedding, pins_id[0], is_vertex_fixed,
+    saveSurfaceEvolverFormat(net_id, embedding, pins.first, is_vertex_fixed,
                              faces_before_pop,
                              filename_prefix + "_before_pop.fe", false);
-    saveSurfaceEvolverFormat(net_id, embedding, pins_id[0], is_vertex_fixed,
+    saveSurfaceEvolverFormat(net_id, embedding, pins.first, is_vertex_fixed,
                              faces_after_pop,
                              filename_prefix + "_after_pop.fe", true);
 }

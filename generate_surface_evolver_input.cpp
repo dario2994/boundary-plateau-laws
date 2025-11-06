@@ -194,6 +194,143 @@ pair<pair<int,int>, CombinatorialMap> addPinsToCombinatorialMap(
     return {{pins_vec[0], pins_vec[1]}, A};
 }
 
+#include "simplicial_complexes.cpp"
+struct Competitor {
+    ImmersedSimplicialComplex X;
+    pair<int,int> pins;
+    vector<pair<int,int>> boundary_edges;
+    // We need to keep track also of the line somehow?
+};
+
+void saveSurfaceEvolverFormat_new(int net_id,
+                                  Competitor competitor,
+                                  string out_file,
+                                  bool print_commands) {
+    pt line = competitor.X.getPoint(competitor.pins.first);
+
+    map<pair<int,int>, int> edge2id;
+    auto get_edge = [&](int a, int b) {
+        assert(a != b);
+        assert(0 <= a and a < competitor.X.V());
+        assert(0 <= b and b < competitor.X.V());
+
+        if (!edge2id.count({a, b})) {
+            int id = 1 + edge2id.size() / 2;
+            edge2id[{a, b}] = id;
+            edge2id[{b, a}] = -id;
+        }
+        return edge2id[{a, b}];
+    };
+
+    auto is_vertex_on_line = [&](int v) {
+        return norm(competitor.X.getPoint(v) ^ line) < 0.001;
+    };
+
+    vector<array<int, 3>> triangles; // TODO: Wrong. Shall be described using edges.
+    for (auto triangle: competitor.X.getFaces(2)) {
+        vector<int> triangle_vec(triangle.begin(), triangle.end());
+        auto A = triangle_vec[0], B = triangle_vec[1], C = triangle_vec[2];
+        triangles.push_back({get_edge(A, B), get_edge(B, C), get_edge(C, A)});
+    }
+    vector<bool> is_vertex_fixed(competitor.X.V(), false);
+    for (auto edge: competitor.boundary_edges) {
+        is_vertex_fixed[edge.first] = true;
+        is_vertex_fixed[edge.second] = true;
+    }
+
+    ofstream out(out_file);
+
+    out << "boundary 1 parameters 1" << endl;
+    out << "x1:  " << line[0] << " * p1" << endl;
+    out << "x2:  " << line[1] << " * p1" << endl;
+    out << "x3:  " << line[2] << " * p1" << endl;
+    out << endl;
+
+    out << "vertices" << endl;
+    for (int i = 0; i < competitor.X.V(); i++) {
+        array<double, 3> P = competitor.X.getPoint(i);
+        bool fixed = is_vertex_fixed[i];
+        bool boundary = is_vertex_on_line(i);
+        boundary &= !fixed;
+        out << i+1;
+        if (boundary) {
+            out << " " << (P * line) << " boundary 1";
+        } else {
+            out << " " << P[0] << " " << P[1] << " " << P[2];
+            if (fixed)
+                out << " fixed";
+        }
+        out << endl;
+    }
+    out << endl;
+
+    auto is_edge_fixed = [&](pair<int,int> edge) {
+        int u = edge.first, v = edge.second;
+        return is_vertex_fixed[u] and is_vertex_fixed[v];
+    };
+
+    auto is_edge_boundary = [&](pair<int,int> edge) {
+        int u = edge.first, v = edge.second;
+        return is_vertex_on_line(u) and is_vertex_on_line(v);
+    };
+
+    out << "edges" << endl;
+    for (auto pp: edge2id) {
+        if (pp.second < 0)
+            continue;
+        out << pp.second << " "
+            << pp.first.first+1 << " " << pp.first.second+1;
+        if (is_edge_fixed(pp.first))
+            out << " fixed";
+        if (is_edge_boundary(pp.first))
+            out << " boundary 1";
+        out << endl;
+    }
+    out << endl;
+
+    out << "faces" << endl;
+    for (int i = 0; i < ssize(triangles); i++) {
+        array<int, 3> T = triangles[i];
+        out << i+1 << " "
+            << T[0] << " " << T[1] << " " << T[2] << endl;
+    }
+    out << endl;
+
+    out << R"(read
+showq;
+print total_area;
+)";
+
+    constexpr string_view format_str = R"(read
+subroutine := {{
+    quiet;
+    g 2000;
+    areaweed 0.0005;
+    u 4;
+    print total_area;
+    quiet off;
+}}
+
+gogo := {{
+    r 2;
+    subroutine 5;
+    o;
+    subroutine 3;
+    o;
+    subroutine 3;
+    r;
+    u 4;
+    subroutine 5;
+    o;
+    subroutine 3;
+    dump "data/surface_evolver/{}_competitor.out";
+}}
+)";
+    if (print_commands)
+        out << format(format_str, net_id);
+
+    out.close();
+}
 
 
 void saveSurfaceEvolverFormat(int net_id,
@@ -495,6 +632,7 @@ struct NetEmbeddedWithPins{
     vector<pair<int,int>> boundary_edges;
 };
 
+
 NetEmbeddedWithPins computeEmbeddingWithPins(int net_id, vector<double> params = {}) {
     assert(possible_nets.count(net_id));
 
@@ -539,13 +677,7 @@ NetEmbeddedWithPins computeEmbeddingWithPins(int net_id, vector<double> params =
     };
 }
 
-#include "simplicial_complexes.cpp"
-struct Competitor {
-    ImmersedSimplicialComplex X;
-    pair<int,int> pins;
-    vector<pair<int,int>> boundary_edges;
-    // We need to keep track also of the line somehow?
-};
+
 
 Competitor generateCone(const NetEmbeddedWithPins& link) {
     auto embedding = link.embedding;
@@ -655,10 +787,10 @@ Competitor generatePoppedCone(const NetEmbeddedWithPins& link,
 
 void processNet(int net_id, vector<double> params={}) {
     NetEmbeddedWithPins link = computeEmbeddingWithPins(net_id, params);
-    auto embedding = link.embedding;
-    const auto& A = link.A;
-    const auto& faces = A.faces();
-    const auto& pins = link.pins;
+    // auto embedding = link.embedding;
+    // const auto& A = link.A;
+    // const auto& faces = A.faces();
+    // const auto& pins = link.pins;
 
     // TODO: Remove this part.
     // assert(ssize(pins_id) == 2);
@@ -682,97 +814,89 @@ void processNet(int net_id, vector<double> params={}) {
     // cout << endl;
 
     // We build the cone *outside* of the ball of radius 1/3.
-    int n = ssize(embedding);
-    for (int i = 0; i < n; i++) {
-        pt P = embedding[i];
-        embedding.push_back({P[0]/3, P[1]/3, P[2]/3});
-    }
-    int origin = 2*n;
-    embedding.push_back({0, 0, 0});
+    // int n = ssize(embedding);
+    // for (int i = 0; i < n; i++) {
+    //     pt P = embedding[i];
+    //     embedding.push_back({P[0]/3, P[1]/3, P[2]/3});
+    // }
+    // int origin = 2*n;
+    // embedding.push_back({0, 0, 0});
 
-    vector<vector<int>> faces_before_pop;
-    for (Dart d: A.darts()) {
-        assert(d.from != d.to);
-        if (d.from > d.to)
-            continue;
-        faces_before_pop.push_back({d.from, d.to, origin});
-    }
+    // vector<vector<int>> faces_before_pop;
+    // for (Dart d: A.darts()) {
+    //     assert(d.from != d.to);
+    //     if (d.from > d.to)
+    //         continue;
+    //     faces_before_pop.push_back({d.from, d.to, origin});
+    // }
 
-    vector<vector<int>> faces_after_pop;
-    for (Dart d: A.darts()) {
-        assert(d.from != d.to);
-        if (d.from > d.to)
-            continue;
-        faces_after_pop.push_back({d.from, d.to, d.to+n, d.from+n});
-    }
+    // vector<vector<int>> faces_after_pop;
+    // for (Dart d: A.darts()) {
+    //     assert(d.from != d.to);
+    //     if (d.from > d.to)
+    //         continue;
+    //     faces_after_pop.push_back({d.from, d.to, d.to+n, d.from+n});
+    // }
 
     if (!pop_description.contains(net_id)) {
-        // We print some info which is useful for humans to come up with
-        // a reasonable pop.
-        cout << "Faces: " << endl;
-        for (int i = 0; i < ssize(faces); i++) {
-            cout << "Face " << i << ": ";
-            for (Dart d: faces[i])
-                cout << d.from << ", ";
-            cout << endl;
-        }
-        cout << "Pin ids (in order): " << pins.first << ", " << pins.second << endl;
-
-        cout << "The description of the pop for this net (" << net_id << ") "
-             << "is missing." << endl;
+        printInfoForHumanPopping(link);
         return;
     }
 
     // We build the pop (inside the ball of radius 1/3)
-    assert(pop_description.contains(net_id));
-    const vector<int>& excluded_faces = pop_description.at(net_id).first;
-    vector<int> path_to_add = pop_description.at(net_id).second;
-    for (int& x: path_to_add) {
-        if (x == PIN_ZERO)
-            x = pins.first;
-        if (x == PIN_ONE)
-            x = pins.second;
-    }
+    // assert(pop_description.contains(net_id));
+    // const vector<int>& excluded_faces = pop_description.at(net_id).first;
+    // vector<int> path_to_add = pop_description.at(net_id).second;
+    // for (int& x: path_to_add) {
+    //     if (x == PIN_ZERO)
+    //         x = pins.first;
+    //     if (x == PIN_ONE)
+    //         x = pins.second;
+    // }
 
-    for (int i = 0; i < ssize(faces); i++) {
-        bool is_excluded = false;
-        for (int excl: excluded_faces)
-            is_excluded |= i == excl;
-        if (is_excluded)
-            continue;
-        vector<int> half_face;
-        for (Dart d: faces[i])
-            half_face.push_back(d.from + n);
-        faces_after_pop.push_back(half_face);
-    }
+    // for (int i = 0; i < ssize(faces); i++) {
+    //     bool is_excluded = false;
+    //     for (int excl: excluded_faces)
+    //         is_excluded |= i == excl;
+    //     if (is_excluded)
+    //         continue;
+    //     vector<int> half_face;
+    //     for (Dart d: faces[i])
+    //         half_face.push_back(d.from + n);
+    //     faces_after_pop.push_back(half_face);
+    // }
 
-    for (int i = 0; i < ssize(path_to_add)-1; i++) {
-        int u = path_to_add[i], v = path_to_add[i+1];
-        // cout << u << " " << v << endl;
-        // cout << pins.first << " " << pins.second << endl;
-        // for (Dart d: A.darts())
-        //     cout << d << " ";
-        // cout << endl;
-        bool existing_dart = false;
-        for (Dart d: A.darts())
-            existing_dart |= d.from == u and d.to == v;
-        assert(existing_dart);
-        faces_after_pop.push_back(
-            {u+n, v+n, origin});
-    }
+    // for (int i = 0; i < ssize(path_to_add)-1; i++) {
+    //     int u = path_to_add[i], v = path_to_add[i+1];
+    //     // cout << u << " " << v << endl;
+    //     // cout << pins.first << " " << pins.second << endl;
+    //     // for (Dart d: A.darts())
+    //     //     cout << d << " ";
+    //     // cout << endl;
+    //     bool existing_dart = false;
+    //     for (Dart d: A.darts())
+    //         existing_dart |= d.from == u and d.to == v;
+    //     assert(existing_dart);
+    //     faces_after_pop.push_back(
+    //         {u+n, v+n, origin});
+    // }
 
-    // We print the surfaces we have built.
-    vector<bool> is_vertex_fixed(2*n+1, false);
-    for (int i = 0; i < n; i++)
-        is_vertex_fixed[i] = true;
+    // // We print the surfaces we have built.
+    // vector<bool> is_vertex_fixed(2*n+1, false);
+    // for (int i = 0; i < n; i++)
+    //     is_vertex_fixed[i] = true;
+
+    Competitor cone = generateCone(link);
+    Competitor popped_cone = generatePoppedCone(link,
+        pop_description.at(net_id).first,
+        pop_description.at(net_id).second);
 
     string filename_prefix = "data/surface_evolver/" + to_string(net_id);
-    saveSurfaceEvolverFormat(net_id, embedding, pins.first, is_vertex_fixed,
-                             faces_before_pop,
-                             filename_prefix + "_before_pop.fe", false);
-    saveSurfaceEvolverFormat(net_id, embedding, pins.first, is_vertex_fixed,
-                             faces_after_pop,
-                             filename_prefix + "_after_pop.fe", true);
+
+    saveSurfaceEvolverFormat_new(
+        net_id, cone, filename_prefix + "_before_pop.fe", false);
+    saveSurfaceEvolverFormat_new(
+        net_id, popped_cone, filename_prefix + "_after_pop.fe", true);
 }
 
 int main() {

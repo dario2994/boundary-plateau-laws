@@ -196,6 +196,16 @@ struct ImmersedSimplicialComplex {
   public:
     int V() const { return ssize(points); }
 
+    const array<double, 3>& getPoint(int id) const { return points[id]; }
+    vector<set<int>> getFaces(int dim = -1) const {
+        vector<set<int>> res;
+        for (const set<int>& face: faces) {
+            if (dim != -1 and ssize(face) == dim+1)
+                res.push_back(face);
+        }
+        return res;
+    }
+
     ImmersedSimplicialComplex(int _V, vector<set<int>> faces): points(_V), faces(faces) {
         for (const auto& face: faces)
             for (int v: face)

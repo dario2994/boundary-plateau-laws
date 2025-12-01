@@ -493,26 +493,26 @@ void testIsCollapsible() {
 }
 
 
-bool isCompetitorValid(ImmersedSimplicialComplex& X,
-                       const vector<pair<int,int>>& boundary_edges,
-                       const pair<int,int>& pins,
-                       const vector<array<double, 3>>& points) {
-    auto pin1 = points[pins.first];
-    auto pin2 = points[pins.second];
-    auto maybe_line = X.containsSegment(pin1, pin2);
-    if (!maybe_line)
-        return false;
-    auto line = *maybe_line;
+// bool isCompetitorValid(ImmersedSimplicialComplex& X,
+//                        const vector<pair<int,int>>& boundary_edges,
+//                        const pair<int,int>& pins,
+//                        const vector<array<double, 3>>& points) {
+//     auto pin1 = points[pins.first];
+//     auto pin2 = points[pins.second];
+//     auto maybe_line = X.containsSegment(pin1, pin2);
+//     if (!maybe_line)
+//         return false;
+//     auto line = *maybe_line;
 
-    if (!X.isCollapsible(line))
-        return false;
+//     if (!X.isCollapsible(line))
+//         return false;
 
-    for (auto [u, v]: boundary_edges) {
-        if (!X.containsSegment(points[u], points[v]))
-            return false;
-    }
-    return true;
-}
+//     for (auto [u, v]: boundary_edges) {
+//         if (!X.containsSegment(points[u], points[v]))
+//             return false;
+//     }
+//     return true;
+// }
 
 
 #endif

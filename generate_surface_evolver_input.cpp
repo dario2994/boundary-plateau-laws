@@ -203,7 +203,7 @@ void saveSurfaceEvolverFormat(int net_id,
         return norm(competitor.X.getPoint(v) ^ line) < 0.001;
     };
 
-    vector<array<int, 3>> triangles; // TODO: Wrong. Shall be described using edges.
+    vector<array<int, 3>> triangles;
     for (auto triangle: competitor.X.getFaces(2)) {
         vector<int> triangle_vec(triangle.begin(), triangle.end());
         auto A = triangle_vec[0], B = triangle_vec[1], C = triangle_vec[2];
@@ -312,7 +312,7 @@ gogo := {{
 
 
 
-pair<vector<pt>, pair<pt,pt>> embed3048(double q) {
+pair<vector<pt>, pair<pt,pt>> embed1029(double q) {
     auto rotate = [&](pt U) {
         return pt{U[0]*cos(q)-U[1]*sin(q), U[1]*cos(q)+U[0]*sin(q), U[2]};
     };
@@ -453,7 +453,7 @@ const map<int, pair<vector<int>, vector<int>>> pop_description = {
     }},
 };
 
-struct NetEmbeddedWithPins{
+struct NetEmbeddedWithPins {
     CombinatorialMap A;
     vector<pt> embedding;
     pair<int,int> pins;
@@ -474,7 +474,7 @@ NetEmbeddedWithPins computeEmbeddingWithPins(int net_id, vector<double> params =
 
     if (net_id == 1029) {
         assert(ssize(params) == 1);
-        tie(embedding, pins_coord) = embed3048(params[0]);
+        tie(embedding, pins_coord) = embed1029(params[0]);
     } else if (pins_are_flexible.count(net_id)) {
         assert(ssize(params) == 1);
         embedding = getVertexEmbedding(net);
@@ -627,6 +627,6 @@ void processNet(int net_id, vector<double> params={}) {
         net_id, popped_cone, filename_prefix + "_after_pop.fe", true);
 }
 
-int main() {
-    processNet(182);
-}
+// int main() {
+//     processNet(182);
+// }

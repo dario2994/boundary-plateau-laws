@@ -60,7 +60,9 @@ def parse_evolver_dmp(input_filepath, output_filepath):
                 vertices.append(coords)
             # Normal vertex
             else:
-                assert(len(parts) == 4)
+                # if len(parts) != 4:
+                #     print(stripped, parts, 'original' in stripped)
+                assert(len(parts) == 4 or (len(parts) == 5 and 'original' in stripped))
                 v_id = int(parts[0])
                 coords = [float(p) for p in parts[1:4]]
                 vertex_map[v_id] = len(vertices)
@@ -106,11 +108,10 @@ def parse_evolver_dmp(input_filepath, output_filepath):
 
 
 if __name__ == '__main__':
-    # --- New code for command-line arguments ---
     import sys
 
     if len(sys.argv) != 3:
-        print("Usage: python parser.py <input_filename> <output_filename>")
+        print("Usage: python prettify_surface_evolver_dump.py <input_filename> <output_filename>")
     else:
         input_filename = sys.argv[1]
         output_filename = sys.argv[2]

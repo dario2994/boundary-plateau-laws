@@ -16,6 +16,15 @@ ostream& operator<<(ostream& out, pt p) {
     return out;
 }
 
+string generateEmbeddingFilename(int net_id, vector<double> params) {
+    std::ostringstream oss;
+    oss << net_id;
+    oss << fixed << setprecision(5);
+    for (double param: params)
+        oss << "_" << param;
+    return oss.str();
+}
+
 vector<pt> getVertexEmbedding(const MetrizedNet& net) {
     const DerivedOnceNet& A = net.A;
     const Dart root = A.dart(0);
@@ -172,24 +181,24 @@ pair<pair<int,int>, CombinatorialMap> addPinsToCombinatorialMap(
     return {{pins_vec[0], pins_vec[1]}, A};
 }
 
-struct Competitor {
+struct SurfaceEvolverData {
     ImmersedSimplicialComplex X;
     pair<int,int> pins;
     vector<pair<int,int>> boundary_edges;
-    // We need to keep track also of the line somehow?
 };
 
-void saveSurfaceEvolverFormat(int net_id,
-                                  Competitor competitor,
+void saveSurfaceEvolverFormat(string embedding_name,
+                                  const SurfaceEvolverData& data,
                                   string out_file,
                                   bool print_commands) {
-    pt line = competitor.X.getPoint(competitor.pins.first);
+    const auto& X = data.X;
+    pt line = X.getPoint(data.pins.first);
 
     map<pair<int,int>, int> edge2id;
     auto get_edge = [&](int a, int b) {
         assert(a != b);
-        assert(0 <= a and a < competitor.X.V());
-        assert(0 <= b and b < competitor.X.V());
+        assert(0 <= a and a < X.V());
+        assert(0 <= b and b < X.V());
 
         if (!edge2id.count({a, b})) {
             int id = 1 + edge2id.size() / 2;
@@ -200,17 +209,17 @@ void saveSurfaceEvolverFormat(int net_id,
     };
 
     auto is_vertex_on_line = [&](int v) {
-        return norm(competitor.X.getPoint(v) ^ line) < 0.001;
+        return norm(X.getPoint(v) ^ line) < 0.001;
     };
 
     vector<array<int, 3>> triangles;
-    for (auto triangle: competitor.X.getFaces(2)) {
+    for (auto triangle: X.getFaces(2)) {
         vector<int> triangle_vec(triangle.begin(), triangle.end());
         auto A = triangle_vec[0], B = triangle_vec[1], C = triangle_vec[2];
         triangles.push_back({get_edge(A, B), get_edge(B, C), get_edge(C, A)});
     }
-    vector<bool> is_vertex_fixed(competitor.X.V(), false);
-    for (auto edge: competitor.boundary_edges) {
+    vector<bool> is_vertex_fixed(X.V(), false);
+    for (auto edge: data.boundary_edges) {
         is_vertex_fixed[edge.first] = true;
         is_vertex_fixed[edge.second] = true;
     }
@@ -224,8 +233,8 @@ void saveSurfaceEvolverFormat(int net_id,
     out << endl;
 
     out << "vertices" << endl;
-    for (int i = 0; i < competitor.X.V(); i++) {
-        pt P = competitor.X.getPoint(i);
+    for (int i = 0; i < X.V(); i++) {
+        pt P = X.getPoint(i);
         bool fixed = is_vertex_fixed[i];
         bool boundary = is_vertex_on_line(i);
         boundary &= !fixed;
@@ -304,7 +313,7 @@ gogo := {{
 }}
 )";
     if (print_commands)
-        out << format(format_str, net_id);
+        out << format(format_str, embedding_name);
 
     out.close();
 }
@@ -457,11 +466,10 @@ struct NetEmbeddedWithPins {
     CombinatorialMap A;
     vector<pt> embedding;
     pair<int,int> pins;
-    vector<pair<int,int>> boundary_edges;
 };
 
 
-NetEmbeddedWithPins computeEmbeddingWithPins(int net_id, vector<double> params = {}) {
+NetEmbeddedWithPins embedNetWithPins(int net_id, vector<double> params = {}) {
     assert(possible_nets.count(net_id));
 
     ifstream metrized_net_in("data/metrized_nets/"+ to_string(net_id) + ".txt");
@@ -486,25 +494,17 @@ NetEmbeddedWithPins computeEmbeddingWithPins(int net_id, vector<double> params =
     }
 
     auto [pins, A] = addPinsToCombinatorialMap(net, embedding, pins_coord);
-    auto faces = A.faces();
-    vector<pair<int,int>> boundary_edges;
-    for (auto d: A.darts()) {
-        if (d.from > d.to)
-            continue;
-        boundary_edges.push_back({d.from, d.to});
-    }
 
     return {
         .A = A,
         .embedding = embedding,
         .pins = pins,
-        .boundary_edges = boundary_edges
     };
 }
 
 
 
-Competitor generateCone(const NetEmbeddedWithPins& link) {
+SurfaceEvolverData generateCone(const NetEmbeddedWithPins& link) {
     auto embedding = link.embedding;
     int n = ssize(embedding);
     int origin = n;
@@ -539,7 +539,7 @@ void printInfoForHumanPopping(const NetEmbeddedWithPins& link) {
                                    << link.pins.second << endl;
 }
 
-Competitor generatePoppedCone(const NetEmbeddedWithPins& link,
+SurfaceEvolverData generatePoppedCone(const NetEmbeddedWithPins& link,
                               const vector<int>& excluded_faces,
                               vector<int> path_to_add) {
     auto embedding = link.embedding;
@@ -606,26 +606,27 @@ Competitor generatePoppedCone(const NetEmbeddedWithPins& link,
             .boundary_edges = boundary_edges};
 }
 
-void processNet(int net_id, vector<double> params={}) {
-    NetEmbeddedWithPins link = computeEmbeddingWithPins(net_id, params);
 
-    if (!pop_description.contains(net_id)) {
-        printInfoForHumanPopping(link);
-        return;
-    }
+// void processNet(int net_id, vector<double> params={}) {
+//     NetEmbeddedWithPins link = embedNetWithPins(net_id, params);
 
-    Competitor cone = generateCone(link);
-    Competitor popped_cone = generatePoppedCone(link,
-        pop_description.at(net_id).first,
-        pop_description.at(net_id).second);
+//     if (!pop_description.contains(net_id)) {
+//         printInfoForHumanPopping(link);
+//         return;
+//     }
 
-    string filename_prefix = "data/surface_evolver/" + to_string(net_id);
+//     SurfaceEvolverData cone = generateCone(link);
+//     SurfaceEvolverData popped_cone = generatePoppedCone(link,
+//         pop_description.at(net_id).first,
+//         pop_description.at(net_id).second);
 
-    saveSurfaceEvolverFormat(
-        net_id, cone, filename_prefix + "_before_pop.fe", false);
-    saveSurfaceEvolverFormat(
-        net_id, popped_cone, filename_prefix + "_after_pop.fe", true);
-}
+//     string filename_prefix = "data/surface_evolver/" + to_string(net_id);
+
+//     saveSurfaceEvolverFormat(
+//         net_id, cone, filename_prefix + "_before_pop.fe", false);
+//     saveSurfaceEvolverFormat(
+//         net_id, popped_cone, filename_prefix + "_after_pop.fe", true);
+// }
 
 // int main() {
 //     processNet(182);

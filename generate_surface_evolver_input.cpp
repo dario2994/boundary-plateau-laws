@@ -1,12 +1,12 @@
+#ifndef GENERATE_SURFACE_EVOLVER_INPUT
+#define GENERATE_SURFACE_EVOLVER_INPUT
+
+
 #define _USE_MATH_DEFINES
 #include <bits/stdc++.h>
 using namespace std;
 
-#include "interval_arithmetic.cpp"
-#include "quaternions.cpp"
-#include "derived_once_nets.cpp"
 #include "metrized_nets.cpp"
-#include "interval_geometry.cpp"
 #include "simplicial_complexes.cpp"
 
 typedef array<double, 3> pt;
@@ -283,7 +283,6 @@ void saveSurfaceEvolverFormat(string embedding_name,
     out << endl;
 
     out << R"(read
-showq;
 print total_area;
 )";
 
@@ -298,6 +297,7 @@ subroutine := {{
 }}
 
 gogo := {{
+    showq;
     r 2;
     subroutine 5;
     o;
@@ -310,7 +310,12 @@ gogo := {{
     o;
     subroutine 3;
     dump "data/surface_evolver/{}_competitor.out";
+    close_show; /* This raises an error if the window is not visible. */
 }}
+
+gogo;
+
+quit;
 )";
     if (print_commands)
         out << format(format_str, embedding_name);
@@ -469,7 +474,7 @@ struct NetEmbeddedWithPins {
 };
 
 
-NetEmbeddedWithPins embedNetWithPins(int net_id, vector<double> params = {}) {
+NetEmbeddedWithPins embedNetWithPins(int net_id, vector<double> params) {
     assert(possible_nets.count(net_id));
 
     ifstream metrized_net_in("data/metrized_nets/"+ to_string(net_id) + ".txt");
@@ -540,8 +545,8 @@ void printInfoForHumanPopping(const NetEmbeddedWithPins& link) {
 }
 
 SurfaceEvolverData generatePoppedCone(const NetEmbeddedWithPins& link,
-                              const vector<int>& excluded_faces,
-                              vector<int> path_to_add) {
+                                      const vector<int>& excluded_faces,
+                                      vector<int> path_to_add) {
     auto embedding = link.embedding;
     auto faces = link.A.faces();
     int n = ssize(embedding);
@@ -606,28 +611,4 @@ SurfaceEvolverData generatePoppedCone(const NetEmbeddedWithPins& link,
             .boundary_edges = boundary_edges};
 }
 
-
-// void processNet(int net_id, vector<double> params={}) {
-//     NetEmbeddedWithPins link = embedNetWithPins(net_id, params);
-
-//     if (!pop_description.contains(net_id)) {
-//         printInfoForHumanPopping(link);
-//         return;
-//     }
-
-//     SurfaceEvolverData cone = generateCone(link);
-//     SurfaceEvolverData popped_cone = generatePoppedCone(link,
-//         pop_description.at(net_id).first,
-//         pop_description.at(net_id).second);
-
-//     string filename_prefix = "data/surface_evolver/" + to_string(net_id);
-
-//     saveSurfaceEvolverFormat(
-//         net_id, cone, filename_prefix + "_before_pop.fe", false);
-//     saveSurfaceEvolverFormat(
-//         net_id, popped_cone, filename_prefix + "_after_pop.fe", true);
-// }
-
-// int main() {
-//     processNet(182);
-// }
+#endif

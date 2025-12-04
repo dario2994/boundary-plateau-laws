@@ -48,6 +48,10 @@ bool containsXServerError(const string& log_file) {
 }
 
 void processNet(int net_id, bool run_surface_evolver, vector<double> params) {
+    cout << "Processing net " << net_id << endl;
+    if (!params.empty()) {
+        assert(0); // TODO
+    }
     NetEmbeddedWithPins link = embedNetWithPins(net_id, params);
 
     if (!pop_description.contains(net_id)) {
@@ -112,5 +116,15 @@ int main() {
     // testIsCollapsible();
     // return 0;
 
-    processNet(182, true, {});
+    for (int net_id: possible_nets) {
+        if (pins_are_flexible.count(net_id))
+            continue;
+        // BROKEN
+        if (set<int>{158, 250, 325}.count(net_id))
+            continue;
+        // WORKING
+        if (set<int>{182, 319}.count(net_id))
+            continue;
+        processNet(net_id, true, {});
+    }
 }

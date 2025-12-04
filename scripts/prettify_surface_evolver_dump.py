@@ -50,11 +50,12 @@ def parse_evolver_dmp(input_filepath, output_filepath):
 
         # Regex to find numbers, including scientific notation
         parts = re.findall(r'-?[\d\.]+(?:e-?\d+)?', stripped)
+        is_original = int('original' in stripped)
         if current_section == "vertices":
             # Boundary vertex
             if 'boundary' in stripped and '/*' in stripped:
                 v_id = int(parts[0])
-                assert(len(parts) == 6)
+                assert(len(parts) == 6 + is_original)
                 coords = [float(p) for p in parts[3:6]]
                 vertex_map[v_id] = len(vertices)
                 vertices.append(coords)
@@ -62,7 +63,7 @@ def parse_evolver_dmp(input_filepath, output_filepath):
             else:
                 # if len(parts) != 4:
                 #     print(stripped, parts, 'original' in stripped)
-                assert(len(parts) == 4 or (len(parts) == 5 and 'original' in stripped))
+                assert(len(parts) == 4 + is_original)
                 v_id = int(parts[0])
                 coords = [float(p) for p in parts[1:4]]
                 vertex_map[v_id] = len(vertices)

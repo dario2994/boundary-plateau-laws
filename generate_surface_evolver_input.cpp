@@ -9,12 +9,6 @@ using namespace std;
 #include "metrized_nets.cpp"
 #include "simplicial_complexes.cpp"
 
-typedef array<double, 3> pt;
-
-ostream& operator<<(ostream& out, pt p) {
-    out << p[0] << " " << p[1] << " " << p[2];
-    return out;
-}
 
 string generateEmbeddingFilename(int net_id, vector<double> params) {
     std::ostringstream oss;

@@ -173,8 +173,11 @@ void testTriangleDistanceFromLine() {
 struct ImmersedSimplicialComplex {
   private:
     // The vertices are indexed 0, 1, ..., V-1.
-    vector<array<double, 3>> points;
-    vector<set<int>> faces; // All faces, not only maximal ones.
+    vector<pt> points;
+    // All faces, not only maximal ones.
+    // Any constructor will make sure that faces are distinct and form a family
+    // closed with respect to subset.
+    vector<set<int>> faces;
 
     void generateSubsetClosure() {
         set<set<int>> new_faces;
@@ -197,10 +200,10 @@ struct ImmersedSimplicialComplex {
     int V() const { return ssize(points); }
 
     const array<double, 3>& getPoint(int id) const { return points[id]; }
-    vector<set<int>> getFaces(int dim = -1) const {
+    vector<set<int>> getFaces(int dim = -1234) const {
         vector<set<int>> res;
         for (const set<int>& face: faces) {
-            if (dim != -1 and ssize(face) == dim+1)
+            if (dim == -1234 or  ssize(face) == dim+1)
                 res.push_back(face);
         }
         return res;
@@ -322,8 +325,10 @@ struct ImmersedSimplicialComplex {
                 continue;
             // We expect a quantitative gap between points on the line and points
             // out of the line.
-            if (dist > eps)
+            if (dist > eps) {
+                cerr << "The relationship between the point " << i << " (that is " << points[i] << ") and the line " << A << ", " << B << " is ambiguous." << endl;
                 return nullopt;
+            }
             points_on_line.push_back(i);
             on_the_line[i] = true;
             // We move the points so that they are "perfectly" on the line.
@@ -352,42 +357,77 @@ struct ImmersedSimplicialComplex {
             return position_on_line(i) < position_on_line(j);
         });
 
-        if (ssize(points_on_line) < 2)
+        if (ssize(points_on_line) < 2) {
+            cerr << "There are less than 2 points on the line." << endl;
             return nullopt;
-        for (int i = 0; i < ssize(points_on_line)-1; i++)
-            if (!edges.count({points_on_line[i], points_on_line[i+1]}))
+        }
+
+        for (int i = 0; i < ssize(points_on_line)-1; i++) {
+            int p = points_on_line[i];
+            int q = points_on_line[i+1];
+            if (!edges.count({p, q})) {
+                cerr << "points[" << p << "] = " << points[p] << ", "
+                     << "points[" << q << "] = " << points[q]
+                     << " are consecutive on the line segment connecting the pins "
+                     << "but are not connected by a segment." << endl;
                 return nullopt;
+            }
+        }
 
         // The first vertex is mapped onto A.
-        if (norm(points[points_on_line[0]]-A) > eps)
+        if (norm(points[points_on_line[0]]-A) > eps) {
+            cerr << "The intersection between the complex and the line does not start at point"
+                 << " A = " << A << "." << endl;
             return nullopt;
+        }
 
         // The last vertex is mapped onto B.
-        if (norm(points[points_on_line.back()]-B) > eps)
+        if (norm(points[points_on_line.back()]-B) > eps) {
+            cerr << "The intersection between the complex and the line does not end at point"
+                 << " B = " << B << "." << endl;
             return nullopt;
+        }
 
         // We check that A and B are univocally matched with vertices for the
         // simplicial complex.
         for (int i = 0; i < ssize(points_on_line); i++) {
             array<double, 3> P = points[points_on_line[i]];
-            if (i != 0 and norm(P-A) < 100*eps)
+            if (i != 0 and norm(P-A) < 100*eps) {
+                cerr << "There are multiple vertices of the complex which "
+                     << "may coincide with A = " << A << "." << endl;
                 return nullopt;
-            if (i != ssize(points_on_line)-1 and norm(P-B) < 100*eps)
+            }
+            if (i != ssize(points_on_line)-1 and norm(P-B) < 100*eps) {
+                cerr << "There are multiple vertices of the complex which "
+                     << "may coincide with B = " << B << "." << endl;
                 return nullopt;
+            }
         }
 
         // cout << "#Points on segments = " << ssize(points_on_line) << endl;
+        // for (auto x: points_on_line)
+        //     cout << x << " " << getPoint(x) << endl;
 
         // Any face that has only vertices in the sequence is either a
         // singleton or an edge of the path.
+        bool works = true;
         for (int i = 0; i < ssize(points_on_line); i++) {
             for (int j = i+2; j < ssize(points_on_line); j++) {
                 int u = points_on_line[i];
                 int v = points_on_line[j];
-                if (edges.count({u, v}))
-                    return nullopt;
+                if (edges.count({u, v})) {
+                    cerr << "points[" << u << "] = " << points[u] << ", "
+                         << "points[" << v << "] = " << points[v]
+                         << " are not consecutive on the segment connecting the pins "
+                         << "but they are connected by a segment. "
+                         << "Their positions on the segment connecting the pins are: "
+                         << i << " " << j << "." << endl;
+                    works = false;
+                }
             }
         }
+        if (!works)
+            return nullopt;
 
         // All faces (edges and triangles) that don't have any vertex in the
         // sequence do not intersect the line.
@@ -404,18 +444,29 @@ struct ImmersedSimplicialComplex {
 
             assert(ssize(face) <= 3);
             if (ssize(face) == 2) {
-                array<double, 3> C = points[*face.begin()];
-                array<double, 3> D = points[*face.rbegin()];
-                if (distanceFromLine(A, B, C, D) < 100*eps)
+                int c = *face.begin(), d = *face.rbegin();
+                array<double, 3> C = points[c];
+                array<double, 3> D = points[d];
+                if (distanceFromLine(A, B, C, D) < 100*eps) {
+                    cerr << "points[" << c << "] = " << C << ", "
+                         << "points[" << d << "] = " << D
+                         << " are not on the line, but they form a segment "
+                         << "that intersects the line." << endl;
                     return nullopt;
+                }
             }
             if (ssize(face) == 3) {
                 vector<int> ids(face.begin(), face.end());
                 if (distanceFromLine(A, B,
-                                     points[ids[0]], points[ids[1]], points[ids[2]]) < 100*eps)
+                                     points[ids[0]], points[ids[1]], points[ids[2]]) < 100*eps) {
+                    cerr << "points[" << ids[0] << "] = " << points[ids[0]] << ", "
+                         << "points[" << ids[1] << "] = " << points[ids[1]] << ", "
+                         << "points[" << ids[2] << "] = " << points[ids[2]] << ", "
+                         << " are not on the line, but they form a triangle "
+                         << "that intersects the line." << endl;
                     return nullopt;
+                }
             }
-
         }
 
         vector<set<int>> segment_edges;
@@ -425,7 +476,137 @@ struct ImmersedSimplicialComplex {
 
         return ImmersedSimplicialComplex(points, segment_edges);
     }
+
+    bool isSegmentCollapsed(int p, int q, const double eps=1e-5) const {
+        if (p == q)
+            return false;
+        pt P = points[p], Q = points[q];
+        return norm(P - Q) < eps;
+    }
+
+    bool isTriangleCollapsed(int p, int q, int r, const double eps=1e-5) const {
+        if (p == q or q == r or r == p)
+            return false;
+        pt P = points[p], Q = points[q], R = points[r];
+        pt dir = R-P;
+
+        return norm(dir ^ (Q - P)) < eps * norm(dir);
+    }
 };
+
+// Check that pq is a segment and p, q are mapped to the same point.
+// The point q is removed.
+// Any face containing p and q is erased.
+// Any face containing only q is replaced with a face containing only p.
+ImmersedSimplicialComplex removeCollapsedSegment(
+            const ImmersedSimplicialComplex& X,
+            int p, int q, const double eps=1e-5) {
+    assert(X.isSegmentCollapsed(p, q, eps));
+
+    vector<pt> new_points;
+    for (int i = 0; i < X.V(); i++)
+        if (i != q)
+            new_points.push_back(X.getPoint(i));
+
+    vector<set<int>> faces = X.getFaces();
+    vector<set<int>> new_faces;
+    auto relabel = [&](int v) { return v - (v > q); };
+    for (set<int> face: faces) {
+        if (face.count(p) and face.count(q))
+            continue;
+        if (face.count(q)) {
+            face.erase(q);
+            face.insert(p);
+        }
+        set<int> new_face;
+        for (int v: face)
+            new_face.insert(relabel(v));
+        new_faces.push_back(new_face);
+    }
+
+    return ImmersedSimplicialComplex(new_points, new_faces);
+}
+
+// Check that pqr is a triangle and p, q, r are mapped on
+// a line in this order (up to shuffling p, q, r).
+// The triangle pqr is removed as well as the segment pr.
+// All triangles prx (apart from prq) are transformed in two triangles:
+// pqx and qrx.
+ImmersedSimplicialComplex removeCollapsedTriangle(
+        const ImmersedSimplicialComplex& X,
+        int p, int q, int r, const double eps=1e-5) {
+    assert(X.isTriangleCollapsed(p, q, r, eps));
+
+    pt P = X.getPoint(p), Q = X.getPoint(q), R = X.getPoint(r);
+
+    // We want P, Q, R ordered in this way in R^3.
+    if ((Q - P) * (R - P) < 0) swap(p, q), swap(P, Q);
+    if ((P - R) * (Q - R) < 0) swap(r, q), swap(R, Q);
+
+    vector<pt> new_points;
+    for (int i = 0; i < X.V(); i++)
+        new_points.push_back(X.getPoint(i));
+
+    vector<set<int>> faces = X.getFaces();
+    vector<set<int>> new_faces;
+
+    for (set<int> face: faces) {
+        if (!face.count(p) or !face.count(r))
+            new_faces.push_back(face);
+        else if (face.size() == 3 and !face.count(q)) { // prx
+            int x = accumulate(face.begin(), face.end(), 0) - (p + r);
+            new_faces.push_back({p, q, x});
+            new_faces.push_back({q, r, x});
+        }
+    }
+
+    return ImmersedSimplicialComplex(new_points, new_faces);
+}
+
+// It executes removeCollapsedSegment on any collapsed segment.
+// The implementation is naive and slow but in practice it should not be a
+// big deal as we expect very few instances of collapsed segments.
+ImmersedSimplicialComplex removeAllCollapsedSegments(
+        const ImmersedSimplicialComplex& X,
+        const double eps=1e-5) {
+    vector<set<int>> segments = X.getFaces(1);
+    for (set<int> segment: segments) {
+        auto it = segment.begin();
+        int p = *(it++), q = *(it++);
+        if (X.isSegmentCollapsed(p, q, eps)) {
+            pt P = X.getPoint(p), Q = X.getPoint(q);
+            cout << "Removed the collapsed segment: "
+                 << "points[" << p << "] = " << P << ", "
+                 << "points[" << q << "] = " << Q << ". "<< endl;
+            return removeAllCollapsedSegments(removeCollapsedSegment(X, p, q, eps), eps);
+        }
+    }
+    return X;
+}
+
+// See the header of removeAllCollapsedSegments.
+//
+// Observe that this function cannot enter an infinite loop as (assuming that
+// no two points coincide) sorted list of "lengths" of collapsed triangles
+// decreases lexicographically after every recursive call.
+ImmersedSimplicialComplex removeAllCollapsedTriangles(
+        const ImmersedSimplicialComplex& X,
+        const double eps=1e-5) {
+    vector<set<int>> triangles = X.getFaces(2);
+    for (set<int> triangle: triangles) {
+        auto it = triangle.begin();
+        int p = *(it++), q = *(it++), r = *(it++);
+        if (X.isTriangleCollapsed(p, q, r, eps)) {
+            pt P = X.getPoint(p), Q = X.getPoint(q), R = X.getPoint(r);
+            cout << "Removed the collapsed triangle: "
+                 << "points[" << p << "] = " << P << ", "
+                 << "points[" << q << "] = " << Q << ", "
+                 << "points[" << r << "] = " << R << ". "<< endl;
+            return removeAllCollapsedTriangles(removeCollapsedTriangle(X, p, q, r, eps), eps);
+        }
+    }
+    return X;
+}
 
 
 ImmersedSimplicialComplex parseImmersedSimplicialComplex(istream& in) {

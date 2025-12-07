@@ -9,6 +9,14 @@ using namespace std;
 #include "quaternions.cpp"
 
 // TODO: Define Point and ApproximatePoint?
+//       Now we are just defining pt but never really using it.
+
+typedef array<double, 3> pt;
+
+ostream& operator<<(ostream& out, pt p) {
+    out << p[0] << " " << p[1] << " " << p[2];
+    return out;
+}
 
 
 // A quaternion with q with unit norm induces an isometry on R^3 via

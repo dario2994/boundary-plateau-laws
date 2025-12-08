@@ -7,12 +7,6 @@ using namespace std;
 #include "metrized_nets.cpp"
 #include "metrization_constraints.cpp"
 
-typedef array<double, 3> pt;
-ostream& operator<<(ostream& out, pt p) {
-    out << p[0] << " " << p[1] << " " << p[2];
-    return out;
-}
-
 void savePicture(vector<pair<pt, string>> vertices,
                  vector<tuple<pt, pt, double>> edges, string out_file) {
     ofstream out(out_file);
@@ -184,7 +178,7 @@ struct SAMParams {
     long long begin_time;
     bool run_pathological_checks;
     optional<MetrizedNet> forbidden_metrization;
-    bool special_rigidity_747;
+    bool special_rigidity_736;
 };
 
 
@@ -199,7 +193,7 @@ struct SAMParams {
 pair<int, optional<MetrizedNet>> searchApproximateMetrization(
         MetrizedNet net,
         const SAMParams& params) {
-    // TODO: The following if should be triggered using a debug flag.
+    // TODO: The following should be triggered using a debug flag.
     if (false and get_time() - last_timestamp > timestamp_diff * 1e9) {
         last_timestamp = get_time(); // Even if nothing is printed.
         int it = -1;
@@ -228,7 +222,7 @@ pair<int, optional<MetrizedNet>> searchApproximateMetrization(
 
     const DerivedOnceNet& A = net.A;
 
-    if (params.special_rigidity_747) {
+    if (params.special_rigidity_736) {
         net.length(A.dart(16)).intersect(net.length(A.dart(12)));
         net.length(A.dart(12)).intersect(net.length(A.dart(16)));
     }
@@ -391,7 +385,7 @@ int processNet(int net_id) {
     params.run_pathological_checks = !possible_nets.count(net_id);
     params.convex_fixed_darts = findFreeParametersConvex(A);
     params.non_convex_fixed_darts = findFreeParametersNonConvex(A);
-    params.special_rigidity_747 = false;
+    params.special_rigidity_736 = false;
     params.forbidden_metrization = nullopt;
 
     MetrizedNet net(A);
@@ -431,7 +425,7 @@ int processNet(int net_id) {
         // Then, with this information, we prove algebraically that the
         // two missing lengths must be equal.
         // Finally, we rerun the rigidity-algorithm with this additional
-        // information to finally obtain the desired rigidity.
+        // information to obtain the desired rigidity.
         if (net_id == 736) {
             net2.length(A.dart(16)) = Interval(0, 10);
             net2.length(A.dart(12)) = Interval(0, 10);
@@ -441,14 +435,20 @@ int processNet(int net_id) {
         int res2 = searchApproximateMetrization(net, params).first;
         assert(res2 == 0 or res2 == INDETERMINATE);
         if (res2 == INDETERMINATE)
-            return INDETERMINATE; // We might also decide to return 1.
+            return INDETERMINATE;
         if (net_id == 736) {
-            params.special_rigidity_747 = true;
+            params.special_rigidity_736 = true;
             params.begin_time = get_time();
             int res3 = searchApproximateMetrization(net, params).first;
             assert(res3 == INDETERMINATE or res3 == 0);
             if (res3 == INDETERMINATE)
                 return INDETERMINATE;
+            params.forbidden_metrization.reset();
+            auto res4 = searchApproximateMetrization(net, params);
+            assert(res4.first == 1);
+            saveMetrizedNet(*res4.second,
+                "data/metrized_nets/" + to_string(net_id) + "_visualization.txt",
+                "data/metrized_nets/" + to_string(net_id) + ".txt");
             return 2;
         }
         return 2;
@@ -505,7 +505,7 @@ void testingSearchApproximateMetrization(int test_num = -1) {
         params.run_pathological_checks = tc.run_pathological_checks;
         params.convex_fixed_darts = findFreeParametersConvex(A);
         params.non_convex_fixed_darts = findFreeParametersNonConvex(A);
-        params.special_rigidity_747 = false;
+        params.special_rigidity_736 = false;
         params.forbidden_metrization = nullopt;
 
         MetrizedNet net(A);
@@ -578,6 +578,8 @@ int main() {
     vector<int> embeddable_derived_once;
 
     for (int id = 0; id < ssize(derived_once); id++) {
+        // if (id != 736)
+        //     continue;
         clog << "net id = " << setw(4) << id << ":\t";
         clog.flush();
         // if (id == 28 or id == 182 or id == 325 or id == 342 or id == 430 or id == 614 or id == 736) {

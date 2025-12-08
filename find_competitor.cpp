@@ -126,13 +126,26 @@ int main() {
     // testIsCollapsible();
     // return 0;
 
+    // 827 is the only 2-parameter family.
+    // 920 is expected to be optimal.
+    // 1029 is the cube family, which is the union of two 1-parameter families.
+    set<int> special_nets = {827, 920, 1029};
+
+    // 158 is an instance of 1029 (which we understand algebraically)
+    // 681 is an instance of 1029 (same instance as 158)
+    // 1100 is the cubic instance of 1029.
+    set<int> cube_special_cases = {158, 681, 1100};
     for (int net_id: possible_nets) {
-        if (pins_are_flexible.count(net_id) or net_id == 1029 or net_id == 920)
+        if (pins_are_flexible.count(net_id))
             continue;
-        // One pin falls on one vertex.
-        if (set<int>{158, 681, 827, 1100}.count(net_id))
+        if (special_nets.count(net_id))
+            continue;
+        if (cube_special_cases.count(net_id))
             continue;
         // BROKEN POPPING
+        // 250: Both pins are on vertices.
+        // 325: Both pins are on vertices.
+        // 736: Both pins are on vertices.
         if (set<int>{250, 325, 736}.count(net_id))
             continue;
 

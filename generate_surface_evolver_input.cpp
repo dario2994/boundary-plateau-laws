@@ -319,7 +319,7 @@ quit;
 
 
 
-
+// This is one of the two 1-parameter families corresponding to 1029.
 pair<vector<pt>, pair<pt,pt>> embed1029(double q) {
     auto rotate = [&](pt U) {
         return pt{U[0]*cos(q)-U[1]*sin(q), U[1]*cos(q)+U[0]*sin(q), U[2]};
@@ -359,6 +359,8 @@ pair<vector<pt>, pair<pt,pt>> embed1029(double q) {
     return {P, {pin0, pin1}};
 }
 
+
+// TODO: This should be moved somewhere else?
 const set<int>& possible_nets = {
     28,     99,    158,    182,    250,
     319,    325,    346,   361,   421,

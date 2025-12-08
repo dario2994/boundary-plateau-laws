@@ -100,15 +100,18 @@ pair<pt, pt> findPinsEmbedding(const MetrizedNet& net) {
         equators_with_pins.push_back(
                 make_deterministic(net.getIsometryToPin(root, d)({0, 0, 1})));
     pair<pt, pt> pins;
+    bool found = false;
     for (pt eq1: equators_with_pins)
             for (pt eq2: equators_with_pins) {
         pt z = eq1 ^ eq2;
         if (norm(z) > 0.1) {
             z = z / norm(z);
             pins = {z, -z};
+            found = true;
             break;
         }
     }
+    assert(found);
 
     return pins;
 }
@@ -146,30 +149,38 @@ pair<pair<int,int>, CombinatorialMap> addPinsToCombinatorialMap(
         if (!net.A.isConvexFace(face))
             concave_faces.push_back(face);
     }
-
-    // assert(ssize(pins_coord) == 2);
     assert(ssize(concave_faces) == 2);
+
+    auto find_vertex = [&](pt p) {
+        for (int v = 0; v < ssize(embedding); v++) {
+            if (norm(p-embedding[v]) < 1e-3)
+                return v;
+        }
+        return -1;
+    };
 
     CombinatorialMap A = net.A;
     vector<int> pins_vec;
     for (const pt& pin: {pins_coord.first, pins_coord.second}) {
         assert(!concave_faces.empty());
 
-        vector<Dart> face = concave_faces[0];
-        if (concave_faces.size() == 2) {
-            double cost0 = pinAverageDistance(net.A, embedding, pin, concave_faces[0]);
-            double cost1 = pinAverageDistance(net.A, embedding, pin, concave_faces[1]);
+        double cost0 = pinAverageDistance(net.A, embedding, pin, concave_faces[0]);
+        double cost1 = pinAverageDistance(net.A, embedding, pin, concave_faces[1]);
+        vector<Dart> face = concave_faces[cost1 < cost0];
 
-            if (cost1 < cost0)
-                face = concave_faces[1];
-        }
         vector<Dart> concave_angles = getConcaveAngles(net.A, face);
         if (ssize(concave_angles) == 2)
             concave_angles[1] = net.A.phi(concave_angles[1]);
-        int pin_id = addPin(A, concave_angles);
-        assert(ssize(embedding) == pin_id);
-        embedding.push_back(pin);
-        pins_vec.push_back(pin_id);
+
+        if (find_vertex(pin) != -1) {
+            A.addEdge(concave_angles[0], concave_angles[1]);
+            pins_vec.push_back(find_vertex(pin));
+        } else {
+            int pin_id = addPin(A, concave_angles);
+            assert(ssize(embedding) == pin_id);
+            embedding.push_back(pin);
+            pins_vec.push_back(pin_id);
+        }
     }
 
     return {{pins_vec[0], pins_vec[1]}, A};
@@ -181,10 +192,11 @@ struct SurfaceEvolverData {
     vector<pair<int,int>> boundary_edges;
 };
 
-void saveSurfaceEvolverFormat(string embedding_name,
-                                  const SurfaceEvolverData& data,
-                                  string out_file,
-                                  bool print_commands) {
+void saveSurfaceEvolverFormat(int net_id,
+                              string embedding_name,
+                              const SurfaceEvolverData& data,
+                              string out_file,
+                              bool print_commands) {
     const auto& X = data.X;
     pt line = X.getPoint(data.pins.first);
 
@@ -280,6 +292,66 @@ void saveSurfaceEvolverFormat(string embedding_name,
 print total_area;
 )";
 
+    const string generic_surface_evolver_commands = R"(
+    r 2;
+    subroutine 5;
+    o;
+    subroutine 3;
+    o;
+    subroutine 3;
+    r;
+    u 4;
+    subroutine 5;
+    o;
+    subroutine 3;)";
+
+    const map<int, string> special_surface_evolver_commands = {
+        {421, R"(
+            subroutine 3;
+            r;
+            subroutine 5;
+            r;
+            subroutine 3;
+            o;
+            subroutine 8;
+            o;
+            subroutine 3;
+            o;
+            subroutine 3;
+        )"},
+        // TODO: It's not necessary anymore.
+        //       We leave it here for some time. To remove eventually.
+        // {468, R"(
+        //     subroutine 2;
+        //     r;
+        //     subroutine 5;
+        //     o;
+        //     subroutine 5;
+        //     r;
+        //     subroutine 5;
+        // )"},
+        {614, R"(
+            subroutine 3;
+            r;
+            subroutine 5;
+            o;
+            subroutine 5;
+            o;
+            subroutine 5;
+            r;
+            subroutine 3;
+        )"},
+        {736, R"(
+            r 2;
+            subroutine 12;
+        )"},
+    };
+
+    string surface_evolver_commands = generic_surface_evolver_commands;
+    if (special_surface_evolver_commands.count(net_id))
+        surface_evolver_commands = special_surface_evolver_commands.at(net_id);
+
+
     constexpr string_view format_str = R"(read
 subroutine := {{
     quiet;
@@ -292,17 +364,7 @@ subroutine := {{
 
 gogo := {{
     showq;
-    r 2;
-    subroutine 5;
-    o;
-    subroutine 3;
-    o;
-    subroutine 3;
-    r;
-    u 4;
-    subroutine 5;
-    o;
-    subroutine 3;
+{}
     dump "data/surface_evolver/{}_competitor.out";
     close_show; /* This raises an error if the window is not visible. */
 }}
@@ -312,7 +374,7 @@ gogo;
 quit;
 )";
     if (print_commands)
-        out << format(format_str, embedding_name);
+        out << format(format_str, surface_evolver_commands, embedding_name);
 
     out.close();
 }
@@ -413,6 +475,10 @@ const map<int, pair<vector<int>, vector<int>>> pop_description = {
         {6, 7},
         {PIN_ZERO, 9, 5, 7, 10, PIN_ONE, 11, 2, 1, 8, PIN_ZERO}
     }},
+    {736, {
+        {0, 6, 8},
+        {PIN_ZERO, 1, 2, 3, PIN_ONE, 13, 6, 10, PIN_ZERO, 4, 8, 9, PIN_ONE}
+    }},
     {909, {
         {1},
         {PIN_ZERO, 8, 1, 2, 10, PIN_ONE}
@@ -488,6 +554,10 @@ NetEmbeddedWithPins embedNetWithPins(int net_id, vector<double> params) {
         assert(ssize(params) == 1);
         embedding = getVertexEmbedding(net);
         pins_coord = choosePinsEmbedding(net, params[0]);
+    } else if (net_id == 736) {
+        assert(params.empty());
+        embedding = getVertexEmbedding(net);
+        pins_coord = {embedding[11], embedding[12]};
     } else {
         assert(params.empty());
         embedding = getVertexEmbedding(net);
@@ -556,11 +626,25 @@ SurfaceEvolverData generatePoppedCone(const NetEmbeddedWithPins& link,
     vector<pair<int,int>> boundary_edges;
     vector<set<int>> triangles;
 
+    // Whether v is either a pin or a pin/3.
+    auto is_pin = [&](int v) {
+        v %= n;
+        return v == link.pins.first or v == link.pins.second;
+    };
+
     auto add_face = [&](vector<int> face) {
         assert(ssize(face) >= 3);
-        int n = ssize(face);
-        for (int i = 1; i < n-1; i++) {
-            int j = (i+1) % n;
+        int f = ssize(face);
+        // If a face contains a pin, then the triangulation shall be pivoted
+        // there to avoid issues due to the fact that the face is not convex
+        // and not contained in a plane.
+        int pivot = 0;
+        for (int i = 1; i < f; i++)
+            if (is_pin(face[i]))
+                pivot = i;
+        rotate(face.begin(), face.begin() + pivot, face.end());
+        for (int i = 1; i < f-1; i++) {
+            int j = (i+1) % f;
             triangles.push_back({face[0], face[i], face[j]});
         }
     };

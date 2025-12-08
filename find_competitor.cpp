@@ -75,9 +75,9 @@ void processNet(int net_id, bool run_surface_evolver, vector<double> params) {
 
     if (run_surface_evolver) {
         saveSurfaceEvolverFormat(
-            embedding_name, cone, filename_prefix + "_cone.fe", false);
+            net_id, embedding_name, cone, filename_prefix + "_cone.fe", false);
         saveSurfaceEvolverFormat(
-            embedding_name, popped_cone, filename_prefix + "_popped.fe", true);
+            net_id, embedding_name, popped_cone, filename_prefix + "_popped.fe", true);
 
         string surface_evolver_command = format(
             "evolver -x -Q {}_popped.fe > {}.log 2>&1",
@@ -105,11 +105,6 @@ void processNet(int net_id, bool run_surface_evolver, vector<double> params) {
     competitor = removeAllCollapsedSegments(competitor);
     competitor = removeAllCollapsedTriangles(competitor);
 
-    // cout << "#vertices" << endl;
-    // cout << "Cone: " << cone.X.V() << ", "
-    //      << "Popped cone: " << popped_cone.X.V() << ", "
-    //      << "Competitor: " << competitor.V() << endl;
-
     cout << "Areas" << endl;
     cout << "Cone: " << cone.X.area() << ", "
          << "Popped cone: " << popped_cone.X.area() << ", "
@@ -135,33 +130,17 @@ int main() {
     // 681 is an instance of 1029 (same instance as 158)
     // 1100 is the cubic instance of 1029.
     set<int> cube_special_cases = {158, 681, 1100};
+
+    // set<int> heppes_with_pins_on_vertices = {250, 325, 736};
     for (int net_id: possible_nets) {
+        // TODO: Rename as rigid_net_with_flexible_pins.
         if (pins_are_flexible.count(net_id))
             continue;
         if (special_nets.count(net_id))
             continue;
         if (cube_special_cases.count(net_id))
             continue;
-        // BROKEN POPPING
-        // 250: Both pins are on vertices.
-        // 325: Both pins are on vertices.
-        // 736: Both pins are on vertices.
-        if (set<int>{250, 325, 736}.count(net_id))
-            continue;
 
-        // SURFACE EVOLVER ERROR
-        // BROKEN
-        if (set<int>{421, 468, 909}.count(net_id))
-            continue;
-
-        // NOT VALID
-        if (set<int>{}.count(net_id))
-            continue;
-
-        // WORKING
-        if (set<int>{182, 319, 361, 484, 520, 614, 712, 938, 1122}.count(net_id))
-            continue;
         processNet(net_id, true, {});
-        // return 0;
     }
 }

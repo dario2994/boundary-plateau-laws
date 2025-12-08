@@ -72,6 +72,8 @@ def parse_evolver_dmp(input_filepath, output_filepath):
         elif current_section == "edges":
             assert(len(parts) in [3, 4, 5])
             e_id, v1_id, v2_id = map(int, parts[:3])
+            if v1_id == v2_id:
+                print(parts)
             assert(v1_id != v2_id)
             edge_map[e_id] = len(edges)
             edges.append((vertex_map[v1_id], vertex_map[v2_id]))

@@ -6,11 +6,12 @@ from matplotlib.patches import Arc
 import numpy as np
 import sys
 import pathlib
+import os
 
 # Base directory of the project.
 base_dir = pathlib.Path(__file__).resolve().parent.parent
-derived_once_for_visualization = 'data/derived_once_for_visualization.txt'
-derived_once_for_visualization = base_dir / derived_once_for_visualization
+derived_once_for_visualization = base_dir / 'data/derived_once_for_visualization.txt'
+derived_once_images_dir = base_dir / 'data/derived_once_images/'
 
 # Ensure a net ID is provided
 if len(sys.argv) != 2:
@@ -140,11 +141,13 @@ def draw_derived_once_net(fig, _id, V, E, darts, next_dart, concave_angles, fake
     fig.gca().set_title("Derived-once net: " + str(_id))
 
     # ~ plt.show()
-    fig.savefig('data/derived_once_images/' + str(_id) + '.png', dpi=300, bbox_inches='tight')
+    os.makedirs(derived_once_images_dir, exist_ok=True)
+    fig.savefig(derived_once_images_dir / f'{_id}.png', dpi=300, bbox_inches='tight')
     fig.clf()
 
 
 derived_once_nets = parse_derived_once_nets()
+
 # ~ survivors = []
 # ~ with open('data/derived_once_survivors.txt') as in_file:
     # ~ survivors = list(map(int, in_file.readlines()[1].split()))
@@ -153,9 +156,5 @@ plt.ioff()
 # We reuse the same figure as a workaround for a memory leak in
 # matplotlib.
 fig = plt.figure()
-
-# ~ for A in derived_once_nets:
-# ~ for k in [1554]:
-# ~ for k in [4, 392, ...]:
 
 draw_derived_once_net(fig, net_id, *(derived_once_nets[int(net_id)]))

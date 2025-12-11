@@ -28,7 +28,8 @@ struct Interval {
         assert(!empty());
         return (l + r) / 2;
     }
-    bool containsZero() const { return l <= 0 and 0 <= r; }
+    bool contains(double x) const { return l <= x and x <= r; }
+    bool containsZero() const { return contains(0); }
 };
 
 const Interval EMPTY_INTERVAL(0, -1);

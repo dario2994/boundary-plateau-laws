@@ -252,9 +252,6 @@ pair<int, optional<MetrizedNet>> searchApproximateMetrization(
     if (!refineMetrizationConvexContinent(net, params.convex_fixed_darts))
         return {0, nullopt};
 
-    // if (net.totalError() > 0.1)
-
-
     if (!refineMetrizationNonConvexFaces(net))
         return {0, nullopt};
 
@@ -578,16 +575,8 @@ int main() {
     vector<int> embeddable_derived_once;
 
     for (int id = 0; id < ssize(derived_once); id++) {
-        // if (id != 736)
-        //     continue;
         clog << "net id = " << setw(4) << id << ":\t";
         clog.flush();
-        // if (id == 28 or id == 182 or id == 325 or id == 342 or id == 430 or id == 614 or id == 736) {
-        // if (id == 28) {
-        //     embeddable_derived_once.push_back(id);
-        //     cout << "SKIPPED" << endl;
-        //     continue;
-        // }
 
         long long begin_time = get_time();
         int outcome = processNet(id);
@@ -610,7 +599,7 @@ int main() {
         if (outcome != 0)
             embeddable_derived_once.push_back(id);
     }
-    clog << endl;
+    clog << endl; // TODO: Use clog everywhere?
 
     StopWatch::printState();
 

@@ -183,28 +183,20 @@ bool checkPinsAntipodality(const MetrizedNet& net) {
     for (int i = 0; i < q; i++)
         for (int j = i+1; j < q; j++)
             for (int k = j+1; k < q; k++) {
-                Dart root = net.A.phi(net.A.concaveAngles()[i]);
+                Dart root = net.A.concaveAngles()[i];
 
                 vector<array<Interval, 3>> equators;
                 for (int z: {i, j, k}) {
                     Dart d = net.A.concaveAngles()[z];
-                    // Here, the natural thing to do would be
-                    // auto isom = net.getIsometryToPin(root, d);
-                    // or, equivalently,
-                    // auto path = net.getPathToPin(root, d);
-                    // auto isom = net.isometryFromPath(path);
-                    // On the other hand, the code that follows adds a rotation
-                    // of 120 degrees at the beginning.
-                    // Why? This improves greatly the precision of the determinant
-                    // computation as it makes equator[0] equal to (0, 0, 1),
-                    // thus effectively reducing the computation of a 3x3
-                    // determinant to a 2x2 determinant.
-                    // In practice, this is important to obtain a satisfactory
-                    // precision for net 28 in a reasonable amount of time.
-                    auto path = net.getPathToPin(root, d);
-                    path.insert(path.begin(), PathStep('R', 2*M_PI/3));
-                    auto isom = net.isometryFromPath(path);
-
+                    // Using getIsometryFromPinToPin instead of getIsometryToPin
+                    // does not change the result, but dramatically changes
+                    // the precision of the computation.
+                    // Our choice guarantees that equators[0] = (0, 0, 1).
+                    // This reduces the computation of a 3x3 determinant to a
+                    // 2x2 determinant.
+                    // In practice, this is necessary to "solve" net 28 in a
+                    // reasonable amount of time.
+                    auto isom = net.getIsometryFromPinToPin(root, d);
                     equators.push_back(isom({0, 0, 1}));
                 }
                 if (!det(equators[0], equators[1], equators[2]).containsZero())
@@ -232,17 +224,10 @@ bool checkPinAngles(const MetrizedNet& net) {
         }
         assert(ssize(concave_angles) == 2);
 
-        Dart root = A.phi(concave_angles[0]);
-        auto iso0 = net.getIsometryToPin(root, concave_angles[0]);
-        auto iso1 = net.getIsometryToPin(root, concave_angles[1]);
+        ApproximateIsometry iso = net.getIsometryFromPinToPin(concave_angles[0], concave_angles[1]);
+        Interval scal_prod = iso({0, 0, 1})[2];
 
-        auto eq0 = iso0({0, 0, 1});
-        auto eq1 = iso1({0, 0, 1});
-
-        Interval scal_prod = eq0 * eq1;
-
-        // scal_prod <= -1/2 is equivalent to the condition on
-        // the angle at the pin.
+        // scal_prod <= -1/2 is equivalent to the condition on the angle at the pin.
         if (scal_prod.l > -0.5 + 1e-8)
             return false;
     }
@@ -382,6 +367,7 @@ bool checkPinOutsideConvexFaces(const MetrizedNet& net) {
     for (int i = 0; i < cnt; i++) for (int j = i+1; j < cnt; j++) {
         const Dart& root = net.A.concaveAngles()[i];
         const Dart& other = net.A.concaveAngles()[j];
+
         const auto& X = net.getIsometryToPin(root, root)({0, 0, 1});
         const auto& Y = net.getIsometryToPin(root, other)({0, 0, 1});
         const auto& P = X^Y;
@@ -473,21 +459,13 @@ bool checkPinsAntipodality2(const MetrizedNet& net) {
             if (l1 >= M_PI-1e-5 or l2 >= M_PI-1e-5)
                 return true;
 
-            const Dart& root = A.phi(d1);
-            vector<PathStep> path1 = net.getPathToPin(root, d1);
-            vector<PathStep> path2 = net.getPathToPin(root, d2);
-            vector<PathStep> path1_end = path1;
-            path1_end.push_back(PathStep('E', l1));
-            vector<PathStep> path2_end = path2;
-            path2_end.push_back(PathStep('E', l2));
+            array<Interval, 3> start1 = {1, 0, 0}, end1 = {cos(l1), sin(l1), 0};
+            vector<PathStep> path = net.getPathFromPinToPin(d1, d2);
+            array<Interval, 3> start2 = net.isometryFromPath(path)({1, 0, 0});
+            path.push_back(PathStep('E', l2));
+            array<Interval, 3> end2 = net.isometryFromPath(path)({1, 0, 0});
 
-            vector<array<Interval, 3>> vec;
-            for (auto p: {path1, path1_end, path2, path2_end}) {
-                auto pt = net.isometryFromPath(p)({1, 0, 0});
-                vec.push_back(pt);
-            }
-
-            for (auto p1: {vec[0], vec[1]}) for (auto p2: {vec[2], vec[3]}) {
+            for (auto p1: {start1, end1}) for (auto p2: {start2, end2}) {
                 Interval eucl_dist = norm(p1-p2);
                 if (eucl_dist.r > 2-0.1)
                     continue;

@@ -90,6 +90,14 @@ ostream& operator<<(ostream& out, const PathStep& x) {
     return out;
 }
 
+// To compress consecutive rotations in a single one.
+void appendToPath(vector<PathStep>& path, const PathStep& op) {
+    if (!path.empty() and path.back().type == op.type and op.type != 'D')
+        path.back().t += op.t;
+    else
+        path.push_back(op);
+}
+
 class MetrizedNet {
   public:
     const DerivedOnceNet A;
@@ -100,14 +108,11 @@ class MetrizedNet {
     // Cache for the optimal paths (i.e., the ones with smallest total error)
     // between darts.
     mutable vector<vector<vector<PathStep>>> optimal_path;
-    mutable vector<vector<vector<PathStep>>> to_pins;
 
 
     void initOptimalPaths() {
         optimal_path.clear();
-        to_pins.clear();
         optimal_path.resize(2*A.E());
-        to_pins.resize(2*A.E());
     }
 
   public:
@@ -223,15 +228,6 @@ class MetrizedNet {
         // Step 3: Reconstruct the paths from the chosen dart to the edges
         //         going into the pin.
 
-        // To compress consecutive rotations in a single one.
-        auto append_to_path = [&](vector<PathStep>& path, PathStep op) {
-            if (!path.empty() and path.back().type == op.type
-                and op.type != 'D')
-                path.back().t += op.t;
-            else
-                path.push_back(op);
-        };
-
         optimal_path[root.id].clear();
         for (const Dart& d: A.darts()) {
             Dart curr = d;
@@ -241,25 +237,15 @@ class MetrizedNet {
             while (father[curr.id] != '-') {
                 if (father[curr.id] == 'n') { // Rotation by 120 or 240.
                     curr = A.prev(curr);
-                    append_to_path(path, PathStep('R', A.nextAngle(curr)));
+                    appendToPath(path, PathStep('R', A.nextAngle(curr)));
                 } else if (father[curr.id] == 'r') { // Exponential + Rotation by 180.
-                    append_to_path(path, PathStep('R', M_PI));
+                    appendToPath(path, PathStep('R', M_PI));
                     curr = A.rev(curr);
-                    append_to_path(path, curr);
+                    appendToPath(path, curr);
                 } else assert(0);
             }
             reverse(path.begin(), path.end());
             optimal_path[root.id].push_back(path);
-        }
-
-        // If d belongs to dart_to_pin, then rotating d by 120 yields
-        // a dart going to a pin.
-        to_pins[root.id].clear();
-        for (Dart d: A.concaveAngles()) {
-            assert(A.isConcaveAngle(d));
-            vector<PathStep> path = optimal_path[root.id][A.rev(d).id];
-            append_to_path(path, PathStep('R', 2*M_PI/3));
-            to_pins[root.id].push_back(path);
         }
     }
 
@@ -270,18 +256,33 @@ class MetrizedNet {
     }
 
     vector<PathStep> getPathToPin(const Dart& from, const Dart& to) const {
-        computeOptimalPaths(from);
-        return to_pins[from.id][A.concaveAngleId(to)];
+        assert(A.isConcaveAngle(to));
+        vector<PathStep> path = getPath(from, A.rev(to));
+        appendToPath(path, PathStep('R', 2*M_PI/3));
+        return path;
+    }
+
+    vector<PathStep> getPathFromPinToPin(const Dart& from, const Dart& to) const {
+        assert(A.isConcaveAngle(from));
+        assert(A.isConcaveAngle(to));
+        vector<PathStep> path = getPath(A.rev(from), A.rev(to));
+        reverse(path.begin(), path.end());
+        appendToPath(path, PathStep('R', -2*M_PI/3));
+        reverse(path.begin(), path.end());
+        appendToPath(path, PathStep('R', 2*M_PI/3));
+        return path;
     }
 
     ApproximateIsometry getIsometry(const Dart& from, const Dart& to) const {
-        computeOptimalPaths(from);
-        return isometryFromPath(optimal_path[from.id][to.id]);
+        return isometryFromPath(getPath(from, to));
     }
 
     ApproximateIsometry getIsometryToPin(const Dart& from, const Dart& to) const {
-        computeOptimalPaths(from);
-        return isometryFromPath(to_pins[from.id][A.concaveAngleId(to)]);
+        return isometryFromPath(getPathToPin(from, to));
+    }
+
+    ApproximateIsometry getIsometryFromPinToPin(const Dart& from, const Dart& to) const {
+        return isometryFromPath(getPathFromPinToPin(from, to));
     }
 
     void serialize(ostream& out) const {

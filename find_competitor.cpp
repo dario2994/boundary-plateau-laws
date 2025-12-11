@@ -55,9 +55,6 @@ bool containsErrorMessage(const string& log_file, const string& error_string) {
 
 void processNet(int net_id, bool run_surface_evolver, vector<double> params) {
     cout << "Processing net " << net_id << endl;
-    if (!params.empty()) {
-        assert(0); // TODO
-    }
     NetEmbeddedWithPins link = embedNetWithPins(net_id, params);
 
     if (!pop_description.contains(net_id)) {
@@ -133,14 +130,13 @@ int main() {
 
     // set<int> heppes_with_pins_on_vertices = {250, 325, 736};
     for (int net_id: possible_nets) {
-        // TODO: Rename as rigid_net_with_flexible_pins.
-        if (pins_are_flexible.count(net_id))
+        if (net_id != 28)
             continue;
         if (special_nets.count(net_id))
             continue;
         if (cube_special_cases.count(net_id))
             continue;
 
-        processNet(net_id, true, {});
+        processNet(net_id, true, {0.03});
     }
 }

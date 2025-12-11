@@ -7,6 +7,7 @@
 using namespace std;
 
 #include "metrized_nets.cpp"
+#include "metrization_constraints.cpp"
 #include "simplicial_complexes.cpp"
 
 
@@ -423,7 +424,7 @@ pair<vector<pt>, pair<pt,pt>> embed1029(double q) {
 
 
 // TODO: This should be moved somewhere else?
-const set<int>& possible_nets = {
+const set<int> possible_nets = {
     28,     99,    158,    182,    250,
     319,    325,    346,   361,   421,
     468,   484,   520,   614,   681,
@@ -431,9 +432,8 @@ const set<int>& possible_nets = {
     920,   938,    1029,
     1096,   1100,   1122};
 
-const set<int>& pins_are_flexible = {
-    28,     99,    346,   779,   1096
-};
+
+const set<int> rigid_nets_flexible_pins = {28, 99, 346, 779, 1096};
 
 // AD-HOC
 // Here we describe the "pop".
@@ -447,17 +447,33 @@ const set<int>& pins_are_flexible = {
 const int PIN_ZERO = 342905;
 const int PIN_ONE = 5896232;
 const map<int, pair<vector<int>, vector<int>>> pop_description = {
-    {484, {
-        {2, 4},
-        {PIN_ONE, 3, 1, 5, PIN_ZERO, 4, 2, PIN_ONE}
+    {28, {
+        {3, 5},
+        {PIN_ZERO, 17, 6, 14, 13, 18, PIN_ONE, 19, 9, 0, 1, 16, PIN_ZERO}
     }},
-    {938, {
-        {1, 5},
-        {PIN_ZERO, 8, 1, 2, 11, PIN_ONE, 10, 7, 6, 9, PIN_ZERO}
+    {99, {
+        {1},
+        {PIN_ZERO, 14, 7, 13, 11, 10, 15, PIN_ONE}
+    }},
+    {182, {
+        {1, 11},
+        {PIN_ZERO, 21, 4, 3, 2, 18, PIN_ONE, 19, 6, 9, 13, 20, PIN_ZERO}
+    }},
+    {250, {
+        {6, 8},
+        {PIN_ZERO, 7, 6, 13, PIN_ONE, 0, 1, 4, 11, PIN_ZERO}
     }},
     {319, {
         {5, 2},
         {PIN_ZERO, 6, 1, 2, 8, PIN_ONE, 9, 5, 7, PIN_ZERO}
+    }},
+    {325, {
+        {3, 1, 9},
+        {PIN_ZERO, 4, 3, 2, 6, PIN_ONE, 19, 9, 12, 17 , PIN_ZERO, 14, 13, 7, 5, PIN_ONE}
+    }},
+    {346, {
+        {1},
+        {PIN_ZERO, 12, 0, 4, 3, 13, PIN_ONE}
     }},
     {361, {
         {7, 1},
@@ -467,9 +483,21 @@ const map<int, pair<vector<int>, vector<int>>> pop_description = {
         {2, 8},
         {PIN_ONE, 13, 9, 0, 10, PIN_ZERO, 11, 3, 7, 12, PIN_ONE}
     }},
+    {468, {
+        {3, 5},
+        {PIN_ZERO, 12, 1, 0, 14, PIN_ONE, 15, 7, 6, 13, PIN_ZERO}
+    }},
+    {484, {
+        {2, 4},
+        {PIN_ONE, 3, 1, 5, PIN_ZERO, 4, 2, PIN_ONE}
+    }},
     {520, {
         {6},
         {PIN_ZERO, 12, 1, 0, 13, PIN_ONE}
+    }},
+    {614, {
+        {1, 7},
+        {PIN_ZERO, 12, 5, 6, 15, PIN_ONE, 14, 10, 11, 9, 13, PIN_ZERO}
     }},
     {712, {
         {6, 7},
@@ -479,53 +507,29 @@ const map<int, pair<vector<int>, vector<int>>> pop_description = {
         {0, 6, 8},
         {PIN_ZERO, 1, 2, 3, PIN_ONE, 13, 6, 10, PIN_ZERO, 4, 8, 9, PIN_ONE}
     }},
+    {779, {
+        {1},
+        {PIN_ZERO, 10, 1, 2, 3, 11, PIN_ONE}
+    }},
     {909, {
         {1},
         {PIN_ZERO, 8, 1, 2, 10, PIN_ONE}
     }},
-    {1122, {
-        {0},
-        {PIN_ZERO, 10, 1, 5, 11, PIN_ONE}
-    }},
-    {182, {
-        {1, 11},
-        {PIN_ZERO, 21, 4, 3, 2, 18, PIN_ONE, 19, 6, 9, 13, 20, PIN_ZERO}
-    }},
-    {468, {
-        {3, 5},
-        {PIN_ZERO, 12, 1, 0, 14, PIN_ONE, 15, 7, 6, 13, PIN_ZERO}
-    }},
-    {614, {
-        {1, 7},
-        {PIN_ZERO, 12, 5, 6, 15, PIN_ONE, 14, 10, 11, 9, 13, PIN_ZERO}
-    }},
-    {250, {
-        {6, 8},
-        {PIN_ZERO, 7, 6, 13, PIN_ONE, 0, 1, 4, 11, PIN_ZERO}
-    }},
-    {325, {
-        {3, 1, 9},
-        {PIN_ZERO, 4, 3, 2, 6, PIN_ONE, 19, 9, 12, 17 , PIN_ZERO, 14, 13, 7, 5, PIN_ONE}
+    {938, {
+        {1, 5},
+        {PIN_ZERO, 8, 1, 2, 11, PIN_ONE, 10, 7, 6, 9, PIN_ZERO}
     }},
     {1029, {
         {5, 0},
         {PIN_ZERO, 5, 2, 7, PIN_ONE,6, 0, 4, PIN_ZERO}
     }},
-    {99, {
-        {1},
-        {PIN_ZERO, 14, 7, 13, 11, 10, 15, PIN_ONE}
-    }},
-    {346, {
-        {1},
-        {PIN_ZERO, 12, 0, 4, 3, 13, PIN_ONE}
-    }},
-    {779, {
-        {1},
-        {PIN_ZERO, 10, 1, 2, 3, 11, PIN_ONE}
-    }},
     {1096, {
         {6},
         {PIN_ZERO, 16, 2, 3, 10, 17, PIN_ONE}
+    }},
+    {1122, {
+        {0},
+        {PIN_ZERO, 10, 1, 5, 11, PIN_ONE}
     }},
 };
 
@@ -534,6 +538,52 @@ struct NetEmbeddedWithPins {
     vector<pt> embedding;
     pair<int,int> pins;
 };
+
+// net is a rigid net with flexible pins.
+// Let I be the interval of lengths of the edge connecting concave_angles[0] to
+// its pins that generate a valid net.
+// This function returns I.
+Interval validPinEdgeLength(int net_id, MetrizedNet net) {
+    assert(rigid_nets_flexible_pins.count(net_id));
+    // All arcs connecting to pins belong to the same equator.
+    vector<double> lens = maxDistanceToPin(net);
+    vector<Dart> concave_angles = net.A.concaveAngles();
+    int other = -1;
+    for (int i = 1; i < ssize(concave_angles); i++) {
+        if (!net.A.sameFace(concave_angles[0], concave_angles[i]))
+            other = i;
+    }
+    assert(other != -1);
+    // concave_angles[0] and concave_angles[other] belong to different faces.
+    Dart d1 = concave_angles[0], d2 = concave_angles[other];
+    double len1 = lens[0], len2 = lens[other];
+    auto iso = net.getIsometryFromPinToPin(d1, d2);
+
+    assert(len1 > 0.01 and len2 > 0.01);
+    assert(len1 < M_PI/2 and len2 < M_PI/2);
+
+    double pos_x = iso({1, 0, 0})[0].mid();
+    double pos_y = iso({1, 0, 0})[1].mid();
+    double dist = atan2(pos_y, pos_x);
+    if (dist < 0) dist += 2 * M_PI;
+
+    double almost_sign = iso({0, 0, 1})[2].mid();
+    assert(abs(almost_sign) > 0.999);
+    bool same_dir = almost_sign > 0;
+
+    double l, r;
+    if (same_dir) l = dist, r = dist + len2;
+    else l = dist-len2, r = dist;
+    l -= M_PI;
+    r -= M_PI;
+    // cout << len1 << " " << len2 << " " << dist << " " << almost_sign << " " << l << " " << r << endl;
+    // cout << other << " " << concave_angles[0] << " " << concave_angles[other] << endl;
+    // cout << pos_x << " " << pos_y << endl;
+    assert(l <= r);
+    assert(0 <= r and r <= M_PI);
+
+    return intersection({0, len1}, {l, r});
+}
 
 
 NetEmbeddedWithPins embedNetWithPins(int net_id, vector<double> params) {
@@ -550,10 +600,15 @@ NetEmbeddedWithPins embedNetWithPins(int net_id, vector<double> params) {
     if (net_id == 1029) {
         assert(ssize(params) == 1);
         tie(embedding, pins_coord) = embed1029(params[0]);
-    } else if (pins_are_flexible.count(net_id)) {
+    } else if (rigid_nets_flexible_pins.count(net_id)) {
         assert(ssize(params) == 1);
+        double len = params[0];
+        Interval valid_lens = validPinEdgeLength(net_id, net);
+        assert(valid_lens.contains(len));
+        cout << valid_lens << endl;
+        // double len = I.l + (I.r - I.l) * coef;
         embedding = getVertexEmbedding(net);
-        pins_coord = choosePinsEmbedding(net, params[0]);
+        pins_coord = choosePinsEmbedding(net, len);
     } else if (net_id == 736) {
         assert(params.empty());
         embedding = getVertexEmbedding(net);

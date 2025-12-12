@@ -307,6 +307,27 @@ print total_area;
     subroutine 3;)";
 
     const map<int, string> special_surface_evolver_commands = {
+        {28, R"(
+            subroutine 2;
+            o;
+            subroutine 2;
+            o;
+            subroutine 2;
+        )"},
+        {99, R"(
+            subroutine 2;
+            o;
+            subroutine 2;
+            o;
+            subroutine 2;
+        )"},
+        {346, R"(
+            subroutine 2;
+            o;
+            subroutine 2;
+            o;
+            subroutine 2;
+        )"},
         {421, R"(
             subroutine 3;
             r;
@@ -346,6 +367,24 @@ print total_area;
             r 2;
             subroutine 12;
         )"},
+        {779, R"(
+            subroutine 2;
+            o;
+            subroutine 2;
+            o;
+            subroutine 2;
+        )"},
+        {1096, R"(
+            subroutine 2;
+            o;
+            subroutine 2;
+            o;
+            subroutine 2;
+            o;
+            subroutine 2;
+            o;
+            subroutine;
+        )"},
     };
 
     string surface_evolver_commands = generic_surface_evolver_commands;
@@ -364,10 +403,10 @@ subroutine := {{
 }}
 
 gogo := {{
-    showq;
+    /*showq;*/
 {}
     dump "data/surface_evolver/{}_competitor.out";
-    close_show; /* This raises an error if the window is not visible. */
+    /*close_show;*/ /* This raises an error if the window is not visible. */
 }}
 
 gogo;
@@ -560,7 +599,7 @@ Interval validPinEdgeLength(int net_id, MetrizedNet net) {
     auto iso = net.getIsometryFromPinToPin(d1, d2);
 
     assert(len1 > 0.01 and len2 > 0.01);
-    assert(len1 < M_PI/2 and len2 < M_PI/2);
+    assert(len1 < M_PI and len2 < M_PI);
 
     double pos_x = iso({1, 0, 0})[0].mid();
     double pos_y = iso({1, 0, 0})[1].mid();

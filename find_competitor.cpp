@@ -113,6 +113,9 @@ void processNet(int net_id, bool run_surface_evolver, vector<double> params) {
 }
 
 int main() {
+    processNet(779, true, {0.01});
+
+    return 0;
     // testSegmentDistanceFromLine();
     // testTriangleDistanceFromLine();
     // testIsCollapsible();

@@ -295,14 +295,36 @@ struct ImmersedSimplicialComplex {
             remove_face(id);
         }
 
+        vector<set<int>> non_collapsible_faces;
+
         for (int i = 0; i < F; i++) {
             if (is_target[i])
                 assert(!removed[i]);
             else if (!removed[i])
-                return false;
+                non_collapsible_faces.push_back(faces[i]);
         }
 
-        return true;
+        set<int> non_collapsible_vertices;
+        for (auto face: non_collapsible_faces)
+            for (int v: face)
+                non_collapsible_vertices.insert(v);
+
+        if (!non_collapsible_faces.empty()) {
+            cerr << "Non collapsed vertices: ";
+            for (int v: non_collapsible_vertices)
+                cerr << v << " ";
+            cerr << endl;
+            cerr << "Non collapsed faces:" << endl;
+            for (auto face: non_collapsible_faces) {
+                for (int v: face) {
+                        cerr << v << " ";
+                    cerr << endl;
+                }
+            }
+            cerr << endl;
+        }
+
+        return non_collapsible_faces.empty();
     }
 
     bool isCollapsible() const {

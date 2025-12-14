@@ -19,8 +19,12 @@ bool isCompetitorValid(ImmersedSimplicialComplex competitor, NetEmbeddedWithPins
     auto line = *maybe_line;
 
     if (!competitor.isCollapsible(line)) {
+        cerr << "The line contains the points:" << endl;
+        for (auto singleton: line.getFaces(0))
+            cerr << *singleton.begin() << " ";
+        cerr << endl;
         cerr << "The competitor is not collapsible on the line connecting the pins." << endl;
-       return false;
+        return false;
     }
 
     for (Dart d: link.A.darts()) {
@@ -54,7 +58,14 @@ bool containsErrorMessage(const string& log_file, const string& error_string) {
 }
 
 void processNet(int net_id, bool run_surface_evolver, vector<double> params) {
-    cout << "Processing net " << net_id << endl;
+    clog << "Processing net " << net_id;
+    if (!params.empty()) {
+        clog << " with params ";
+        for (double x: params)
+            clog << x << " ";
+    }
+    clog << endl;
+
     NetEmbeddedWithPins link = embedNetWithPins(net_id, params);
 
     if (!pop_description.contains(net_id)) {
@@ -79,7 +90,7 @@ void processNet(int net_id, bool run_surface_evolver, vector<double> params) {
         string surface_evolver_command = format(
             "evolver -x -Q {}_popped.fe > {}.log 2>&1",
             filename_prefix, filename_prefix);
-        cout << "Executing the surface evolver..." << endl;
+        clog << "Executing the surface evolver..." << endl;
         int surface_evolver_exit_code = system(surface_evolver_command.c_str());
         // The exit code may be nonzero because of some strange interaction
         // between the surface evolver and the X window system when the
@@ -99,11 +110,11 @@ void processNet(int net_id, bool run_surface_evolver, vector<double> params) {
     assert(competitor_in.is_open());
     ImmersedSimplicialComplex competitor = parseImmersedSimplicialComplex(competitor_in);
 
-    competitor = removeAllCollapsedSegments(competitor);
-    competitor = removeAllCollapsedTriangles(competitor);
+    // competitor = removeAllCollapsedSegments(competitor);
+    // competitor = removeAllCollapsedTriangles(competitor);
 
-    cout << "Areas" << endl;
-    cout << "Cone: " << cone.X.area() << ", "
+    clog << "Areas" << endl;
+    clog << "Cone: " << cone.X.area() << ", "
          << "Popped cone: " << popped_cone.X.area() << ", "
          << "Competitor: " << competitor.area() << endl;
 
@@ -113,7 +124,8 @@ void processNet(int net_id, bool run_surface_evolver, vector<double> params) {
 }
 
 int main() {
-    processNet(779, true, {0.01});
+    for (int net_id: {1029})
+        processNet(net_id, true, {1, 0.3});
 
     return 0;
     // testSegmentDistanceFromLine();

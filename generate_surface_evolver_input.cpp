@@ -375,15 +375,9 @@ print total_area;
             subroutine 2;
         )"},
         {1096, R"(
-            subroutine 2;
+            subroutine 3;
             o;
-            subroutine 2;
-            o;
-            subroutine 2;
-            o;
-            subroutine 2;
-            o;
-            subroutine;
+            subroutine 3;
         )"},
     };
 
@@ -422,30 +416,54 @@ quit;
 
 
 // This is one of the two 1-parameter families corresponding to 1029.
-pair<vector<pt>, pair<pt,pt>> embed1029(double q) {
+pair<vector<pt>, pair<pt,pt>> embedGoggles(double q) {
     auto rotate = [&](pt U) {
         return pt{U[0]*cos(q)-U[1]*sin(q), U[1]*cos(q)+U[0]*sin(q), U[2]};
     };
+    auto sym_x = [&](pt U) { return pt{-U[0], U[1], U[2]}; };
 
-    auto sym_x = [&](pt U) {
-        return pt{-U[0], U[1], U[2]};
-    };
-    auto sym_z = [&](pt U) {
-        return pt{U[0], U[1], -U[2]};
-    };
-
-    pt pin0 = {0.6, 0, sqrt(3)};
+    pt pin0 = {0, 0, 1};
     pt pin1 = -pin0;
 
     vector<pt> P(8);
     // Face of the cube
     P[1] = pt{1, sqrt(2), 0};
     P[4] = pt{1, 0, sqrt(2)};
-    P[6] = sym_z(P[4]);
+    P[6] = pt{1, 0, -sqrt(2)};
     P[0] = pt{1, -sqrt(2), 0};
 
     for (int i: {1, 4, 6, 0})
         P[i] = rotate(P[i]);
+
+    P[5] = sym_x(P[4]);
+    P[3] = sym_x(P[0]);
+    P[7] = sym_x(P[6]);
+    P[2] = sym_x(P[1]);
+
+    pin0 = pin0 / norm(pin0);
+    pin1 = pin1 / norm(pin1);
+
+    for (pt& U: P)
+        U = U / norm(U);
+
+    return {P, {pin0, pin1}};
+}
+
+// This is one of the two 1-parameter families corresponding to 1029.
+pair<vector<pt>, pair<pt,pt>> embedCube(double q) {
+    auto sym_x = [&](pt U) {
+        return pt{-U[0], U[1], U[2]};
+    };
+
+    pt pin0 = {sin(q), 0, cos(q)};
+    pt pin1 = -pin0;
+
+    vector<pt> P(8);
+    // Face of the cube
+    P[1] = pt{1, sqrt(2), 0};
+    P[4] = pt{1, 0, sqrt(2)};
+    P[6] = pt{1, 0, -sqrt(2)};
+    P[0] = pt{1, -sqrt(2), 0};
 
     P[5] = sym_x(P[4]);
     P[3] = sym_x(P[0]);
@@ -615,9 +633,7 @@ Interval validPinEdgeLength(int net_id, MetrizedNet net) {
     else l = dist-len2, r = dist;
     l -= M_PI;
     r -= M_PI;
-    // cout << len1 << " " << len2 << " " << dist << " " << almost_sign << " " << l << " " << r << endl;
-    // cout << other << " " << concave_angles[0] << " " << concave_angles[other] << endl;
-    // cout << pos_x << " " << pos_y << endl;
+
     assert(l <= r);
     assert(0 <= r and r <= M_PI);
 
@@ -637,15 +653,22 @@ NetEmbeddedWithPins embedNetWithPins(int net_id, vector<double> params) {
     pair<pt, pt> pins_coord;
 
     if (net_id == 1029) {
-        assert(ssize(params) == 1);
-        tie(embedding, pins_coord) = embed1029(params[0]);
+        assert(ssize(params) == 2);
+        assert(params[0] == 0 or params[0] == 1);
+        if (params[0] == 0) {
+            assert(0 <= params[1] and params[1] <= acos(-1.0/3) / 2);
+            tie(embedding, pins_coord) = embedGoggles(params[1]);
+        }
+        if (params[0] == 1) {
+            assert(0 <= params[1] and params[1] <= acos(1.0/3) / 2);
+            tie(embedding, pins_coord) = embedCube(params[1]);
+        }
     } else if (rigid_nets_flexible_pins.count(net_id)) {
         assert(ssize(params) == 1);
         double len = params[0];
         Interval valid_lens = validPinEdgeLength(net_id, net);
         assert(valid_lens.contains(len));
-        cout << valid_lens << endl;
-        // double len = I.l + (I.r - I.l) * coef;
+        clog << "Interval of valid edge-to-pin lengths: " << valid_lens << endl;
         embedding = getVertexEmbedding(net);
         pins_coord = choosePinsEmbedding(net, len);
     } else if (net_id == 736) {

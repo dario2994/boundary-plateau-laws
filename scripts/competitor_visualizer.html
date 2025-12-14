@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simplicial Complex Visualizer</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #f0f0f0; font-family: sans-serif; }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            pointer-events: auto;
+            max-width: 300px;
+        }
+        .control-group { margin-bottom: 10px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 0.9em;}
+        input[type="file"] { width: 100%; margin-bottom: 10px; }
+        input[type="text"] { width: 65%; padding: 5px; }
+        button { padding: 5px 10px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; }
+        button:hover { background: #0056b3; }
+        #stats { font-size: 0.85em; color: #666; margin-top: 10px; border-top: 1px solid #ddd; padding-top: 5px;}
+    </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <div id="info">
+        <h3>Simplicial Complex</h3>
+
+        <div class="control-group">
+            <label>1. Load File</label>
+            <input type="file" id="fileInput" accept=".txt">
+        </div>
+
+        <div class="control-group">
+            <label>2. Highlight Vertices</label>
+            <input type="text" id="vertexInput" placeholder="e.g. 0, 5, 12">
+            <button id="btnHighlight">Go</button>
+            <div style="font-size: 0.8em; color: #888; margin-top:3px;">Space or comma separated</div>
+        </div>
+
+        <div id="stats">No file loaded</div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- Standard Three.js Setup ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf5f5f5);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 1000);
+        camera.position.set(0, 0, 5);
+        scene.add(camera);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // --- Lighting ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+        dirLight.position.set(0, 0, 1);
+        camera.add(dirLight);
+
+        // Global State
+        let currentMesh = null;
+        let currentWireframe = null;
+        let markersGroup = new THREE.Group();
+        scene.add(markersGroup);
+
+        let vertexPositions = null;
+
+        // --- UI Event Listeners ---
+        document.getElementById('fileInput').addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => parseAndRender(e.target.result);
+            reader.readAsText(file);
+        });
+
+        document.getElementById('btnHighlight').addEventListener('click', () => {
+            const input = document.getElementById('vertexInput').value;
+            highlightVertices(input);
+        });
+
+        // --- Core Logic ---
+
+        function parseAndRender(text) {
+            if (currentMesh) {
+                scene.remove(currentMesh);
+                currentMesh.geometry.dispose();
+                currentMesh.material.dispose();
+            }
+            if (currentWireframe) {
+                scene.remove(currentWireframe);
+                currentWireframe.geometry.dispose();
+                currentWireframe.material.dispose();
+            }
+            clearMarkers();
+
+            const tokens = text.trim().split(/\s+/);
+            if (tokens.length < 2) { alert("Invalid file"); return; }
+
+            let ptr = 0;
+            const numVertices = parseInt(tokens[ptr++]);
+            const numFaces = parseInt(tokens[ptr++]);
+
+            document.getElementById('stats').innerText = `Vertices: ${numVertices} | Faces: ${numFaces}`;
+
+            const positions = [];
+            for (let i = 0; i < numVertices; i++) {
+                positions.push(parseFloat(tokens[ptr++]), parseFloat(tokens[ptr++]), parseFloat(tokens[ptr++]));
+            }
+
+            const indices = [];
+            for (let i = 0; i < numFaces; i++) {
+                const k = parseInt(tokens[ptr++]);
+                if (k === 3) {
+                    indices.push(parseInt(tokens[ptr++]), parseInt(tokens[ptr++]), parseInt(tokens[ptr++]));
+                } else {
+                    ptr += k;
+                }
+            }
+
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geometry.setIndex(indices);
+            geometry.center();
+
+            vertexPositions = geometry.attributes.position;
+
+            // --- Materials ---
+            const material = new THREE.MeshPhongMaterial({
+                color: 0xE0F7FA,
+                side: THREE.DoubleSide,
+                flatShading: true,
+                shininess: 0,
+                specular: 0x000000
+            });
+
+            currentMesh = new THREE.Mesh(geometry, material);
+            scene.add(currentMesh);
+
+            // Wireframe
+            const wireGeo = new THREE.WireframeGeometry(geometry);
+            const wireMat = new THREE.LineBasicMaterial({ color: 0x000000, opacity: 0.25, transparent: true });
+            currentWireframe = new THREE.LineSegments(wireGeo, wireMat);
+            scene.add(currentWireframe);
+
+            geometry.computeBoundingSphere();
+            const r = geometry.boundingSphere.radius;
+            camera.position.set(0, 0, r * 2.5);
+            controls.target.set(0,0,0);
+            controls.update();
+        }
+
+        function highlightVertices(inputString) {
+            clearMarkers();
+            if (!vertexPositions) return;
+
+            const ids = inputString.split(/[\s,]+/)
+                .map(s => parseInt(s))
+                .filter(n => !isNaN(n) && n >= 0 && n < vertexPositions.count);
+
+            currentMesh.geometry.computeBoundingSphere();
+            const scale = currentMesh.geometry.boundingSphere.radius * 0.005;
+
+            ids.forEach(id => {
+                const x = vertexPositions.getX(id);
+                const y = vertexPositions.getY(id);
+                const z = vertexPositions.getZ(id);
+
+                const marker = new THREE.Mesh(
+                    new THREE.SphereGeometry(scale, 16, 16),
+                    new THREE.MeshBasicMaterial({ color: 0xff0000 })
+                );
+                marker.position.set(x, y, z);
+                markersGroup.add(marker);
+
+                // Use larger font size for crispness, larger scale for size
+                const sprite = makeTextSprite(id.toString(), { fontsize: 64 });
+
+                // Position text higher
+                sprite.position.set(x, y + scale * 8.0, z);
+
+                // Increased Scale: Was 15x/7.5x, now 25x/12.5x for bigger visibility
+                sprite.scale.set(scale * 25, scale * 12.5, 1);
+                markersGroup.add(sprite);
+            });
+        }
+
+        function clearMarkers() {
+            while(markersGroup.children.length > 0){
+                const child = markersGroup.children[0];
+                markersGroup.remove(child);
+                if(child.geometry) child.geometry.dispose();
+                if(child.material) {
+                    if(child.material.map) child.material.map.dispose();
+                    child.material.dispose();
+                }
+            }
+        }
+
+        function makeTextSprite(message, parameters) {
+            if ( parameters === undefined ) parameters = {};
+            const fontface = parameters.hasOwnProperty("fontface") ? parameters["fontface"] : "Arial";
+            // Default larger fontsize for high-res texture
+            const fontsize = parameters.hasOwnProperty("fontsize") ? parameters["fontsize"] : 48;
+
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+
+            // Larger canvas to support larger font without clipping
+            canvas.width = 512;
+            canvas.height = 256;
+
+            // REMOVED "Bold" here.
+            context.font = fontsize + "px " + fontface;
+
+            context.fillStyle = "rgba(0, 0, 0, 1.0)";
+            context.textAlign = "center";
+            context.textBaseline = "middle";
+            context.fillText( message, canvas.width/2, canvas.height/2);
+
+            const texture = new THREE.Texture(canvas);
+            texture.needsUpdate = true;
+            const spriteMaterial = new THREE.SpriteMaterial( { map: texture } );
+            const sprite = new THREE.Sprite( spriteMaterial );
+            return sprite;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>

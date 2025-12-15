@@ -727,6 +727,72 @@ void printInfoForHumanPopping(const NetEmbeddedWithPins& link) {
                                    << link.pins.second << endl;
 }
 
+SurfaceEvolverData generateCubeCompetitor(const NetEmbeddedWithPins& link) {
+    vector<int> up_face = {4, 1, 6, 0};
+    vector<int> down_face = {5, 2, 7, 3};
+    vector<int> small_square = {10, 11, 12, 13};
+    auto embedding = link.embedding;
+
+    // up_face[0] - down_face[0] contains link.pins.first
+    pt A = embedding[link.pins.first];
+    pt B = embedding[up_face[1]] + embedding[down_face[1]];
+    pt C = -A;
+    pt D = -B;
+    vector<pt> small_square_pts = {A, B, C, D};
+    for (pt& P: small_square_pts)
+        P = P / (5 * norm(P));
+    for (pt P: small_square_pts)
+        embedding.push_back(P);
+
+
+    vector<pair<int,int>> boundary_edges;
+    for (Dart d: link.A.darts()) {
+        assert(d.from != d.to);
+        if (d.from > d.to)
+            continue;
+        boundary_edges.push_back({d.from, d.to});
+    }
+
+    vector<set<int>> triangles;
+
+    // Whether v belongs to the line connecting the pins.
+    auto is_pin = [&](int v) {
+        return set<int>{link.pins.first, link.pins.second, 10, 12}.count(v);
+    };
+
+    auto add_face = [&](vector<int> face) {
+        assert(ssize(face) >= 3);
+        int f = ssize(face);
+        // If a face contains a pin, then the triangulation shall be pivoted
+        // there to avoid issues due to the fact that the face is not convex
+        // and not contained in a plane.
+        int pivot = 0;
+        for (int i = 1; i < f; i++)
+            if (is_pin(face[i]))
+                pivot = i;
+        rotate(face.begin(), face.begin() + pivot, face.end());
+        for (int i = 1; i < f-1; i++) {
+            int j = (i+1) % f;
+            triangles.push_back({face[0], face[i], face[j]});
+        }
+    };
+
+    for (int i = 0; i < 4; i++) {
+        int j = (i + 1) % 4;
+        add_face({up_face[i], up_face[j], small_square[j], small_square[i]});
+        add_face({down_face[i], down_face[j], small_square[j], small_square[i]});
+        vector<int> side_triangle = {up_face[i], small_square[i], down_face[i]};
+        if (i == 0) side_triangle.push_back(link.pins.first);
+        if (i == 2) side_triangle.push_back(link.pins.second);
+        add_face(side_triangle);
+    }
+    add_face(small_square);
+
+    return {.X = ImmersedSimplicialComplex(embedding, triangles),
+            .pins = link.pins,
+            .boundary_edges = boundary_edges};
+}
+
 SurfaceEvolverData generatePoppedCone(const NetEmbeddedWithPins& link,
                                       const vector<int>& excluded_faces,
                                       vector<int> path_to_add) {

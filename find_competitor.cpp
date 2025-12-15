@@ -74,9 +74,12 @@ void processNet(int net_id, bool run_surface_evolver, vector<double> params) {
     }
 
     SurfaceEvolverData cone = generateCone(link);
-    SurfaceEvolverData popped_cone = generatePoppedCone(link,
-        pop_description.at(net_id).first,
-        pop_description.at(net_id).second);
+    SurfaceEvolverData popped_cone =
+        (net_id == 1029 and params[0] == 1)
+        ? generateCubeCompetitor(link)
+        : generatePoppedCone(link,
+                             pop_description.at(net_id).first,
+                             pop_description.at(net_id).second);
 
     const string& embedding_name = generateEmbeddingFilename(net_id, params);
     const string& filename_prefix = "data/surface_evolver/" + embedding_name;
@@ -125,7 +128,7 @@ void processNet(int net_id, bool run_surface_evolver, vector<double> params) {
 
 int main() {
     for (int net_id: {1029})
-        processNet(net_id, true, {1, 0.3});
+        processNet(net_id, false, {1, 0.5});
 
     return 0;
     // testSegmentDistanceFromLine();

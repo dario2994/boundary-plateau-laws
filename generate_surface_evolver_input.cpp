@@ -154,7 +154,7 @@ pair<pair<int,int>, CombinatorialMap> addPinsToCombinatorialMap(
 
     auto find_vertex = [&](pt p) {
         for (int v = 0; v < ssize(embedding); v++) {
-            if (norm(p-embedding[v]) < 1e-3)
+            if (norm(p-embedding[v]) < 1e-4)
                 return v;
         }
         return -1;
@@ -308,11 +308,9 @@ print total_area;
 
     const map<int, string> special_surface_evolver_commands = {
         {28, R"(
-            subroutine 2;
+            subroutine 5;
             o;
-            subroutine 2;
-            o;
-            subroutine 2;
+            subroutine 15;
         )"},
         {99, R"(
             subroutine 2;
@@ -594,6 +592,44 @@ struct NetEmbeddedWithPins {
     CombinatorialMap A;
     vector<pt> embedding;
     pair<int,int> pins;
+
+    double totalLen() {
+        double len = 0;
+        for (Dart d: A.darts()) {
+            int x = d.from, y = d.to;
+            if (x > y)
+                continue;
+            len += norm(embedding[x] - embedding[y]);
+        }
+        return len;
+    }
+    double totalInterestingLen() {
+        auto f = [&](int x, int y) { return embedding[x] - embedding[y]; };
+        pt line = f(pins.first, pins.second);
+        pair<pt, pt> edge_to_pins;
+        for (Dart d: A.darts()) {
+            if (d.from == pins.first)
+                edge_to_pins.first = f(d.from, d.to);
+            if (d.from == pins.second)
+                edge_to_pins.second = f(d.from, d.to);
+        }
+        pt edge_to_pin = edge_to_pins.first;
+        if (norm(edge_to_pins.second) > norm(edge_to_pins.first))
+            edge_to_pin = edge_to_pins.second;
+        pt rotation_axis = edge_to_pin ^ line;
+        rotation_axis = rotation_axis / norm(rotation_axis);
+
+        double len = 0;
+        for (Dart d: A.darts()) {
+            int x = d.from, y = d.to;
+            if (x > y)
+                continue;
+            double a = embedding[x] * rotation_axis, b = embedding[y] * rotation_axis;
+            if (a > b) swap(a, b);
+            len += b-a;
+        }
+        return len;
+    }
 };
 
 // net is a rigid net with flexible pins.

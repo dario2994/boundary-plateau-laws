@@ -113,9 +113,10 @@ void processNet(int net_id, bool run_surface_evolver, vector<double> params) {
     assert(competitor_in.is_open());
     ImmersedSimplicialComplex competitor = parseImmersedSimplicialComplex(competitor_in);
 
-    // competitor = removeAllCollapsedSegments(competitor);
-    // competitor = removeAllCollapsedTriangles(competitor);
+    competitor = removeAllCollapsedSegments(competitor);
+    competitor = removeAllCollapsedTriangles(competitor);
 
+    clog << "Link length: " << link.totalLen() << ", " << link.totalInterestingLen() << endl;
     clog << "Areas" << endl;
     clog << "Cone: " << cone.X.area() << ", "
          << "Popped cone: " << popped_cone.X.area() << ", "
@@ -127,8 +128,12 @@ void processNet(int net_id, bool run_surface_evolver, vector<double> params) {
 }
 
 int main() {
-    for (int net_id: {1029})
-        processNet(net_id, false, {1, 0.5});
+    for (int net_id: {346}) {
+        for (double d = 0.001; d < 0.6; d += 0.001) {
+            cout << d << endl;
+            processNet(net_id, true, {d});
+        }
+    }
 
     return 0;
     // testSegmentDistanceFromLine();
@@ -157,4 +162,4 @@ int main() {
 
         processNet(net_id, true, {0.03});
     }
-}
+} // 5.7273923

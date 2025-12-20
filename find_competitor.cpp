@@ -84,6 +84,9 @@ void processNet(int net_id, bool run_surface_evolver, vector<double> params) {
     const string& embedding_name = generateEmbeddingFilename(net_id, params);
     const string& filename_prefix = "data/surface_evolver/" + embedding_name;
 
+    saveSurfaceEvolverFormat(
+            net_id, embedding_name, cone, filename_prefix + "_cone.fe", false);
+
     if (run_surface_evolver) {
         saveSurfaceEvolverFormat(
             net_id, embedding_name, cone, filename_prefix + "_cone.fe", false);
@@ -128,10 +131,12 @@ void processNet(int net_id, bool run_surface_evolver, vector<double> params) {
 }
 
 int main() {
-    for (int net_id: {346}) {
-        for (double d = 0.001; d < 0.6; d += 0.001) {
+    processNet(827, true, {0.3, 0.3});
+    return 0;
+    for (int net_id: {1029}) {
+        for (double d = 0.6; d < acos(1.0/3) / 2 - 0.01; d += 0.005) {
             cout << d << endl;
-            processNet(net_id, true, {d});
+            processNet(net_id, true, {0., d});
         }
     }
 

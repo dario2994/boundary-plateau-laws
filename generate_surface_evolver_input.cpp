@@ -372,6 +372,16 @@ print total_area;
             o;
             subroutine 2;
         )"},
+        {827, R"(
+            g 1000;
+            o;
+            subroutine 7;
+        )"},
+        {1029, R"(
+            subroutine 3;
+            r;
+            subroutine 2;
+        )"},
         {1096, R"(
             subroutine 3;
             o;
@@ -566,6 +576,10 @@ const map<int, pair<vector<int>, vector<int>>> pop_description = {
         {1},
         {PIN_ZERO, 10, 1, 2, 3, 11, PIN_ONE}
     }},
+    {827, {
+        {3},
+        {PIN_ZERO, 0, 1, 2, PIN_ONE}
+    }},
     {909, {
         {1},
         {PIN_ZERO, 8, 1, 2, 10, PIN_ONE}
@@ -676,9 +690,58 @@ Interval validPinEdgeLength(int net_id, MetrizedNet net) {
     return intersection({0, len1}, {l, r});
 }
 
+NetEmbeddedWithPins embed827WithPins(const vector<double>& params) {
+    assert(ssize(params) == 2);
+    CombinatorialMap A = constructOneEdge();
 
-NetEmbeddedWithPins embedNetWithPins(int net_id, vector<double> params) {
+    Dart d01 = A.darts()[0];
+    Dart d12 = A.addVertex(d01).first;
+    Dart d23 = A.addVertex(d12).first;
+    Dart d30 = A.addEdge(d23, d01).first;
+    Dart d34 = A.addVertex(A.rev(d30)).first;
+    Dart d15 = A.addVertex(A.rev(d12)).first;
+    Dart d56 = A.addVertex(d15).first;
+    Dart d47 = A.addVertex(d34).first;
+    Dart d64 = A.addEdge(d56, d47).first;
+    Dart d75 = A.addEdge(d47, d56).first;
+    Dart d08 = A.addVertex(A.rev(d01)).first;
+    Dart d29 = A.addVertex(A.rev(d23)).first;
+
+    pair<int,int> pins = {8, 9};
+
+    double theta0 = params[0], theta1 = params[1];
+    double c0 = cos(theta0), s0 = sin(theta0);
+    double c1 = cos(theta1), s1 = sin(theta1);
+
+    double sigma = sqrt(2. / 3);
+    double tau = 1. / sqrt(3.);
+
+    vector<pt> embedding(A.V());
+
+    embedding[0] = {tau, 0, sigma};
+    embedding[1] = {tau, sigma, 0};
+    embedding[2] = {tau, 0, -sigma};
+    embedding[3] = {tau, -sigma, 0};
+    embedding[4] = {s1, -c1, 0};
+    embedding[5] = {-s1, c1, 0};
+    embedding[6] = {-c1/2, -s1/2, sqrt(3)/2};
+    embedding[7] = {-c1/2, -s1/2, -sqrt(3)/2};
+    embedding[8] = {s0, 0, c0};
+    embedding[9] = {-s0, 0, -c0};
+
+    return {
+        .A = A,
+        .embedding = embedding,
+        .pins = pins,
+    };
+}
+
+
+NetEmbeddedWithPins embedNetWithPins(int net_id, const vector<double>& params) {
     assert(possible_nets.count(net_id));
+
+    if (net_id == 827)
+        return embed827WithPins(params);
 
     ifstream metrized_net_in("data/metrized_nets/"+ to_string(net_id) + ".txt");
     assert(metrized_net_in.is_open());
@@ -692,11 +755,11 @@ NetEmbeddedWithPins embedNetWithPins(int net_id, vector<double> params) {
         assert(ssize(params) == 2);
         assert(params[0] == 0 or params[0] == 1);
         if (params[0] == 0) {
-            assert(0 <= params[1] and params[1] <= acos(-1.0/3) / 2);
+            assert(0 <= params[1] and params[1] <= acos(1.0/3) / 2);
             tie(embedding, pins_coord) = embedGoggles(params[1]);
         }
         if (params[0] == 1) {
-            assert(0 <= params[1] and params[1] <= acos(1.0/3) / 2);
+            assert(0 <= params[1] and params[1] <= acos(1.0/3) / 2); // TODO: Check this!
             tie(embedding, pins_coord) = embedCube(params[1]);
         }
     } else if (rigid_nets_flexible_pins.count(net_id)) {

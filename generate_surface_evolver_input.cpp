@@ -692,6 +692,26 @@ Interval validPinEdgeLength(int net_id, MetrizedNet net) {
 
 NetEmbeddedWithPins embed827WithPins(const vector<double>& params) {
     assert(ssize(params) == 2);
+
+    // Checking the validity of the parameters.
+    // theta0 represents the position of the pins (relative to the square).
+    // theta1 represents the position of the biangle (relative to the square).
+    // (theta0, theta1) =  (0, 0) corresponds to the most symmetric configuration.
+    double theta0 = params[0], theta1 = params[1];
+    double c0 = cos(theta0), s0 = sin(theta0);
+    double c1 = cos(theta1), s1 = sin(theta1);
+
+    const double sigma = sqrt(2. / 3);
+    const double tau = 1. / sqrt(3.);
+
+    assert(0 <= theta1 and theta1 <= acos(sigma));
+    double upperbound_tan_theta0 = cos(2*theta1) / (cos(theta1) * sqrt(3.));
+    assert(0 <= theta0 and theta0 < 1.5 and tan(theta0) < upperbound_tan_theta0);
+
+
+    // We construct the combinatorial map from scratch (instead of starting from
+    // the DerivedOnceNet) because we have to add the pins and also to add
+    // some artificial vertices on the biangle's edges.
     CombinatorialMap A = constructOneEdge();
 
     Dart d01 = A.darts()[0];
@@ -702,22 +722,14 @@ NetEmbeddedWithPins embed827WithPins(const vector<double>& params) {
     Dart d15 = A.addVertex(A.rev(d12)).first;
     Dart d56 = A.addVertex(d15).first;
     Dart d47 = A.addVertex(d34).first;
-    Dart d64 = A.addEdge(d56, d47).first;
-    Dart d75 = A.addEdge(d47, d56).first;
-    Dart d08 = A.addVertex(A.rev(d01)).first;
-    Dart d29 = A.addVertex(A.rev(d23)).first;
+    A.addEdge(d56, d47).first; // d64
+    A.addEdge(d47, d56).first; // d75
+    A.addVertex(A.rev(d01)).first; // d08
+    A.addVertex(A.rev(d23)).first; // d29
 
     pair<int,int> pins = {8, 9};
 
-    double theta0 = params[0], theta1 = params[1];
-    double c0 = cos(theta0), s0 = sin(theta0);
-    double c1 = cos(theta1), s1 = sin(theta1);
-
-    double sigma = sqrt(2. / 3);
-    double tau = 1. / sqrt(3.);
-
     vector<pt> embedding(A.V());
-
     embedding[0] = {tau, 0, sigma};
     embedding[1] = {tau, sigma, 0};
     embedding[2] = {tau, 0, -sigma};

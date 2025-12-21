@@ -690,6 +690,20 @@ Interval validPinEdgeLength(int net_id, MetrizedNet net) {
     return intersection({0, len1}, {l, r});
 }
 
+// We print some info which is useful for humans to come up with a reasonable pop.
+void printInfoForHumanPopping(const NetEmbeddedWithPins& link) {
+    auto faces = link.A.faces();
+    cout << "Faces: " << endl;
+    for (int i = 0; i < ssize(faces); i++) {
+        cout << "Face " << i << ": ";
+        for (Dart d: faces[i])
+            cout << d.from << ", ";
+        cout << endl;
+    }
+    cout << "Pin ids (in order): " << link.pins.first << ", "
+                                   << link.pins.second << endl;
+}
+
 NetEmbeddedWithPins embed827WithPins(const vector<double>& params) {
     assert(ssize(params) == 2);
 
@@ -705,7 +719,9 @@ NetEmbeddedWithPins embed827WithPins(const vector<double>& params) {
     const double tau = 1. / sqrt(3.);
 
     assert(0 <= theta1 and theta1 <= acos(sigma));
-    double upperbound_tan_theta0 = cos(2*theta1) / (cos(theta1) * sqrt(3.));
+    // The condition on the tangent follows from computing
+    // det(embedding[5], embedding[7], embedding[9])
+    double upperbound_tan_theta0 = 1.0 / (sqrt(3.) * cos(theta1));
     assert(0 <= theta0 and theta0 < 1.5 and tan(theta0) < upperbound_tan_theta0);
 
 
@@ -824,19 +840,7 @@ SurfaceEvolverData generateCone(const NetEmbeddedWithPins& link) {
             .boundary_edges = boundary_edges};
 }
 
-// We print some info which is useful for humans to come up with a reasonable pop.
-void printInfoForHumanPopping(const NetEmbeddedWithPins& link) {
-    auto faces = link.A.faces();
-    cout << "Faces: " << endl;
-    for (int i = 0; i < ssize(faces); i++) {
-        cout << "Face " << i << ": ";
-        for (Dart d: faces[i])
-            cout << d.from << ", ";
-        cout << endl;
-    }
-    cout << "Pin ids (in order): " << link.pins.first << ", "
-                                   << link.pins.second << endl;
-}
+
 
 SurfaceEvolverData generateCubeCompetitor(const NetEmbeddedWithPins& link) {
     vector<int> up_face = {4, 1, 6, 0};

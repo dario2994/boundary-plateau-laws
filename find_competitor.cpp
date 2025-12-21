@@ -131,7 +131,7 @@ void processNet(int net_id, bool run_surface_evolver, vector<double> params) {
 }
 
 int main() {
-    processNet(827, true, {0.46, 0.3});
+    processNet(827, true, {0.52, 0.3});
     return 0;
     for (int net_id: {1029}) {
         for (double d = 0.6; d < acos(1.0/3) / 2 - 0.01; d += 0.005) {

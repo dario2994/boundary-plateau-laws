@@ -373,9 +373,11 @@ print total_area;
             subroutine 2;
         )"},
         {827, R"(
-            g 1000;
-            o;
-            subroutine 7;
+            g 100;
+            r;
+            g 200;
+            u 2;
+            g 300;
         )"},
         {1029, R"(
             subroutine 3;
@@ -754,7 +756,7 @@ NetEmbeddedWithPins embed827WithPins(const vector<double>& params) {
     embedding[5] = {-s1, c1, 0};
     embedding[6] = {-c1/2, -s1/2, sqrt(3)/2};
     embedding[7] = {-c1/2, -s1/2, -sqrt(3)/2};
-    embedding[8] = {s0, 0, c0};
+    embedding[8] = {s0, 0, c0}; // TODO: Check that when this is equal to embedding[0], also another condition is saturated.
     embedding[9] = {-s0, 0, -c0};
 
     return {
@@ -902,6 +904,75 @@ SurfaceEvolverData generateCubeCompetitor(const NetEmbeddedWithPins& link) {
         add_face(side_triangle);
     }
     add_face(small_square);
+
+    return {.X = ImmersedSimplicialComplex(embedding, triangles),
+            .pins = link.pins,
+            .boundary_edges = boundary_edges};
+}
+
+// Net 827 = Fat fish.
+SurfaceEvolverData generateFatFishCompetitor(const NetEmbeddedWithPins& link) {
+    vector<int> square = {0, 1, 2, 3};
+    vector<int> biangle = {6, 5, 7, 4};
+    vector<int> internal_square = {10, 11, 12, 13};
+    auto embedding = link.embedding;
+
+    vector<pt> internal_square_pts = {
+        embedding[link.pins.first],
+        (embedding[square[1]] + embedding[biangle[1]]) / 2.0,
+        embedding[link.pins.second],
+        (embedding[square[3]] + embedding[biangle[3]]) / 2.0,
+    };
+    for (pt& P: internal_square_pts)
+        P = P / (3 * norm(P));
+    for (pt P: internal_square_pts)
+        embedding.push_back(P);
+
+
+    vector<pair<int,int>> boundary_edges;
+    for (Dart d: link.A.darts()) {
+        assert(d.from != d.to);
+        if (d.from > d.to)
+            continue;
+        boundary_edges.push_back({d.from, d.to});
+    }
+
+    vector<set<int>> triangles;
+
+    // Whether v belongs to the line connecting the pins.
+    auto is_pin = [&](int v) {
+        return set<int>{link.pins.first, link.pins.second, 10, 12}.count(v);
+    };
+
+    auto add_face = [&](vector<int> face) {
+        assert(ssize(face) >= 3);
+        int f = ssize(face);
+        // If a face contains a pin, then the triangulation shall be pivoted
+        // there to avoid issues due to the fact that the face is not convex
+        // and not contained in a plane.
+        int pivot = 0;
+        for (int i = 1; i < f; i++)
+            if (is_pin(face[i]))
+                pivot = i;
+        rotate(face.begin(), face.begin() + pivot, face.end());
+        for (int i = 1; i < f-1; i++) {
+            int j = (i+1) % f;
+            triangles.push_back({face[0], face[i], face[j]});
+        }
+    };
+
+    for (int i = 0; i < 4; i++) {
+        int j = (i + 1) % 4;
+        add_face({square[i], square[j], internal_square[j], internal_square[i]});
+        add_face({biangle[i], biangle[j], internal_square[j], internal_square[i]});
+    }
+    add_face(internal_square);
+
+    // Side triangles
+    add_face({square[0], link.pins.first, internal_square[0]});
+    add_face({square[1], biangle[1], internal_square[1]});
+    add_face({square[2], link.pins.second, internal_square[2]});
+    add_face({square[3], biangle[3], internal_square[3]});
 
     return {.X = ImmersedSimplicialComplex(embedding, triangles),
             .pins = link.pins,

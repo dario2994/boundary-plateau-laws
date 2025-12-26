@@ -13,7 +13,7 @@ bool isCompetitorValid(ImmersedSimplicialComplex competitor, NetEmbeddedWithPins
     auto pin2 = link.embedding[link.pins.second];
     auto maybe_line = competitor.containsSegment(pin1, pin2);
     if (!maybe_line) {
-        cerr << "The line connecting the pins is not contained in the competitor." << endl;
+        cerr << "The line connecting the pins is not properly contained in the competitor." << endl;
         return false;
     }
     auto line = *maybe_line;
@@ -57,6 +57,15 @@ bool containsErrorMessage(const string& log_file, const string& error_string) {
     return false;
 }
 
+SurfaceEvolverData generatePoppedConeCases(int net_id, vector<double> params, NetEmbeddedWithPins link) {
+    if (net_id == 1029 and params[0] == 1) // Cube family
+        return generateCubeCompetitor(link);
+    if (net_id == 827) // Fat fish family
+        return generateFatFishCompetitor(link);
+    return generatePoppedCone(link, pop_description.at(net_id).first,
+                                    pop_description.at(net_id).second);
+}
+
 void processNet(int net_id, bool run_surface_evolver, vector<double> params) {
     clog << "Processing net " << net_id;
     if (!params.empty()) {
@@ -74,12 +83,7 @@ void processNet(int net_id, bool run_surface_evolver, vector<double> params) {
     }
 
     SurfaceEvolverData cone = generateCone(link);
-    SurfaceEvolverData popped_cone =
-        (net_id == 1029 and params[0] == 1)
-        ? generateCubeCompetitor(link)
-        : generatePoppedCone(link,
-                             pop_description.at(net_id).first,
-                             pop_description.at(net_id).second);
+    SurfaceEvolverData popped_cone = generatePoppedConeCases(net_id, params, link);
 
     const string& embedding_name = generateEmbeddingFilename(net_id, params);
     const string& filename_prefix = "data/surface_evolver/" + embedding_name;
@@ -131,7 +135,7 @@ void processNet(int net_id, bool run_surface_evolver, vector<double> params) {
 }
 
 int main() {
-    processNet(827, true, {0.52, 0.3});
+    processNet(827, true, {0.51, 0.3});
     return 0;
     for (int net_id: {1029}) {
         for (double d = 0.6; d < acos(1.0/3) / 2 - 0.01; d += 0.005) {
@@ -168,3 +172,7 @@ int main() {
         processNet(net_id, true, {0.03});
     }
 } // 5.7273923
+
+
+// 4.98875
+// 4.96494

@@ -308,9 +308,8 @@ print total_area;
 
     const map<int, string> special_surface_evolver_commands = {
         {28, R"(
-            subroutine 5;
             o;
-            subroutine 15;
+            subroutine 5;
         )"},
         {99, R"(
             subroutine 2;
@@ -373,9 +372,9 @@ print total_area;
             subroutine 2;
         )"},
         {827, R"(
-            g 100;
+            g 5;
             r;
-            g 200;
+            g 400;
             u 2;
             g 300;
         )"},
@@ -385,9 +384,7 @@ print total_area;
             subroutine 2;
         )"},
         {1096, R"(
-            subroutine 3;
-            o;
-            subroutine 3;
+            r; subroutine 5; o; subroutine 5; o; subroutine 5;
         )"},
     };
 
@@ -400,6 +397,15 @@ print total_area;
 subroutine := {{
     quiet;
     g 2000;
+    areaweed 0.0005;
+    u 4;
+    print total_area;
+    quiet off;
+}}
+
+subroutinequick := {{
+    quiet;
+    g 200;
     areaweed 0.0005;
     u 4;
     print total_area;
@@ -706,6 +712,7 @@ void printInfoForHumanPopping(const NetEmbeddedWithPins& link) {
                                    << link.pins.second << endl;
 }
 
+// Fat fish
 NetEmbeddedWithPins embed827WithPins(const vector<double>& params) {
     assert(ssize(params) == 2);
 
@@ -723,8 +730,8 @@ NetEmbeddedWithPins embed827WithPins(const vector<double>& params) {
     assert(0 <= theta1 and theta1 <= acos(sigma));
     // The condition on the tangent follows from computing
     // det(embedding[5], embedding[7], embedding[9])
-    double upperbound_tan_theta0 = 1.0 / (sqrt(3.) * cos(theta1));
-    assert(0 <= theta0 and theta0 < 1.5 and tan(theta0) < upperbound_tan_theta0);
+    double upperbound_theta0 = atan(1.0 / (sqrt(3.) * cos(theta1)));
+    assert(0 <= theta0 and theta0 <= upperbound_theta0);
 
 
     // We construct the combinatorial map from scratch (instead of starting from
@@ -797,7 +804,7 @@ NetEmbeddedWithPins embedNetWithPins(int net_id, const vector<double>& params) {
         double len = params[0];
         Interval valid_lens = validPinEdgeLength(net_id, net);
         assert(valid_lens.contains(len));
-        clog << "Interval of valid edge-to-pin lengths: " << valid_lens << endl;
+        // clog << "Interval of valid edge-to-pin lengths: " << valid_lens << endl;
         embedding = getVertexEmbedding(net);
         pins_coord = choosePinsEmbedding(net, len);
     } else if (net_id == 736) {
@@ -924,7 +931,7 @@ SurfaceEvolverData generateFatFishCompetitor(const NetEmbeddedWithPins& link) {
         (embedding[square[3]] + embedding[biangle[3]]) / 2.0,
     };
     for (pt& P: internal_square_pts)
-        P = P / (3 * norm(P));
+        P = P / (2 * norm(P));
     for (pt P: internal_square_pts)
         embedding.push_back(P);
 

@@ -61,7 +61,7 @@ SurfaceEvolverData generatePoppedConeCases(int net_id, vector<double> params, Ne
     if (net_id == 1029 and params[0] == 1) // Cube family
         return generateCubeCompetitor(link);
     if (net_id == 827) // Fat fish family
-        return generateFatFishCompetitor(link);
+        return generateFatFishCompetitor2(link);
     return generatePoppedCone(link, pop_description.at(net_id).first,
                                     pop_description.at(net_id).second);
 }
@@ -82,9 +82,6 @@ double processNet(int net_id, bool run_surface_evolver, vector<double> params) {
 
     const string& embedding_name = generateEmbeddingFilename(net_id, params);
     const string& filename_prefix = "data/surface_evolver/" + embedding_name;
-
-    saveSurfaceEvolverFormat(
-            net_id, embedding_name, cone, filename_prefix + "_cone.fe", false);
 
     if (run_surface_evolver) {
         saveSurfaceEvolverFormat(
@@ -149,6 +146,12 @@ bool proveInstabilityOneParameterNet(int net_id) {
     auto get_area_gap = [&](double param) {
         if (net_id == 1029)
             return processNet(net_id, true, {0., param});
+        if (net_id == 1096 and param > 0.38) {
+            pop_description[1096].first[0] = 8;
+            double area_gap = processNet(net_id, true, {param});
+            pop_description[1096].first[0] = 6;
+            return area_gap;
+        }
         return processNet(net_id, true, {param});
     };
 
@@ -183,17 +186,24 @@ bool proveInstabilityOneParameterNet(int net_id) {
     return true;
 }
 
+// TO FIX: 827, 0.5, 0.2
+//         Write the pop explicitly using the picture in the mail from Camillo.
+
 int main() {
     // 28 works
     // 99 works
     // 346 works
     // 779 works
-    // 1029 (probably works, but takes some time)
-    // 1096 (fails for some reason)
+    // 1029 works
+    // 1096 works (con duro lavoro!)
+    //
+    // processNet(1096, true, {0.47}); // 0.23583
+    // return 0;
 
     proveInstabilityOneParameterNet(1096);
-    return 0;
-    processNet(827, true, {0.51, 0});
+    // return 0;
+    // double boh = atan(1.0 / (sqrt(3.))) - 0.00001;
+    // processNet(827, false, {0.5, 0.2});
     return 0;
     for (int net_id: {1029}) {
         for (double d = 0.6; d < acos(1.0/3) / 2 - 0.01; d += 0.005) {

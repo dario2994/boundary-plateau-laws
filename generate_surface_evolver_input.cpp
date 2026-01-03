@@ -384,7 +384,7 @@ print total_area;
             subroutine 2;
         )"},
         {1096, R"(
-            r; subroutine 5; o; subroutine 5; o; subroutine 5;
+            r; subroutine 5; o; subroutine 5; o; subroutine 5; o; subroutine 5;
         )"},
     };
 
@@ -519,7 +519,7 @@ const set<int> rigid_nets_flexible_pins = {28, 99, 346, 779, 1096};
 //   forms with the origin).
 const int PIN_ZERO = 342905;
 const int PIN_ONE = 5896232;
-const map<int, pair<vector<int>, vector<int>>> pop_description = {
+map<int, pair<vector<int>, vector<int>>> pop_description = { // Not const, because we do some annoying stuff down the road.
     {28, {
         {3, 5},
         {PIN_ZERO, 17, 6, 14, 13, 18, PIN_ONE, 19, 9, 0, 1, 16, PIN_ZERO}
@@ -601,7 +601,7 @@ const map<int, pair<vector<int>, vector<int>>> pop_description = {
         {PIN_ZERO, 5, 2, 7, PIN_ONE,6, 0, 4, PIN_ZERO}
     }},
     {1096, {
-        {6},
+        {6}, // 6 or 8
         {PIN_ZERO, 16, 2, 3, 10, 17, PIN_ONE}
     }},
     {1122, {
@@ -803,6 +803,7 @@ NetEmbeddedWithPins embedNetWithPins(int net_id, const vector<double>& params) {
         assert(ssize(params) == 1);
         double len = params[0];
         Interval valid_lens = validPinEdgeLength(net_id, net);
+        // cout << valid_lens << endl;
         assert(valid_lens.contains(len));
         // clog << "Interval of valid edge-to-pin lengths: " << valid_lens << endl;
         embedding = getVertexEmbedding(net);
@@ -974,6 +975,85 @@ SurfaceEvolverData generateFatFishCompetitor(const NetEmbeddedWithPins& link) {
         add_face({biangle[i], biangle[j], internal_square[j], internal_square[i]});
     }
     add_face(internal_square);
+
+    // Side triangles
+    add_face({square[0], link.pins.first, internal_square[0]});
+    add_face({square[1], biangle[1], internal_square[1]});
+    add_face({square[2], link.pins.second, internal_square[2]});
+    add_face({square[3], biangle[3], internal_square[3]});
+
+    return {.X = ImmersedSimplicialComplex(embedding, triangles),
+            .pins = link.pins,
+            .boundary_edges = boundary_edges};
+}
+
+SurfaceEvolverData generateFatFishCompetitor2(const NetEmbeddedWithPins& link) {
+    vector<int> square = {0, 1, 2, 3};
+    vector<int> biangle = {6, 5, 7, 4};
+    vector<int> internal_square = {10, 11, 12, 13};
+    auto embedding = link.embedding;
+
+    vector<pt> internal_square_pts = {
+        embedding[link.pins.first],
+        (embedding[square[1]] + embedding[biangle[1]]) / 2.0,
+        embedding[link.pins.second],
+        (embedding[square[3]] + embedding[biangle[3]]) / 2.0,
+    };
+    for (pt& P: internal_square_pts)
+        P = P / (2 * norm(P));
+    for (pt P: internal_square_pts)
+        embedding.push_back(P);
+
+
+    vector<pair<int,int>> boundary_edges;
+    for (Dart d: link.A.darts()) {
+        assert(d.from != d.to);
+        if (d.from > d.to)
+            continue;
+        boundary_edges.push_back({d.from, d.to});
+    }
+
+    vector<set<int>> triangles;
+
+    // Whether v belongs to the line connecting the pins.
+    auto is_pin = [&](int v) {
+        return set<int>{link.pins.first, link.pins.second, 10, 12}.count(v);
+    };
+
+    auto add_face = [&](vector<int> face) {
+        assert(ssize(face) >= 3);
+        int f = ssize(face);
+        // If a face contains a pin, then the triangulation shall be pivoted
+        // there to avoid issues due to the fact that the face is not convex
+        // and not contained in a plane.
+        int pivot = 0;
+        for (int i = 1; i < f; i++)
+            if (is_pin(face[i]))
+                pivot = i;
+        rotate(face.begin(), face.begin() + pivot, face.end());
+        for (int i = 1; i < f-1; i++) {
+            int j = (i+1) % f;
+            triangles.push_back({face[0], face[i], face[j]});
+        }
+    };
+
+    for (int i = 0; i < 4; i++) {
+        int j = (i + 1) % 4;
+        add_face({square[i], square[j], internal_square[j], internal_square[i]});
+        add_face({biangle[i], biangle[j], internal_square[j], internal_square[i]});
+    }
+
+    // add_face(internal_square);
+    embedding.push_back({0, 0, 0}); // S
+    embedding.push_back({0, 0, 0.3}); // T TO CHECK
+    int S = embedding.size() - 2;
+    int T = embedding.size() - 1;
+    add_face({internal_square[0], S, T});
+    add_face({internal_square[0], T, internal_square[1]});
+    add_face({internal_square[1], T, S, internal_square[2]});
+    add_face({internal_square[0], T, internal_square[3]});
+    add_face({internal_square[3], T, S, internal_square[2]});
+    // add_face({internal_square[0], internal_square[3], internal_square[2], S, T});
 
     // Side triangles
     add_face({square[0], link.pins.first, internal_square[0]});

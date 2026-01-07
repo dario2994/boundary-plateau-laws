@@ -346,6 +346,7 @@ struct ImmersedSimplicialComplex {
     optional<ImmersedSimplicialComplex> containsSegment(
                          const pt& A,
                          const pt& B,
+                         bool allow_changes=true,
                          const double eps=1e-6) {
         pt segment_dir = (B-A) * (1.0 / norm(B-A));
 
@@ -365,23 +366,11 @@ struct ImmersedSimplicialComplex {
             points_on_line.push_back(i);
             on_the_line[i] = true;
             // We move the points so that they are "perfectly" on the line.
-            points[i] = A + segment_dir * (segment_dir * (points[i] - A));
+            if (allow_changes)
+                points[i] = A + segment_dir * (segment_dir * (points[i] - A));
         }
 
-        // We save the edges of the simplicial complex in a convenient
-        // datastructure to speed up the computation.
-        set<pair<int,int>> edges;
-        for (auto face: faces) {
-            if (ssize(face) != 2)
-                continue;
-            int x = *face.begin();
-            int y = *face.rbegin();
-            edges.insert({x, y});
-            edges.insert({y, x});
-        }
-
-        // Sorting the vertices by the order in which they are mapped on AB,
-        // we find a path (using edges of the simplicial complex).
+        // Sorting the vertices by the order in which they appear on AB.
         auto position_on_line = [&](int i) {
             return segment_dir * (points[i] - A);
         };
@@ -395,17 +384,19 @@ struct ImmersedSimplicialComplex {
             return nullopt;
         }
 
-        for (int i = 0; i < ssize(points_on_line)-1; i++) {
-            int p = points_on_line[i];
-            int q = points_on_line[i+1];
-            if (!edges.count({p, q})) {
-                cerr << "points[" << p << "] = " << points[p] << ", "
-                     << "points[" << q << "] = " << points[q]
-                     << " are consecutive on the line segment connecting the pins "
-                     << "but are not connected by a segment." << endl;
-                return nullopt;
-            }
-        }
+        // cout << "#Points on segments = " << ssize(points_on_line) << endl;
+        // for (auto x: points_on_line)
+        //     cout << x << " " << getPoint(x) << endl;
+
+        // cout << "BEGIN FACES WITH 15" << endl;
+        // for (auto face: faces)
+        //     if (face.count(15)) {
+        //         for (int v: face)
+        //             cout << v << " ";
+        //         cout << endl;
+        //     }
+        // cout << "END FACES WITH 15" << endl;
+
 
         // The first vertex is mapped onto A.
         if (norm(points[points_on_line[0]]-A) > eps) {
@@ -437,9 +428,87 @@ struct ImmersedSimplicialComplex {
             }
         }
 
-        // cout << "#Points on segments = " << ssize(points_on_line) << endl;
-        // for (auto x: points_on_line)
-        //     cout << x << " " << getPoint(x) << endl;
+        // At this point, we have identified the vertices on the segment
+        // and their order.
+        // We need to "clean" the simplicial complex so that the line is
+        // nicely contained. This may, a priori, change the topology.
+        // Hopefully, in the relevant cases, it does not.
+        if (allow_changes) {
+            // TODO: Should we collapse identical points on the line? Maybe removing one singleton is enough?
+            vector<int> vertex2ord(V(), -1);
+            for (int i = 0; i < ssize(points_on_line); i++)
+                vertex2ord[points_on_line[i]] = i;
+            auto is_on_line = [&](int v) { return vertex2ord[v] >= 0; };
+
+            // vector<set<int>> faces = getFaces();
+            vector<set<int>> new_faces;
+
+            // Segments connecting consecutive vertices on the line.
+            for (int i = 0; i < ssize(points_on_line)-1; i++)
+                new_faces.push_back({points_on_line[i], points_on_line[i+1]});
+
+            for (set<int> face: faces) {
+                if (ssize(face) <= 1)
+                    new_faces.push_back(face);
+                if (ssize(face) == 2) {
+                    int a = *face.begin(), b = *face.rbegin();
+                    if (!is_on_line(a) or !is_on_line(b))
+                        new_faces.push_back(face);
+                }
+                if (ssize(face) == 3) {
+                    vector<int> face_vec(face.begin(), face.end());
+                    vector<int> iol(3);
+                    for (int i = 0; i < 3; i++)
+                        iol[i] = is_on_line(face_vec[i]);
+                    if (iol[0] + iol[1] + iol[2] <= 1)
+                        new_faces.push_back(face);
+                    if (iol[0] + iol[1] + iol[2] == 2) {
+                        int v = -1, a = -1, b = -1;
+                        if (iol[0] == 0)
+                            v = 0, a = 1, b = 2;
+                        if (iol[1] == 0)
+                            v = 1, a = 0, b = 2;
+                        if (iol[2] == 0)
+                            v = 2, a = 0, b = 1;
+
+                        v = face_vec[v];
+                        a = vertex2ord[face_vec[a]];
+                        b = vertex2ord[face_vec[b]];
+                        if (a > b)
+                            swap(a, b);
+
+                        for (int i = a; i < b; i++)
+                            new_faces.push_back({v, points_on_line[i], points_on_line[i+1]});
+                    }
+                }
+            }
+            faces = new_faces;
+            generateSubsetClosure();
+        }
+
+        // We save the edges of the simplicial complex in a convenient
+        // datastructure to speed up the computation.
+        set<pair<int,int>> edges;
+        for (auto face: faces) {
+            if (ssize(face) != 2)
+                continue;
+            int x = *face.begin();
+            int y = *face.rbegin();
+            edges.insert({x, y});
+            edges.insert({y, x});
+        }
+
+        for (int i = 0; i < ssize(points_on_line)-1; i++) {
+            int p = points_on_line[i];
+            int q = points_on_line[i+1];
+            if (!edges.count({p, q})) {
+                cerr << "points[" << p << "] = " << points[p] << ", "
+                     << "points[" << q << "] = " << points[q]
+                     << " are consecutive on the line segment connecting the pins "
+                     << "but are not connected by a segment." << endl;
+                return nullopt;
+            }
+        }
 
         // Any face that has only vertices in the sequence is either a
         // singleton or an edge of the path.
@@ -575,6 +644,8 @@ ImmersedSimplicialComplex removeCollapsedTriangle(
     // We want P, Q, R ordered in this way in R^3.
     if ((Q - P) * (R - P) < 0) swap(p, q), swap(P, Q);
     if ((P - R) * (Q - R) < 0) swap(r, q), swap(R, Q);
+
+    clog << P << " " << Q << " " << R << endl;
 
     vector<pt> new_points;
     for (int i = 0; i < X.V(); i++)

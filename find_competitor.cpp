@@ -18,15 +18,6 @@ bool isCompetitorValid(ImmersedSimplicialComplex competitor, NetEmbeddedWithPins
     }
     auto line = *maybe_line;
 
-    if (!competitor.isCollapsible(line)) {
-        cerr << "The line contains the points:" << endl;
-        for (auto singleton: line.getFaces(0))
-            cerr << *singleton.begin() << " ";
-        cerr << endl;
-        cerr << "The competitor is not collapsible on the line connecting the pins." << endl;
-        return false;
-    }
-
     for (Dart d: link.A.darts()) {
         assert(d.from != d.to);
         if (d.from > d.to)
@@ -39,6 +30,16 @@ bool isCompetitorValid(ImmersedSimplicialComplex competitor, NetEmbeddedWithPins
             return false;
         }
     }
+
+    if (!competitor.isCollapsible(line)) {
+        cerr << "The line contains the points:" << endl;
+        for (auto singleton: line.getFaces(0))
+            cerr << *singleton.begin() << " ";
+        cerr << endl;
+        cerr << "The competitor is not collapsible on the line connecting the pins." << endl;
+        return false;
+    }
+
     return true;
 }
 
@@ -112,8 +113,8 @@ double processNet(int net_id, bool run_surface_evolver, vector<double> params) {
     assert(competitor_in.is_open());
     ImmersedSimplicialComplex competitor = parseImmersedSimplicialComplex(competitor_in);
 
-    competitor = removeAllCollapsedSegments(competitor);
-    competitor = removeAllCollapsedTriangles(competitor);
+    // competitor = removeAllCollapsedSegments(competitor); // Maybe still necessary?
+    // competitor = removeAllCollapsedTriangles(competitor); // Maybe still necessary?
 
     // clog << "Link length: " << link.totalLen() << ", " << link.totalInterestingLen() << endl;
     // clog << "Areas" << endl;
@@ -200,10 +201,10 @@ int main() {
     // processNet(1096, true, {0.47}); // 0.23583
     // return 0;
 
-    proveInstabilityOneParameterNet(1096);
+    // proveInstabilityOneParameterNet(1096);
     // return 0;
     // double boh = atan(1.0 / (sqrt(3.))) - 0.00001;
-    // processNet(827, false, {0.5, 0.2});
+    processNet(827, false, {0.5, 0.2});
     return 0;
     for (int net_id: {1029}) {
         for (double d = 0.6; d < acos(1.0/3) / 2 - 0.01; d += 0.005) {

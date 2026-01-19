@@ -197,7 +197,8 @@ void saveSurfaceEvolverFormat(int net_id,
                               string embedding_name,
                               const SurfaceEvolverData& data,
                               string out_file,
-                              bool print_commands) {
+                              bool print_commands,
+                              vector<int> how_to_process={}) {
     const auto& X = data.X;
     pt line = X.getPoint(data.pins.first);
 
@@ -392,6 +393,13 @@ print total_area;
     if (special_surface_evolver_commands.count(net_id))
         surface_evolver_commands = special_surface_evolver_commands.at(net_id);
 
+    if (net_id == 827) { // fat fish
+        assert(ssize(how_to_process) >= 2);
+        int x = how_to_process[1];
+        assert(x == 1 or x == 2);
+        if (x == 2)
+            surface_evolver_commands += "\n u 2;\n g 100;\n r;\n g 1000;";
+    }
 
     constexpr string_view format_str = R"(read
 subroutine := {{

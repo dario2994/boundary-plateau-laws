@@ -373,7 +373,6 @@ print total_area;
             subroutine 2;
         )"},
         {827, R"(
-            g 5;
             r;
             g 400;
             u 2;
@@ -995,7 +994,7 @@ SurfaceEvolverData generateFatFishCompetitor(const NetEmbeddedWithPins& link) {
             .boundary_edges = boundary_edges};
 }
 
-SurfaceEvolverData generateFatFishCompetitor2(const NetEmbeddedWithPins& link) {
+SurfaceEvolverData generateFatFishCompetitor2(const NetEmbeddedWithPins& link, bool flap_sign) {
     vector<int> square = {0, 1, 2, 3};
     vector<int> biangle = {6, 5, 7, 4};
     vector<int> internal_square = {10, 11, 12, 13};
@@ -1054,6 +1053,8 @@ SurfaceEvolverData generateFatFishCompetitor2(const NetEmbeddedWithPins& link) {
     // add_face(internal_square);
     embedding.push_back({0, 0, 0}); // S
     embedding.push_back({0, 0, 0.3}); // T TO CHECK
+    if (flap_sign)
+        embedding.back() = -embedding.back();
     int S = embedding.size() - 2;
     int T = embedding.size() - 1;
     add_face({internal_square[0], S, T});

@@ -74,11 +74,13 @@ SurfaceEvolverData generatePoppedConeCases(int net_id, vector<double> params, Ne
             // return generateFatFishCompetitor(link);
         assert(how_to_process.size() >= 1);
         int x = how_to_process[0];
-        assert(x == 1 or x == 2);
+        assert(x == 1 or x == 2 or x == 3);
         if (x == 1)
             return generateFatFishCompetitor(link);
-        else
-            return generateFatFishCompetitor2(link);
+        else if (x == 2)
+            return generateFatFishCompetitor2(link, false);
+        else if (x == 3)
+            return generateFatFishCompetitor2(link, true);
     }
     return generatePoppedCone(link, pop_description.at(net_id).first,
                                     pop_description.at(net_id).second);
@@ -202,39 +204,50 @@ bool proveInstabilityOneParameterNet(int net_id) {
     return true;
 }
 
+double processFatFish(double theta0, double theta1) {
+    const static vector<vector<int>> how_to_process_options = {
+        {1, 1}, {2, 1}, {2, 2}, {1, 2}, {3, 1}, {3, 2}
+    };
+
+    double area_gap = -1;
+    vector<string> error_messages;
+    for (auto how_to_process: how_to_process_options) {
+        auto maybe_proof = processNet(827, true, {theta0, theta1}, how_to_process);
+        if (!maybe_proof.isOk()) {
+            error_messages.push_back(maybe_proof.getError());
+        } else {
+            area_gap = maybe_proof.getContent();
+            if (area_gap > 0.01)
+                break;
+        }
+    }
+    if (ssize(error_messages) == 6) {
+        for (string msg: error_messages)
+            cout << msg << endl << endl;
+        assert(0);
+    }
+    cout << " " << area_gap << " (" << ssize(error_messages) << ")";
+
+    return area_gap;
+}
+
 double area_processed = 0;
 bool proveInstabilityFatFishRecursive(Interval theta0, Interval theta1) {
-    double upperbound_theta0 = atan(1.0 / (sqrt(3.) * cos(theta1.l)));
+    double upperbound_theta0 = atan(1.0 / (sqrt(3.) * cos(theta1.r)));
     theta0.intersect(Interval(-1000, upperbound_theta0));
     if (theta0.empty())
         return true;
+    if (theta0.len() < 0.5*theta1.len() and theta1.len() < 0.01 and
+        theta0.l > 0.4) {
+        theta0.l = theta0.r - 0.5 * theta1.len();
+    }
     cout << theta0 << " " << theta1 << ", " << (100*area_processed / 0.36) << "%, ";
 
     double p0 = theta0.mid();
     double p1 = theta1.mid();
 
     if (theta0.len() + theta1.len() < 0.01) {
-        const vector<vector<int>>& how_to_process_options = {
-            {1, 1}, {2, 1}, {1, 2}, {2, 2}
-        };
-
-        double area_gap = -1;
-        vector<string> error_messages;
-        for (auto how_to_process: how_to_process_options) {
-            auto maybe_proof = processNet(827, true, {p0, p1}, how_to_process);
-            if (!maybe_proof.isOk()) {
-                error_messages.push_back(maybe_proof.getError());
-            } else {
-                area_gap = maybe_proof.getContent();
-                break;
-            }
-        }
-        if (ssize(error_messages) == 4) {
-            for (string msg: error_messages)
-                cout << msg << endl << endl;
-            assert(0);
-        }
-        cout << " " << area_gap;
+        double area_gap = processFatFish(p0, p1);
         if ((theta0.len() + theta1.len()) / 2 < area_gap / 10) {
             cout << endl;
             area_processed += theta0.len() * theta1.len();
@@ -255,10 +268,14 @@ bool proveInstabilityFatFish() {
     const double sigma = sqrt(2. / 3);
     double upperbound_theta1 = acos(sigma);
     double upperbound_theta0 = atan(1.0 / (sqrt(3.)));
+    // return proveInstabilityFatFishRecursive(
+    //     Interval(0, upperbound_theta0),
+    //     Interval(0, upperbound_theta1-0.01));
     return proveInstabilityFatFishRecursive(
-        Interval(0, upperbound_theta0),
-        Interval(0, upperbound_theta1-0.01));
+        Interval(0.52, 0.6),
+        Interval(0, 0.3));
 }
+
 
 double uniformSample(double x) {
     static std::mt19937 gen(42);
@@ -269,9 +286,23 @@ double uniformSample(double x) {
 
 
 int main() {
+    // Interval a = {0.52232, 0.522576};
+    // Interval b = {0.0632679, 0.0635635};
+    // todelete(a.mid(), b.mid());
+    // return 0;
+    const double sigma = sqrt(2. / 3);
+    // double upperbound_theta1 = acos(sigma);
+    // for (double p1 = 0; p1 < upperbound_theta1; p1 += 0.01) {
+    //     double upperbound_theta0 = atan(1.0 / (sqrt(3.) * cos(p1)));
+    //     double p0 = upperbound_theta0 - 0.01;
+    //     cout << p0 << " " << p1 << ": " << endl;
+    //     todelete(p0, p1);
+    // }
+
+    // return 0;
     proveInstabilityFatFish();
     return 0;
-    const double sigma = sqrt(2. / 3);
+
     // const double tau = 1. / sqrt(3.);
 
     for (int _ = 0; _ < 10000; _++) {

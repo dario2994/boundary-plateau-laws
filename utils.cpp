@@ -136,5 +136,65 @@ class StopWatch {
     }
 };
 
+struct ErrorMessage {
+    string error_str;
+    ErrorMessage(string s): error_str(s) {}
+    ErrorMessage(const stringstream& ss): error_str(ss.str()) {}
+};
+
+template <typename T>
+class ErrorOr {
+  private:
+    bool is_error;
+    string error_msg;
+    unique_ptr<T> content;
+
+    ErrorOr(bool err, std::string msg)
+        : is_error(err), error_msg(std::move(msg)), content(nullptr) {}
+
+  public:
+    ErrorOr(T x)
+        : is_error(false), error_msg(""), content(std::make_unique<T>(std::move(x))) {}
+
+    ErrorOr(ErrorMessage EM): is_error(true), error_msg(std::move(EM.error_str)), content(nullptr) {}
+
+    bool isOk() const { return !is_error; }
+
+    T& getContent() const {
+        assert(!is_error);
+        return *content;
+    }
+
+    const string& getError() const {
+        assert(is_error);
+        return error_msg;
+    }
+};
+
+template <typename T>
+ostream& operator << (ostream& out, const ErrorOr<T>& error_or) {
+    if (error_or.isOk())
+        out << error_or.getContent();
+    else
+        out << error_or.getError();
+    return out;
+}
+
+#define CHECK_OR_RETURN(error_or) \
+    if (!(error_or).isOk()) return ErrorMessage((error_or).getError());
+
+#define ASSIGN_OR_RETURN(lhs, error_or) \
+  auto res = (error_or);                \
+  if (!res.isOk()) return ErrorMessage(res.getError());     \
+  auto lhs = move(res.getContent());
+
+#define VALUE_OR_ASSERT(error_or) \
+  ({                              \
+    auto res = (error_or);        \
+    assert(res.isOk());           \
+    std::move(res.getContent());  \
+  })
+
+
 
 #endif

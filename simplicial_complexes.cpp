@@ -249,7 +249,7 @@ struct ImmersedSimplicialComplex {
     }
 
     // Whether the simplex can be collapsed on the target subcomplex (on the same vertices).
-    bool isCollapsible(const ImmersedSimplicialComplex& target) const {
+    ErrorOr<bool> isCollapsible(const ImmersedSimplicialComplex& target) const {
         int F = ssize(faces);
         map<set<int>, int> face2id;
         for (const auto& face: faces)
@@ -321,29 +321,29 @@ struct ImmersedSimplicialComplex {
                 non_collapsible_vertices.insert(v);
 
         if (!non_collapsible_faces.empty()) {
-            cerr << "Non collapsed vertices: ";
+            stringstream ss;
+            ss << "Non collapsed vertices: ";
             for (int v: non_collapsible_vertices)
-                cerr << v << " ";
-            cerr << endl;
-            cerr << "Non collapsed faces:" << endl;
+                ss << v << " ";
+            ss << endl;
+            ss << "Non collapsed faces:" << endl;
             for (auto face: non_collapsible_faces) {
                 for (int v: face) {
-                        cerr << v << " ";
-                    cerr << endl;
+                        ss << v << " ";
+                    ss << endl;
                 }
             }
-            cerr << endl;
+            return ErrorMessage(ss);
         }
 
-        return non_collapsible_faces.empty();
+        return true;
     }
 
-    bool isCollapsible() const {
-        ImmersedSimplicialComplex empty_subcomplex(V(), {});
-        return isCollapsible(empty_subcomplex);
+    ErrorOr<bool> isCollapsible() const {
+        return isCollapsible(ImmersedSimplicialComplex(V(), {}));
     }
 
-    optional<ImmersedSimplicialComplex> containsSegment(
+    ErrorOr<ImmersedSimplicialComplex> containsSegment(
                          const pt& A,
                          const pt& B,
                          bool allow_changes=true,
@@ -357,12 +357,19 @@ struct ImmersedSimplicialComplex {
             double dist = distanceFromLine(A, B, points[i]);
             if (dist > 100*eps)
                 continue;
-            // We expect a quantitative gap between points on the line and points
-            // out of the line.
-            if (dist > eps) {
-                cerr << "The relationship between the point " << i << " (that is " << points[i] << ") and the line " << A << ", " << B << " is ambiguous." << endl;
-                return nullopt;
-            }
+            // We create a quantitative gap between the points on the line and
+            // the points not on the line.
+            //
+            // Previously we were checking that there were no ambiguous points.
+            // if (dist > eps) {
+            //     stringstream ss;
+            //     ss << "The relationship between the point " << i << " (that is "
+            //        << points[i] << ") and the line " << A << ", " << B << " is ambiguous. "
+            //        << "The distance from the point to the line is " << dist << " and the "
+            //        << "point would be considered on the line if the distance were < "
+            //        << eps << ".";
+            //     return ErrorMessage(ss);
+            // }
             points_on_line.push_back(i);
             on_the_line[i] = true;
             // We move the points so that they are "perfectly" on the line.
@@ -379,37 +386,23 @@ struct ImmersedSimplicialComplex {
             return position_on_line(i) < position_on_line(j);
         });
 
-        if (ssize(points_on_line) < 2) {
-            cerr << "There are less than 2 points on the line." << endl;
-            return nullopt;
-        }
-
-        // cout << "#Points on segments = " << ssize(points_on_line) << endl;
-        // for (auto x: points_on_line)
-        //     cout << x << " " << getPoint(x) << endl;
-
-        // cout << "BEGIN FACES WITH 15" << endl;
-        // for (auto face: faces)
-        //     if (face.count(15)) {
-        //         for (int v: face)
-        //             cout << v << " ";
-        //         cout << endl;
-        //     }
-        // cout << "END FACES WITH 15" << endl;
-
+        if (ssize(points_on_line) < 2)
+            return ErrorMessage("There are less than 2 points on the line.");
 
         // The first vertex is mapped onto A.
         if (norm(points[points_on_line[0]]-A) > eps) {
-            cerr << "The intersection between the complex and the line does not start at point"
-                 << " A = " << A << "." << endl;
-            return nullopt;
+            stringstream ss;
+            ss << "The intersection between the complex and the line does not start at point"
+               << " A = " << A << ".";
+            return ErrorMessage(ss);
         }
 
         // The last vertex is mapped onto B.
         if (norm(points[points_on_line.back()]-B) > eps) {
-            cerr << "The intersection between the complex and the line does not end at point"
-                 << " B = " << B << "." << endl;
-            return nullopt;
+            stringstream ss;
+            ss << "The intersection between the complex and the line does not end at point"
+                 << " B = " << B << ".";
+            return ErrorMessage(ss);
         }
 
         // We check that A and B are univocally matched with vertices for the
@@ -417,14 +410,16 @@ struct ImmersedSimplicialComplex {
         for (int i = 0; i < ssize(points_on_line); i++) {
             pt P = points[points_on_line[i]];
             if (i != 0 and norm(P-A) < 100*eps) {
-                cerr << "There are multiple vertices of the complex which "
-                     << "may coincide with A = " << A << "." << endl;
-                return nullopt;
+                stringstream ss;
+                ss << "There are multiple vertices of the complex which "
+                     << "may coincide with A = " << A << ".";
+                return ErrorMessage(ss);
             }
             if (i != ssize(points_on_line)-1 and norm(P-B) < 100*eps) {
-                cerr << "There are multiple vertices of the complex which "
-                     << "may coincide with B = " << B << "." << endl;
-                return nullopt;
+                stringstream ss;
+                ss << "There are multiple vertices of the complex which "
+                     << "may coincide with B = " << B << ".";
+                return ErrorMessage(ss);
             }
         }
 
@@ -439,8 +434,6 @@ struct ImmersedSimplicialComplex {
             for (int i = 0; i < ssize(points_on_line); i++)
                 vertex2ord[points_on_line[i]] = i;
             auto is_on_line = [&](int v) { return vertex2ord[v] >= 0; };
-
-            // vector<set<int>> faces = getFaces();
             vector<set<int>> new_faces;
 
             // Segments connecting consecutive vertices on the line.
@@ -502,23 +495,26 @@ struct ImmersedSimplicialComplex {
             int p = points_on_line[i];
             int q = points_on_line[i+1];
             if (!edges.count({p, q})) {
-                cerr << "points[" << p << "] = " << points[p] << ", "
+                stringstream ss;
+                ss   << "points[" << p << "] = " << points[p] << ", "
                      << "points[" << q << "] = " << points[q]
                      << " are consecutive on the line segment connecting the pins "
-                     << "but are not connected by a segment." << endl;
-                return nullopt;
+                     << "but are not connected by a segment.";
+                return ErrorMessage(ss);
             }
         }
 
         // Any face that has only vertices in the sequence is either a
         // singleton or an edge of the path.
+
+        stringstream error_message;
         bool works = true;
         for (int i = 0; i < ssize(points_on_line); i++) {
             for (int j = i+2; j < ssize(points_on_line); j++) {
                 int u = points_on_line[i];
                 int v = points_on_line[j];
                 if (edges.count({u, v})) {
-                    cerr << "points[" << u << "] = " << points[u] << ", "
+                    error_message   << "points[" << u << "] = " << points[u] << ", "
                          << "points[" << v << "] = " << points[v]
                          << " are not consecutive on the segment connecting the pins "
                          << "but they are connected by a segment. "
@@ -529,7 +525,7 @@ struct ImmersedSimplicialComplex {
             }
         }
         if (!works)
-            return nullopt;
+            return ErrorMessage(error_message);
 
         // All faces (edges and triangles) that don't have any vertex in the
         // sequence do not intersect the line.
@@ -550,23 +546,25 @@ struct ImmersedSimplicialComplex {
                 pt C = points[c];
                 pt D = points[d];
                 if (distanceFromLine(A, B, C, D) < 100*eps) {
-                    cerr << "points[" << c << "] = " << C << ", "
+                    stringstream ss;
+                    ss   << "points[" << c << "] = " << C << ", "
                          << "points[" << d << "] = " << D
                          << " are not on the line, but they form a segment "
                          << "that intersects the line." << endl;
-                    return nullopt;
+                    return ErrorMessage(ss);
                 }
             }
             if (ssize(face) == 3) {
                 vector<int> ids(face.begin(), face.end());
                 if (distanceFromLine(A, B,
                                      points[ids[0]], points[ids[1]], points[ids[2]]) < 100*eps) {
-                    cerr << "points[" << ids[0] << "] = " << points[ids[0]] << ", "
+                    stringstream ss;
+                    ss   << "points[" << ids[0] << "] = " << points[ids[0]] << ", "
                          << "points[" << ids[1] << "] = " << points[ids[1]] << ", "
                          << "points[" << ids[2] << "] = " << points[ids[2]] << ", "
                          << " are not on the line, but they form a triangle "
                          << "that intersects the line." << endl;
-                    return nullopt;
+                    return ErrorMessage(ss);
                 }
             }
         }

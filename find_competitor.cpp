@@ -8,15 +8,15 @@ using namespace std;
 #include "generate_surface_evolver_input.cpp"
 
 
-bool isCompetitorValid(ImmersedSimplicialComplex competitor, NetEmbeddedWithPins link) {
+ErrorOr<bool> isCompetitorValid(ImmersedSimplicialComplex competitor, NetEmbeddedWithPins link) {
     auto pin1 = link.embedding[link.pins.first];
     auto pin2 = link.embedding[link.pins.second];
     auto maybe_line = competitor.containsSegment(pin1, pin2);
-    if (!maybe_line) {
-        cerr << "The line connecting the pins is not properly contained in the competitor." << endl;
-        return false;
+    if (!maybe_line.isOk()) {
+        return ErrorMessage("The line connecting the pins is not properly contained in the competitor.\n"
+                            + maybe_line.getError());
     }
-    auto line = *maybe_line;
+    auto line = maybe_line.getContent();
 
     for (Dart d: link.A.darts()) {
         assert(d.from != d.to);
@@ -25,19 +25,23 @@ bool isCompetitorValid(ImmersedSimplicialComplex competitor, NetEmbeddedWithPins
 
         auto U = link.embedding[d.from];
         auto V = link.embedding[d.to];
-        if (!competitor.containsSegment(U, V)) {
-            cerr << "The competitor does not contain the boundary edge " << U << ", " << V << "." << endl;
-            return false;
+        auto maybe_boundary_edge = competitor.containsSegment(U, V);
+        if (!maybe_boundary_edge.isOk()) {
+            stringstream ss;
+            ss << "The competitor does not contain the boundary edge " << U << ", " << V << "." << endl;
+            return ErrorMessage(ss.str() + maybe_line.getError());
         }
     }
 
-    if (!competitor.isCollapsible(line)) {
-        cerr << "The line contains the points:" << endl;
+    auto maybe_collapsible = competitor.isCollapsible(line);
+    if (!maybe_collapsible.isOk()) {
+        stringstream ss;
+        ss << "The line contains the points:" << endl;
         for (auto singleton: line.getFaces(0))
-            cerr << *singleton.begin() << " ";
-        cerr << endl;
-        cerr << "The competitor is not collapsible on the line connecting the pins." << endl;
-        return false;
+            ss << *singleton.begin() << " ";
+        ss << endl;
+        ss << "The competitor is not collapsible on the line connecting the pins." << endl;
+        return ErrorMessage(ss.str() + maybe_collapsible.getError());
     }
 
     return true;
@@ -61,21 +65,18 @@ bool containsErrorMessage(const string& log_file, const string& error_string) {
 SurfaceEvolverData generatePoppedConeCases(int net_id, vector<double> params, NetEmbeddedWithPins link) {
     if (net_id == 1029 and params[0] == 1) // Cube family
         return generateCubeCompetitor(link);
-    if (net_id == 827) // Fat fish family
-        return generateFatFishCompetitor2(link);
+    if (net_id == 827) {// Fat fish family // TODO: Bad!
+        double upperbound_theta0 = atan(1.0 / (sqrt(3.) * cos(params[1])));
+        if (params[0] > upperbound_theta0 - 0.05)
+            return generateFatFishCompetitor2(link);
+        else
+            return generateFatFishCompetitor(link);
+    }
     return generatePoppedCone(link, pop_description.at(net_id).first,
                                     pop_description.at(net_id).second);
 }
 
-double processNet(int net_id, bool run_surface_evolver, vector<double> params) {
-    // clog << "Processing net " << net_id;
-    // if (!params.empty()) {
-    //     clog << " with params ";
-    //     for (double x: params)
-    //         clog << x << " ";
-    // }
-    // clog << endl;
-
+ErrorOr<double> processNet(int net_id, bool run_surface_evolver, vector<double> params) {
     NetEmbeddedWithPins link = embedNetWithPins(net_id, params);
 
     SurfaceEvolverData cone = generateCone(link);
@@ -122,11 +123,16 @@ double processNet(int net_id, bool run_surface_evolver, vector<double> params) {
     //      << "Popped cone: " << popped_cone.X.area() << ", "
     //      << "Competitor: " << competitor.area() << endl;
 
-    bool valid_competitor = isCompetitorValid(competitor, link);
-    assert(valid_competitor);
+    CHECK_OR_RETURN(isCompetitorValid(competitor, link));
 
     double area_gap = cone.X.area() - competitor.area();
-    assert(area_gap > 1e-3);
+    if (area_gap < 1e-3) {
+        stringstream ss;
+        ss << "The gap = " << area_gap << " between the area of the cone = "
+           << cone.X.area() << " and the area of the competitor = "
+           << competitor.area() << " is not sufficiently large.";
+        return ErrorMessage(ss);
+    }
 
     return area_gap;
 }
@@ -145,15 +151,15 @@ bool proveInstabilityOneParameterNet(int net_id) {
     clog << "Param region: " << param_region << endl;
 
     auto get_area_gap = [&](double param) {
-        if (net_id == 1029)
-            return processNet(net_id, true, {0., param});
-        if (net_id == 1096 and param > 0.38) {
+        if (net_id == 1029) // TODO: Bad!
+            return VALUE_OR_ASSERT(processNet(net_id, true, {0., param}));
+        if (net_id == 1096 and param > 0.38) { // TODO: Bad!
             pop_description[1096].first[0] = 8;
-            double area_gap = processNet(net_id, true, {param});
+            double area_gap = VALUE_OR_ASSERT(processNet(net_id, true, {param}));
             pop_description[1096].first[0] = 6;
             return area_gap;
         }
-        return processNet(net_id, true, {param});
+        return VALUE_OR_ASSERT(processNet(net_id, true, {param}));
     };
 
     auto width_covered = [&](double param) {
@@ -187,61 +193,36 @@ bool proveInstabilityOneParameterNet(int net_id) {
     return true;
 }
 
-// TO FIX: 827, 0.5, 0.2
-//         Write the pop explicitly using the picture in the mail from Camillo.
+double uniformSample(double x) {
+    static std::mt19937 gen(42);
+
+    std::uniform_real_distribution<double> dist(0.0, x);
+    return dist(gen);
+}
+
 
 int main() {
-    // 28 works
-    // 99 works
-    // 346 works
-    // 779 works
-    // 1029 works
-    // 1096 works (con duro lavoro!)
-    //
-    // processNet(1096, true, {0.47}); // 0.23583
-    // return 0;
+    const double sigma = sqrt(2. / 3);
+    // const double tau = 1. / sqrt(3.);
 
-    // proveInstabilityOneParameterNet(1096);
-    // return 0;
-    // double boh = atan(1.0 / (sqrt(3.))) - 0.00001;
-    processNet(827, false, {0.5, 0.2});
-    return 0;
-    for (int net_id: {1029}) {
-        for (double d = 0.6; d < acos(1.0/3) / 2 - 0.01; d += 0.005) {
-            cout << d << endl;
-            processNet(net_id, true, {0., d});
+    for (int _ = 0; _ < 100; _++) {
+        double upperbound_theta1 = acos(sigma);
+        double theta1 = uniformSample(upperbound_theta1);
+        double upperbound_theta0 = atan(1.0 / (sqrt(3.) * cos(theta1)));
+        double theta0 = uniformSample(upperbound_theta0);
+
+        cout << _ << endl;
+        cout << theta0 << ", " << theta1 << endl;
+        cout << upperbound_theta0 << " " << upperbound_theta1 << endl;
+
+        auto maybe_proof = processNet(827, true, {theta0, theta1});
+        if (!maybe_proof.isOk()) {
+            cerr << maybe_proof.getError() << endl;
+            assert(0);
         }
     }
-
-    return 0;
     // testSegmentDistanceFromLine();
     // testTriangleDistanceFromLine();
     // testIsCollapsible();
     // return 0;
-
-    // 827 is the only 2-parameter family.
-    // 920 is expected to be optimal.
-    // 1029 is the cube family, which is the union of two 1-parameter families.
-    set<int> special_nets = {827, 920, 1029};
-
-    // 158 is an instance of 1029 (which we understand algebraically)
-    // 681 is an instance of 1029 (same instance as 158)
-    // 1100 is the cubic instance of 1029.
-    set<int> cube_special_cases = {158, 681, 1100};
-
-    // set<int> heppes_with_pins_on_vertices = {250, 325, 736};
-    for (int net_id: possible_nets) {
-        if (net_id != 28)
-            continue;
-        if (special_nets.count(net_id))
-            continue;
-        if (cube_special_cases.count(net_id))
-            continue;
-
-        processNet(net_id, true, {0.03});
-    }
-} // 5.7273923
-
-
-// 4.98875
-// 4.96494
+}

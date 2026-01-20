@@ -234,13 +234,13 @@ double processFatFish(double theta0, double theta1) {
 double area_processed = 0;
 bool proveInstabilityFatFishRecursive(Interval theta0, Interval theta1) {
     double upperbound_theta0 = atan(1.0 / (sqrt(3.) * cos(theta1.r)));
-    theta0.intersect(Interval(-1000, upperbound_theta0));
+    theta0.intersect(Interval(-1000, upperbound_theta0 - 0.01));
     if (theta0.empty())
         return true;
-    if (theta0.len() < 0.5*theta1.len() and theta1.len() < 0.01 and
-        theta0.l > 0.4) {
-        theta0.l = theta0.r - 0.5 * theta1.len();
-    }
+    // if (theta0.len() < 0.5*theta1.len() and theta1.len() < 0.01 and
+    //     theta0.l > 0.4) {
+    //     theta0.l = theta0.r - 0.5 * theta1.len();
+    // }
     cout << theta0 << " " << theta1 << ", " << (100*area_processed / 0.36) << "%, ";
 
     double p0 = theta0.mid();
@@ -267,13 +267,10 @@ bool proveInstabilityFatFishRecursive(Interval theta0, Interval theta1) {
 bool proveInstabilityFatFish() {
     const double sigma = sqrt(2. / 3);
     double upperbound_theta1 = acos(sigma);
-    double upperbound_theta0 = atan(1.0 / (sqrt(3.)));
-    // return proveInstabilityFatFishRecursive(
-    //     Interval(0, upperbound_theta0),
-    //     Interval(0, upperbound_theta1-0.01));
+    // double upperbound_theta0 = atan(1.0 / (sqrt(3.)));
     return proveInstabilityFatFishRecursive(
-        Interval(0.52, 0.6),
-        Interval(0, 0.3));
+        Interval(0, 1000),
+        Interval(0, upperbound_theta1-0.01));
 }
 
 

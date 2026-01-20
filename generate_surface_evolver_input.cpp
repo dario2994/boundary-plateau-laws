@@ -608,7 +608,7 @@ map<int, pair<vector<int>, vector<int>>> pop_description = { // Not const, becau
         {PIN_ZERO, 5, 2, 7, PIN_ONE,6, 0, 4, PIN_ZERO}
     }},
     {1096, {
-        {6}, // 6 or 8
+        {6},
         {PIN_ZERO, 16, 2, 3, 10, 17, PIN_ONE}
     }},
     {1122, {

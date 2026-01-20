@@ -66,12 +66,9 @@ SurfaceEvolverData generatePoppedConeCases(int net_id, vector<double> params, Ne
                                            vector<int> how_to_process={}) {
     if (net_id == 1029 and params[0] == 1) // Cube family
         return generateCubeCompetitor(link);
-    if (net_id == 827) {// Fat fish family // TODO: Bad!
-        // double upperbound_theta0 = atan(1.0 / (sqrt(3.) * cos(params[1])));
-        // if (params[0] > upperbound_theta0 - 0.05)
-            // return generateFatFishCompetitor2(link);
-        // else
-            // return generateFatFishCompetitor(link);
+    if (net_id == 1096 and !how_to_process.empty())
+        return generatePoppedCone(link, how_to_process, pop_description.at(net_id).second);
+    if (net_id == 827) {// Fat fish family
         assert(how_to_process.size() >= 1);
         int x = how_to_process[0];
         assert(x == 1 or x == 2 or x == 3);
@@ -162,13 +159,10 @@ bool proveInstabilityOneParameterNet(int net_id) {
     clog << "Param region: " << param_region << endl;
 
     auto get_area_gap = [&](double param) {
-        if (net_id == 1029) // TODO: Bad!
+        if (net_id == 1029)
             return VALUE_OR_ASSERT(processNet(net_id, true, {0., param}));
-        if (net_id == 1096 and param > 0.38) { // TODO: Bad!
-            pop_description[1096].first[0] = 8;
-            double area_gap = VALUE_OR_ASSERT(processNet(net_id, true, {param}));
-            pop_description[1096].first[0] = 6;
-            return area_gap;
+        if (net_id == 1096 and param > 0.38) {
+            return VALUE_OR_ASSERT(processNet(net_id, true, {param}, {8}));
         }
         return VALUE_OR_ASSERT(processNet(net_id, true, {param}));
     };
@@ -281,12 +275,49 @@ double uniformSample(double x) {
     return dist(gen);
 }
 
+void ruleOutRigidNets() {
+    set<int> nets_to_ignore = {
+        158, // The same net as 1029 (which is proven unstable).
+        681, // The same net as 1029 (which is proven unstable).
+        920, // Thin fish (proven algebraically)
+        1100, // A cube (proven algebraically).
+    };
+    for (int net_id: possible_nets) {
+        if (net_id == 827) // fat fish
+            continue;
+        if (net_id == 1029) // goggles
+            continue;
+        if (rigid_nets_flexible_pins.count(net_id))
+            continue;
+
+        if (nets_to_ignore.count(net_id))
+            continue;
+
+        cout << net_id << ": ";
+        cout.flush();
+        auto maybe_proof = processNet(net_id, true, {});
+        assert(maybe_proof.isOk());
+        double area_gap = maybe_proof.getContent();
+        cout << area_gap << endl;
+    }
+}
+
+void proveNetWithOneFreeParameter() {
+    vector<int> nets_to_process(rigid_nets_flexible_pins.begin(),
+                                rigid_nets_flexible_pins.end());
+    nets_to_process.push_back(1029);
+    for (int net_id: nets_to_process) {
+        cout << net_id << ": ";
+        cout.flush();
+        assert(proveInstabilityOneParameterNet(net_id));
+        cout << "OK" << endl << endl;
+    }
+}
+
 
 int main() {
-    // Interval a = {0.52232, 0.522576};
-    // Interval b = {0.0632679, 0.0635635};
-    // todelete(a.mid(), b.mid());
-    // return 0;
+    proveNetWithOneFreeParameter();
+    return 0;
     const double sigma = sqrt(2. / 3);
     // double upperbound_theta1 = acos(sigma);
     // for (double p1 = 0; p1 < upperbound_theta1; p1 += 0.01) {
@@ -353,6 +384,3 @@ int main() {
     // testIsCollapsible();
     // return 0;
 }
-
-// Failing on:
-// [0.500589, 0.5011] [0.0206951, 0.0212864] 3.02342e-07

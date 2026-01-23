@@ -122,15 +122,6 @@ ErrorOr<double> processNet(int net_id, bool run_surface_evolver, vector<double> 
     assert(competitor_in.is_open());
     ImmersedSimplicialComplex competitor = parseImmersedSimplicialComplex(competitor_in);
 
-    // competitor = removeAllCollapsedSegments(competitor); // Maybe still necessary?
-    // competitor = removeAllCollapsedTriangles(competitor); // Maybe still necessary?
-
-    // clog << "Link length: " << link.totalLen() << ", " << link.totalInterestingLen() << endl;
-    // clog << "Areas" << endl;
-    // clog << "Cone: " << cone.X.area() << ", "
-    //      << "Popped cone: " << popped_cone.X.area() << ", "
-    //      << "Competitor: " << competitor.area() << endl;
-
     CHECK_OR_RETURN(isCompetitorValid(competitor, link));
 
     double area_gap = cone.X.area() - competitor.area();
@@ -275,7 +266,7 @@ double uniformSample(double x) {
     return dist(gen);
 }
 
-void ruleOutRigidNets() {
+void proveRigidNets() {
     set<int> nets_to_ignore = {
         158, // The same net as 1029 (which is proven unstable).
         681, // The same net as 1029 (which is proven unstable).
@@ -316,71 +307,10 @@ void proveNetWithOneFreeParameter() {
 
 
 int main() {
-    proveNetWithOneFreeParameter();
-    return 0;
-    const double sigma = sqrt(2. / 3);
-    // double upperbound_theta1 = acos(sigma);
-    // for (double p1 = 0; p1 < upperbound_theta1; p1 += 0.01) {
-    //     double upperbound_theta0 = atan(1.0 / (sqrt(3.) * cos(p1)));
-    //     double p0 = upperbound_theta0 - 0.01;
-    //     cout << p0 << " " << p1 << ": " << endl;
-    //     todelete(p0, p1);
-    // }
+    proveRigidNets();
 
-    // return 0;
+    proveNetWithOneFreeParameter();
+
     proveInstabilityFatFish();
     return 0;
-
-    // const double tau = 1. / sqrt(3.);
-
-    for (int _ = 0; _ < 10000; _++) {
-        double upperbound_theta1 = acos(sigma);
-        double theta1 = uniformSample(upperbound_theta1 - 0.01); // Normal edges of the net can't be too short.
-        double upperbound_theta0 = atan(1.0 / (sqrt(3.) * cos(theta1)));
-        double theta0 = uniformSample(upperbound_theta0);
-
-        cout << _ << endl;
-        cout << theta0 << ", " << theta1 << endl;
-        cout << upperbound_theta0 << " " << upperbound_theta1 << endl;
-
-        const vector<vector<int>>& how_to_process_options = {
-            {1, 1}, {2, 1}, {1, 2}, {2, 2}
-        };
-
-        vector<string> error_messages;
-        for (auto how_to_process: how_to_process_options) {
-            auto maybe_proof = processNet(827, true, {theta0, theta1}, how_to_process);
-            if (!maybe_proof.isOk()) {
-                error_messages.push_back(maybe_proof.getError());
-            } else {
-                cout << "Gap: " << maybe_proof.getContent() << endl << endl;
-                break;
-            }
-        }
-        if (ssize(error_messages) == 4) {
-            for (string msg: error_messages)
-                cout << msg << endl << endl;
-            assert(0);
-        }
-
-        // auto maybe_proof1 = processNet(827, true, {theta0, theta1}, {1, 1});
-        // if (!maybe_proof1.isOk()) {
-        //     auto maybe_proof2 = processNet(827, true, {theta0, theta1}, {2, 1});
-        //     if (!maybe_proof2.isOk()) {
-        //         auto maybe_proof12 = processNet(827, true, {theta0, theta1}, {1, 2});
-        //         auto maybe_proof22 = processNet(827, true, {theta0, theta1}, {2, 2});
-        //         if (!maybe_proof12.isOk() and !maybe_proof22.isOk()) {
-        //             cerr << maybe_proof1.getError() << endl << endl;
-        //             cerr << maybe_proof2.getError() << endl << endl;
-        //             cerr << maybe_proof12.getError() << endl << endl;
-        //             cerr << maybe_proof22.getError() << endl << endl;
-        //             assert(0);
-        //         }
-        //     }
-        // }
-    }
-    // testSegmentDistanceFromLine();
-    // testTriangleDistanceFromLine();
-    // testIsCollapsible();
-    // return 0;
 }

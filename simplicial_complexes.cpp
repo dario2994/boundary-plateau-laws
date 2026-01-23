@@ -19,6 +19,7 @@ void assertWellDefinedLine(const pt& A, const pt& B) {
 }
 
 // Distance of the point P to the line through A and B.
+// Assumption: |A-B| is not much smaller than max(|A|, |B|).
 double distanceFromLine(pt A, pt B, pt P) {
     assertWellDefinedLine(A, B);
     assertBoundedNorm({P});
@@ -29,7 +30,7 @@ double distanceFromLine(pt A, pt B, pt P) {
 }
 
 // Distance of the segment CD to the line through A and B.
-// Assumption: |A-B| is not much smaller than |A|, |B|.
+// Assumption: |A-B| is not much smaller than max(|A|, |B|).
 double distanceFromLine(const pt& A,
                         const pt& B,
                         const pt& C,
@@ -48,40 +49,8 @@ double distanceFromLine(const pt& A,
     return distanceFromLine(A, B, closest_point);
 }
 
-void testSegmentDistanceFromLine() {
-    struct TestCase {
-        string name;
-        pt A, B, C, D;
-        double expected;
-    };
-
-    vector<TestCase> tests = {
-        {"Intersection",
-         {0.0, 0.0, 0.5}, {0.0, 0.0, -0.5},
-         {0.5, 0.0, 0.0}, {-0.5, 0.0, 0.0}, 0.0},
-        {"Closest interior",
-         {0.0, 0.0, 0.5}, {0.0, 0.0, -0.5},
-         {0.5, 0.5, 0.0}, {-0.5, 0.5, 0.0}, 0.5},
-        {"Closest is C (s=0)",
-         {0.0, 0.0, 0.5}, {0.0, 0.0, -0.5},
-         {0.2, 0.5, 0.0}, {0.8, 0.5, 0.0}, sqrt(0.29)},
-        {"Closest is D (s=1)",
-         {0.0, 0.0, 0.5}, {0.0, 0.0, -0.5},
-         {-0.8, 0.5, 0.0}, {-0.2, 0.5, 0.0}, sqrt(0.29)},
-        {"Parallel lines",
-         {0.5, 0.0, 0.0}, {-0.5, 0.0, 0.0},
-         {0.5, 0.8, 0.0}, {-0.5, 0.8, 0.0}, 0.8}
-    };
-
-
-    for (const auto& test : tests) {
-        double actual = distanceFromLine(test.A, test.B, test.C, test.D);
-        assert(abs(actual - test.expected) < 1e-5);
-    }
-}
-
 // Distance of the triangle CDE to the line through A and B.
-// Assumption: |A-B| is not much smaller than |A|, |B|.
+// Assumption: |A-B| is not much smaller than max(|A|, |B|).
 double distanceFromLine(const pt& A,
                         const pt& B,
                         const pt& C,
@@ -126,61 +95,11 @@ double distanceFromLine(const pt& A,
 }
 
 
-void testTriangleDistanceFromLine() {
-    struct TestCase {
-        string name;
-        pt A, B, C, D, E;
-        double expected;
-    };
-
-    // Let the line AB be the z-axis for simplicity in most tests
-    pt line_A = {0.0, 0.0, 1.0};
-    pt line_B = {0.0, 0.0, -1.0};
-
-    vector<TestCase> tests = {
-        {"Intersection",
-         line_A, line_B, // z-axis
-         {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {-1.0, -1.0, 0.0}, // Triangle in z=0 plane, contains origin
-         0.0},
-
-        {"Closest to Edge Interior",
-         line_A, line_B, // z-axis
-         {1.0, 1.0, 0.0}, {1.0, -1.0, 0.0}, {1.0, 0.0, 1.0}, // Triangle in x=1 plane
-         1.0}, // Closest point is (1,0,0) on the interior of edge C-D
-
-        {"Closest to Vertex C",
-         line_A, line_B, // z-axis
-         {1.0, 1.0, 0.0}, {2.0, 1.0, 0.0}, {1.0, 2.0, 0.0}, // Triangle in z=0, all in x>0, y>0
-         sqrt(2.0)}, // Closest point is (1,1,0), which is vertex C
-
-        {"Parallel Line",
-         line_A, line_B, // z-axis
-         {2.0, 0.0, 0.0}, {2.0, 1.0, 0.0}, {2.0, 0.0, 1.0}, // Triangle in x=2 plane
-         2.0}, // Closest edge is C-E, distance is 2.0
-
-        {"Degenerate Triangle (Miss)",
-         line_A, line_B, // z-axis
-         {1.0, 0.0, 0.0}, {1.0, 0.0, 1.0}, {1.0, 0.0, 2.0}, // Collinear points in x=1
-         1.0}, // Should fall back to boundary, min dist is 1.0
-
-        {"Degenerate Triangle (Hit)",
-         line_A, line_B, // z-axis
-         {1.0, 0.0, 0.0}, {-1.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, // Collinear points on x-axis
-         0.0} // Should fall back to boundary, segment D-E contains origin
-    };
-
-
-    for (const auto& test : tests) {
-        double actual = distanceFromLine(test.A, test.B, test.C, test.D, test.E);
-        assert(abs(actual - test.expected) < 1e-5);
-    }
-}
-
-
 // Class representing an abstract simplicial complex with at least one vertex.
 // In essence, this is a family of subsets of {0, 1, ..., V-1} which contains
 // all singletons and is closed with respect to subset.
-// On top of this, every vertex is mapped to a point in R^3.
+// On top of this, every vertex is mapped to a point in R^3. By linearity, this
+// induces an embedding of the topological simplicial complex in R^3.
 struct ImmersedSimplicialComplex {
   private:
     // The vertices are indexed 0, 1, ..., V-1.
@@ -211,10 +130,13 @@ struct ImmersedSimplicialComplex {
     int V() const { return ssize(points); }
 
     const pt& getPoint(int id) const { return points[id]; }
+
+    // Get the skeleton of the given dimension.
+    // If no dimension is specified, all faces are returned.
     vector<set<int>> getFaces(int dim = -1234) const {
         vector<set<int>> res;
         for (const set<int>& face: faces) {
-            if (dim == -1234 or  ssize(face) == dim+1)
+            if (dim == -1234 or ssize(face) == dim+1)
                 res.push_back(face);
         }
         return res;
@@ -282,10 +204,6 @@ struct ImmersedSimplicialComplex {
         auto remove_face = [&](int id) {
             assert(!removed[id]);
             assert(coboundary[id].empty());
-            // cout << "Removing: ";
-            // for (int v: faces[id])
-            //     cout << v << " ";
-            // cout << endl;
             removed[id] = true;
             for (int sub_id: boundary[id]) {
                 vector<int>& vec = coboundary[sub_id];
@@ -328,10 +246,9 @@ struct ImmersedSimplicialComplex {
             ss << endl;
             ss << "Non collapsed faces:" << endl;
             for (auto face: non_collapsible_faces) {
-                for (int v: face) {
-                        ss << v << " ";
-                    ss << endl;
-                }
+                for (int v: face)
+                    ss << v << " ";
+                ss << endl;
             }
             return ErrorMessage(ss);
         }
@@ -343,6 +260,21 @@ struct ImmersedSimplicialComplex {
         return isCollapsible(ImmersedSimplicialComplex(V(), {}));
     }
 
+    // Whether there is a sequence of vertices v_1, v_2, ..., v_k
+    // in the simplicial complex such that (we identify the vertices with their
+    // embedding):
+    // 1. A = v_1
+    // 2. B = v_k
+    // 3. The sequence belongs, in this order, to the segment AB
+    // 4. For all 1 <= i < k, the segment v_iv_{i+1} is a face of the complex.
+    // 5. Any face of the complex is either quantitatively "far" from the
+    //    segment AB or is a sub/superset of {v_i, v_{i+1}} for some i.
+    // 6. There is no triangle with all three vertices belonging to
+    //    {v_1, v_2, ..., v_k}.
+    //
+    // If allow_changes = true, then this function is allowed to modify
+    // the complex to satisfy the above assumptions satisfied (but sometimes
+    // it may fail in any case).
     ErrorOr<ImmersedSimplicialComplex> containsSegment(
                          const pt& A,
                          const pt& B,
@@ -575,140 +507,7 @@ struct ImmersedSimplicialComplex {
 
         return ImmersedSimplicialComplex(points, segment_edges);
     }
-
-    bool isSegmentCollapsed(int p, int q, const double eps=1e-5) const {
-        if (p == q)
-            return false;
-        pt P = points[p], Q = points[q];
-        return norm(P - Q) < eps;
-    }
-
-    bool isTriangleCollapsed(int p, int q, int r, const double eps=1e-5) const {
-        if (p == q or q == r or r == p)
-            return false;
-        pt P = points[p], Q = points[q], R = points[r];
-        pt dir = R-P;
-
-        return norm(dir ^ (Q - P)) < eps * norm(dir);
-    }
 };
-
-// Check that pq is a segment and p, q are mapped to the same point.
-// The point q is removed.
-// Any face containing p and q is erased.
-// Any face containing only q is replaced with a face containing only p.
-ImmersedSimplicialComplex removeCollapsedSegment(
-            const ImmersedSimplicialComplex& X,
-            int p, int q, const double eps=1e-5) {
-    assert(X.isSegmentCollapsed(p, q, eps));
-
-    vector<pt> new_points;
-    for (int i = 0; i < X.V(); i++)
-        if (i != q)
-            new_points.push_back(X.getPoint(i));
-
-    vector<set<int>> faces = X.getFaces();
-    vector<set<int>> new_faces;
-    auto relabel = [&](int v) { return v - (v > q); };
-    for (set<int> face: faces) {
-        if (face.count(p) and face.count(q))
-            continue;
-        if (face.count(q)) {
-            face.erase(q);
-            face.insert(p);
-        }
-        set<int> new_face;
-        for (int v: face)
-            new_face.insert(relabel(v));
-        new_faces.push_back(new_face);
-    }
-
-    return ImmersedSimplicialComplex(new_points, new_faces);
-}
-
-// Check that pqr is a triangle and p, q, r are mapped on
-// a line in this order (up to shuffling p, q, r).
-// The triangle pqr is removed as well as the segment pr.
-// All triangles prx (apart from prq) are transformed in two triangles:
-// pqx and qrx.
-ImmersedSimplicialComplex removeCollapsedTriangle(
-        const ImmersedSimplicialComplex& X,
-        int p, int q, int r, const double eps=1e-5) {
-    assert(X.isTriangleCollapsed(p, q, r, eps));
-
-    pt P = X.getPoint(p), Q = X.getPoint(q), R = X.getPoint(r);
-
-    // We want P, Q, R ordered in this way in R^3.
-    if ((Q - P) * (R - P) < 0) swap(p, q), swap(P, Q);
-    if ((P - R) * (Q - R) < 0) swap(r, q), swap(R, Q);
-
-    clog << P << " " << Q << " " << R << endl;
-
-    vector<pt> new_points;
-    for (int i = 0; i < X.V(); i++)
-        new_points.push_back(X.getPoint(i));
-
-    vector<set<int>> faces = X.getFaces();
-    vector<set<int>> new_faces;
-
-    for (set<int> face: faces) {
-        if (!face.count(p) or !face.count(r))
-            new_faces.push_back(face);
-        else if (face.size() == 3 and !face.count(q)) { // prx
-            int x = accumulate(face.begin(), face.end(), 0) - (p + r);
-            new_faces.push_back({p, q, x});
-            new_faces.push_back({q, r, x});
-        }
-    }
-
-    return ImmersedSimplicialComplex(new_points, new_faces);
-}
-
-// It executes removeCollapsedSegment on any collapsed segment.
-// The implementation is naive and slow but in practice it should not be a
-// big deal as we expect very few instances of collapsed segments.
-ImmersedSimplicialComplex removeAllCollapsedSegments(
-        const ImmersedSimplicialComplex& X,
-        const double eps=1e-5) {
-    vector<set<int>> segments = X.getFaces(1);
-    for (set<int> segment: segments) {
-        auto it = segment.begin();
-        int p = *(it++), q = *(it++);
-        if (X.isSegmentCollapsed(p, q, eps)) {
-            pt P = X.getPoint(p), Q = X.getPoint(q);
-            cout << "Removed the collapsed segment: "
-                 << "points[" << p << "] = " << P << ", "
-                 << "points[" << q << "] = " << Q << ". "<< endl;
-            return removeAllCollapsedSegments(removeCollapsedSegment(X, p, q, eps), eps);
-        }
-    }
-    return X;
-}
-
-// See the header of removeAllCollapsedSegments.
-//
-// Observe that this function cannot enter an infinite loop as (assuming that
-// no two points coincide) sorted list of "lengths" of collapsed triangles
-// decreases lexicographically after every recursive call.
-ImmersedSimplicialComplex removeAllCollapsedTriangles(
-        const ImmersedSimplicialComplex& X,
-        const double eps=1e-5) {
-    vector<set<int>> triangles = X.getFaces(2);
-    for (set<int> triangle: triangles) {
-        auto it = triangle.begin();
-        int p = *(it++), q = *(it++), r = *(it++);
-        if (X.isTriangleCollapsed(p, q, r, eps)) {
-            pt P = X.getPoint(p), Q = X.getPoint(q), R = X.getPoint(r);
-            cout << "Removed the collapsed triangle: "
-                 << "points[" << p << "] = " << P << ", "
-                 << "points[" << q << "] = " << Q << ", "
-                 << "points[" << r << "] = " << R << ". "<< endl;
-            return removeAllCollapsedTriangles(removeCollapsedTriangle(X, p, q, r, eps), eps);
-        }
-    }
-    return X;
-}
-
 
 ImmersedSimplicialComplex parseImmersedSimplicialComplex(istream& in) {
     int V, F;
@@ -732,6 +531,8 @@ ImmersedSimplicialComplex parseImmersedSimplicialComplex(istream& in) {
     return ImmersedSimplicialComplex(points, faces);
 }
 
+
+// TODO: Should this be for human or for computers?
 ostream& operator<<(ostream& out, const ImmersedSimplicialComplex& X) {
     out << "V = " << X.V() << ", faces = " << (ssize(X.faces)-X.V()-1) << endl;
     for (auto face: X.faces) {
@@ -741,37 +542,6 @@ ostream& operator<<(ostream& out, const ImmersedSimplicialComplex& X) {
         out << endl;
     }
     return out;
-}
-
-void testIsCollapsible() {
-    ImmersedSimplicialComplex boundary_triangle(3, {{0, 1}, {1, 2}, {2, 0}});
-    ImmersedSimplicialComplex triangle(3, {{0, 1}, {1, 2}, {2, 0}, {0, 1, 2}});
-    ImmersedSimplicialComplex boundary_tetrahedron(4, {{0, 1, 2}, {0, 1, 3}, {0, 2, 3}, {1, 2, 3}});
-    ImmersedSimplicialComplex tetrahedron(4, {{0, 1, 2, 3}});
-    ImmersedSimplicialComplex annulus(6, {
-        {0, 3, 1},
-        {3, 1, 4},
-        {1, 4, 2},
-        {4, 2, 5},
-        {2, 5, 0},
-        {5, 0, 3}
-    });
-    ImmersedSimplicialComplex filled_annulus(6, {
-        {0, 3, 1},
-        {3, 1, 4},
-        {1, 4, 2},
-        {4, 2, 5},
-        {2, 5, 0},
-        {5, 0, 3},
-        {0, 1, 2}
-    });
-
-    cout << "boundary_triangle: " << boundary_triangle.isCollapsible() << endl;
-    cout << "triangle: " << triangle.isCollapsible() << endl;
-    cout << "boundary_tetrahedron: " << boundary_tetrahedron.isCollapsible() << endl;
-    cout << "tetrahedron: " << tetrahedron.isCollapsible() << endl;
-    cout << "annulus: " << annulus.isCollapsible() << endl;
-    cout << "filled_annulus: " << filled_annulus.isCollapsible() << endl;
 }
 
 

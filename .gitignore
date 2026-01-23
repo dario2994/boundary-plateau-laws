@@ -50,3 +50,4 @@ enumerate_derived_twice
 embed_or_exclude
 find_competitor
 data/surface_evolver/*
+test_simplicial_complexes

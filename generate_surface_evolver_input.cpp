@@ -193,6 +193,7 @@ struct SurfaceEvolverData {
     vector<pair<int,int>> boundary_edges;
 };
 
+// TODO: This should take the sequence of commands instead.
 void saveSurfaceEvolverFormat(int net_id,
                               string embedding_name,
                               const SurfaceEvolverData& data,
@@ -339,17 +340,6 @@ print total_area;
             o;
             subroutine 3;
         )"},
-        // TODO: It's not necessary anymore.
-        //       We leave it here for some time. To remove eventually.
-        // {468, R"(
-        //     subroutine 2;
-        //     r;
-        //     subroutine 5;
-        //     o;
-        //     subroutine 5;
-        //     r;
-        //     subroutine 5;
-        // )"},
         {614, R"(
             subroutine 3;
             r;
@@ -524,9 +514,9 @@ const set<int> rigid_nets_flexible_pins = {28, 99, 346, 779, 1096};
 //   - a list of the faces to remove.
 //   - a path to add (for each edge in the path, we add the triangle that it
 //   forms with the origin).
-const int PIN_ZERO = 342905;
-const int PIN_ONE = 5896232;
-map<int, pair<vector<int>, vector<int>>> pop_description = { // Not const, because we do some annoying stuff down the road.
+const int PIN_ZERO = -1;
+const int PIN_ONE = -2;
+const map<int, pair<vector<int>, vector<int>>> pop_description = {
     {28, {
         {3, 5},
         {PIN_ZERO, 17, 6, 14, 13, 18, PIN_ONE, 19, 9, 0, 1, 16, PIN_ZERO}

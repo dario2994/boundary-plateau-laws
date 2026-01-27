@@ -199,7 +199,7 @@ void saveSurfaceEvolverFormat(int net_id,
                               const SurfaceEvolverData& data,
                               string out_file,
                               bool print_commands,
-                              vector<int> how_to_process={}) {
+                              bool net827_slow_convergence=false) {
     const auto& X = data.X;
     pt line = X.getPoint(data.pins.first);
 
@@ -382,13 +382,8 @@ print total_area;
     if (special_surface_evolver_commands.count(net_id))
         surface_evolver_commands = special_surface_evolver_commands.at(net_id);
 
-    if (net_id == 827) { // fat fish
-        assert(ssize(how_to_process) >= 2);
-        int x = how_to_process[1];
-        assert(x == 1 or x == 2);
-        if (x == 2)
-            surface_evolver_commands += "\n u 2;\n g 100;\n r;\n g 1000;";
-    }
+    if (net_id == 827 and net827_slow_convergence) // fat fish
+        surface_evolver_commands += "\n u 2;\n g 100;\n r;\n g 1000;";
 
     constexpr string_view format_str = R"(read
 subroutine := {{
@@ -915,76 +910,15 @@ SurfaceEvolverData generateCubeCompetitor(const NetEmbeddedWithPins& link) {
             .boundary_edges = boundary_edges};
 }
 
+
 // Net 827 = Fat fish.
-SurfaceEvolverData generateFatFishCompetitor(const NetEmbeddedWithPins& link) {
-    vector<int> square = {0, 1, 2, 3};
-    vector<int> biangle = {6, 5, 7, 4};
-    vector<int> internal_square = {10, 11, 12, 13};
-    auto embedding = link.embedding;
+// This is the hardest case because it is a 2-parameter family.
+// Depending on the region where the parameters belong, different pop are
+// necessary.
+SurfaceEvolverData generateFatFishCompetitor(const NetEmbeddedWithPins& link,
+                                             int pop_type) {
+    assert(set<int>({-1, 0, 1}).count(pop_type));
 
-    vector<pt> internal_square_pts = {
-        embedding[link.pins.first],
-        (embedding[square[1]] + embedding[biangle[1]]) / 2.0,
-        embedding[link.pins.second],
-        (embedding[square[3]] + embedding[biangle[3]]) / 2.0,
-    };
-    for (pt& P: internal_square_pts)
-        P = P / (2 * norm(P));
-    for (pt P: internal_square_pts)
-        embedding.push_back(P);
-
-
-    vector<pair<int,int>> boundary_edges;
-    for (Dart d: link.A.darts()) {
-        assert(d.from != d.to);
-        if (d.from > d.to)
-            continue;
-        boundary_edges.push_back({d.from, d.to});
-    }
-
-    vector<set<int>> triangles;
-
-    // Whether v belongs to the line connecting the pins.
-    auto is_pin = [&](int v) {
-        return set<int>{link.pins.first, link.pins.second, 10, 12}.count(v);
-    };
-
-    auto add_face = [&](vector<int> face) {
-        assert(ssize(face) >= 3);
-        int f = ssize(face);
-        // If a face contains a pin, then the triangulation shall be pivoted
-        // there to avoid issues due to the fact that the face is not convex
-        // and not contained in a plane.
-        int pivot = 0;
-        for (int i = 1; i < f; i++)
-            if (is_pin(face[i]))
-                pivot = i;
-        rotate(face.begin(), face.begin() + pivot, face.end());
-        for (int i = 1; i < f-1; i++) {
-            int j = (i+1) % f;
-            triangles.push_back({face[0], face[i], face[j]});
-        }
-    };
-
-    for (int i = 0; i < 4; i++) {
-        int j = (i + 1) % 4;
-        add_face({square[i], square[j], internal_square[j], internal_square[i]});
-        add_face({biangle[i], biangle[j], internal_square[j], internal_square[i]});
-    }
-    add_face(internal_square);
-
-    // Side triangles
-    add_face({square[0], link.pins.first, internal_square[0]});
-    add_face({square[1], biangle[1], internal_square[1]});
-    add_face({square[2], link.pins.second, internal_square[2]});
-    add_face({square[3], biangle[3], internal_square[3]});
-
-    return {.X = ImmersedSimplicialComplex(embedding, triangles),
-            .pins = link.pins,
-            .boundary_edges = boundary_edges};
-}
-
-SurfaceEvolverData generateFatFishCompetitor2(const NetEmbeddedWithPins& link, bool flap_sign) {
     vector<int> square = {0, 1, 2, 3};
     vector<int> biangle = {6, 5, 7, 4};
     vector<int> internal_square = {10, 11, 12, 13};
@@ -1040,19 +974,20 @@ SurfaceEvolverData generateFatFishCompetitor2(const NetEmbeddedWithPins& link, b
         add_face({biangle[i], biangle[j], internal_square[j], internal_square[i]});
     }
 
-    // add_face(internal_square);
-    embedding.push_back({0, 0, 0}); // S
-    embedding.push_back({0, 0, 0.3}); // T TO CHECK
-    if (flap_sign)
-        embedding.back() = -embedding.back();
-    int S = embedding.size() - 2;
-    int T = embedding.size() - 1;
-    add_face({internal_square[0], S, T});
-    add_face({internal_square[0], T, internal_square[1]});
-    add_face({internal_square[1], T, S, internal_square[2]});
-    add_face({internal_square[0], T, internal_square[3]});
-    add_face({internal_square[3], T, S, internal_square[2]});
-    // add_face({internal_square[0], internal_square[3], internal_square[2], S, T});
+    if (pop_type == 0)
+        add_face(internal_square);
+    else {
+        embedding.push_back({0, 0, 0}); // S
+        embedding.push_back({0, 0, 0.3 * pop_type}); // T
+
+        int S = embedding.size() - 2;
+        int T = embedding.size() - 1;
+        add_face({internal_square[0], S, T});
+        add_face({internal_square[0], T, internal_square[1]});
+        add_face({internal_square[1], T, S, internal_square[2]});
+        add_face({internal_square[0], T, internal_square[3]});
+        add_face({internal_square[3], T, S, internal_square[2]});
+    }
 
     // Side triangles
     add_face({square[0], link.pins.first, internal_square[0]});

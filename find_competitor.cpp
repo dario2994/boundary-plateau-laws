@@ -7,7 +7,15 @@ using namespace std;
 #include "simplicial_complexes.cpp"
 #include "generate_surface_evolver_input.cpp"
 
+struct FindCompetitorConfig {
+    int net827_pop_type; // -1, 0, 1, fat fish
+    int net1096_removed_face; // Default is 6, sometimes overwritten as 8
+    bool net827_slow_convergence; // whether we want to run for a longer time the surface evolver, fat fish
+    bool net1029_cube_family; // Whether we should treat the net 1029 as the cube family. The net 1029 admits two 1-parameter families of metrization, one of them is the cube family, the other is the goggles.
+};
 
+
+// TODO: We should write down the correct competitor and then recheck without changing it.
 ErrorOr<bool> isCompetitorValid(ImmersedSimplicialComplex competitor, NetEmbeddedWithPins link) {
     auto pin1 = link.embedding[link.pins.first];
     auto pin2 = link.embedding[link.pins.second];
@@ -62,42 +70,43 @@ bool containsErrorMessage(const string& log_file, const string& error_string) {
     return false;
 }
 
-SurfaceEvolverData generatePoppedConeCases(int net_id, vector<double> params, NetEmbeddedWithPins link,
-                                           vector<int> how_to_process={}) {
-    if (net_id == 1029 and params[0] == 1) // Cube family
-        return generateCubeCompetitor(link);
-    if (net_id == 1096 and !how_to_process.empty())
-        return generatePoppedCone(link, how_to_process, pop_description.at(net_id).second);
+SurfaceEvolverData generatePoppedConeCases(int net_id, NetEmbeddedWithPins link, FindCompetitorConfig config) {
+    if (net_id == 1029 and config.net1029_cube_family)
+        return generateCubeCompetitor(link); // TODO
+    if (net_id == 1096)
+        return generatePoppedCone(link, {config.net1096_removed_face}, pop_description.at(net_id).second);
     if (net_id == 827) {// Fat fish family
-        assert(how_to_process.size() >= 1);
-        int x = how_to_process[0];
-        assert(x == 1 or x == 2 or x == 3);
-        if (x == 1)
-            return generateFatFishCompetitor(link);
-        else if (x == 2)
-            return generateFatFishCompetitor2(link, false);
-        else if (x == 3)
-            return generateFatFishCompetitor2(link, true);
+        return generateFatFishCompetitor(link, config.net827_pop_type);
     }
     return generatePoppedCone(link, pop_description.at(net_id).first,
                                     pop_description.at(net_id).second);
 }
 
-ErrorOr<double> processNet(int net_id, bool run_surface_evolver, vector<double> params,
-                           vector<int> how_to_process={}) {
-    NetEmbeddedWithPins link = embedNetWithPins(net_id, params);
+// Tries to find a valid competitor for the given net.
+// The net is specified via net_id and, if the net is not rigid, via some real
+// parameters net_params.
+// One can decide to skip running the surface evolver and used the cached
+// competitors. Even in this case, this function checks whether the cached
+// competitors are valid.
+// If the function finds a valid competitor, it saves it and returns the (positive)
+// difference between the cone and the competitor.
+// Otherwise, it returns an error.
+ErrorOr<double> processNet(int net_id, vector<double> net_params,
+                           bool run_surface_evolver,
+                           FindCompetitorConfig config) {
+    NetEmbeddedWithPins link = embedNetWithPins(net_id, net_params);
 
     SurfaceEvolverData cone = generateCone(link);
-    SurfaceEvolverData popped_cone = generatePoppedConeCases(net_id, params, link, how_to_process);
+    SurfaceEvolverData popped_cone = generatePoppedConeCases(net_id, link, config);
 
-    const string& embedding_name = generateEmbeddingFilename(net_id, params);
+    const string& embedding_name = generateEmbeddingFilename(net_id, net_params);
     const string& filename_prefix = "data/surface_evolver/" + embedding_name;
 
     if (run_surface_evolver) {
         saveSurfaceEvolverFormat(
-            net_id, embedding_name, cone, filename_prefix + "_cone.fe", false, how_to_process);
+            net_id, embedding_name, cone, filename_prefix + "_cone.fe", false, config.net827_slow_convergence);
         saveSurfaceEvolverFormat(
-            net_id, embedding_name, popped_cone, filename_prefix + "_popped.fe", true, how_to_process);
+            net_id, embedding_name, popped_cone, filename_prefix + "_popped.fe", true, config.net827_slow_convergence);
 
         string surface_evolver_command = format(
             "evolver -x -Q {}_popped.fe > {}.log 2>&1",
@@ -150,12 +159,17 @@ bool proveInstabilityOneParameterNet(int net_id) {
     clog << "Param region: " << param_region << endl;
 
     auto get_area_gap = [&](double param) {
-        if (net_id == 1029)
-            return VALUE_OR_ASSERT(processNet(net_id, true, {0., param}));
-        if (net_id == 1096 and param > 0.38) {
-            return VALUE_OR_ASSERT(processNet(net_id, true, {param}, {8}));
+        if (net_id == 1029) {
+            FindCompetitorConfig config;
+            config.net1029_cube_family = false;
+            return VALUE_OR_ASSERT(processNet(net_id, {0., param}, true, config));
         }
-        return VALUE_OR_ASSERT(processNet(net_id, true, {param}));
+        if (net_id == 1096 and param > 0.38) {
+            FindCompetitorConfig config;
+            config.net1096_removed_face = (param > 0.38) ? 8 : 6;
+            return VALUE_OR_ASSERT(processNet(net_id, {param}, true, config));
+        }
+        return VALUE_OR_ASSERT(processNet(net_id, {param}, true, FindCompetitorConfig()));
     };
 
     auto width_covered = [&](double param) {
@@ -190,14 +204,17 @@ bool proveInstabilityOneParameterNet(int net_id) {
 }
 
 double processFatFish(double theta0, double theta1) {
-    const static vector<vector<int>> how_to_process_options = {
-        {1, 1}, {2, 1}, {2, 2}, {1, 2}, {3, 1}, {3, 2}
+    const static vector<tuple<int, bool>> config_options = {
+        {0, false}, {1, false}, {1, true}, {0, true}, {-1, false}, {-1, true}
     };
 
     double area_gap = -1;
     vector<string> error_messages;
-    for (auto how_to_process: how_to_process_options) {
-        auto maybe_proof = processNet(827, true, {theta0, theta1}, how_to_process);
+    for (auto config_data: config_options) {
+        FindCompetitorConfig config;
+        config.net827_pop_type = get<0>(config_data);
+        config.net827_slow_convergence = get<1>(config_data);
+        auto maybe_proof = processNet(827, {theta0, theta1}, true, config);
         if (!maybe_proof.isOk()) {
             error_messages.push_back(maybe_proof.getError());
         } else {
@@ -222,10 +239,6 @@ bool proveInstabilityFatFishRecursive(Interval theta0, Interval theta1) {
     theta0.intersect(Interval(-1000, upperbound_theta0 - 0.01));
     if (theta0.empty())
         return true;
-    // if (theta0.len() < 0.5*theta1.len() and theta1.len() < 0.01 and
-    //     theta0.l > 0.4) {
-    //     theta0.l = theta0.r - 0.5 * theta1.len();
-    // }
     cout << theta0 << " " << theta1 << ", " << (100*area_processed / 0.36) << "%, ";
 
     double p0 = theta0.mid();
@@ -268,11 +281,13 @@ double uniformSample(double x) {
 
 void proveRigidNets() {
     set<int> nets_to_ignore = {
-        158, // The same net as 1029 (which is proven unstable).
-        681, // The same net as 1029 (which is proven unstable).
+        158, // The same net as 1029.
+        681, // The same net as 1029.
         920, // Thin fish (proven algebraically)
         1100, // A cube (proven algebraically).
     };
+
+    cout << "net_id: area gap" << endl;
     for (int net_id: possible_nets) {
         if (net_id == 827) // fat fish
             continue;
@@ -286,7 +301,7 @@ void proveRigidNets() {
 
         cout << net_id << ": ";
         cout.flush();
-        auto maybe_proof = processNet(net_id, true, {});
+        auto maybe_proof = processNet(net_id, {}, true, FindCompetitorConfig());
         assert(maybe_proof.isOk());
         double area_gap = maybe_proof.getContent();
         cout << area_gap << endl;

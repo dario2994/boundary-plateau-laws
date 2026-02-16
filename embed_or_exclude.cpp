@@ -23,7 +23,7 @@ void savePicture(vector<pair<pt, string>> vertices,
 
 pair<vector<pair<pt, string>>, vector<tuple<pt, pt, double>>>
         embedNet(const MetrizedNet& net) {
-    const DerivedOnceNet& A = net.A;
+    const MarkedCombinatorialMap& A = net.A;
 
     vector<pair<pt, string>> vertex_embedding(A.V());
     vector<tuple<pt, pt, double>> dart_embedding(2 * A.E());
@@ -53,7 +53,7 @@ pair<vector<pair<pt, string>>, vector<tuple<pt, pt, double>>>
 // necessary to determine a length.
 // The length of an implication chain depends on the "pentagonal rules"
 // applied.
-int lengthsImplications(const DerivedOnceNet& A,
+int lengthsImplications(const MarkedCombinatorialMap& A,
                         const vector<Dart>& fixed_darts) {
     static const int INF = 1'000'000;
     vector<int> vec(2*A.E(), INF);
@@ -116,7 +116,7 @@ int lengthsImplications(const DerivedOnceNet& A,
 // can be uniquely determined through simple rules.
 // Among the valid possible sets, it returns one that determines
 // all the lengths in a "numerically robust" way.
-vector<Dart> findFreeParametersConvex(const DerivedOnceNet& A) {
+vector<Dart> findFreeParametersConvex(const MarkedCombinatorialMap& A) {
     int n = A.E();
     if (lengthsImplications(A, {}) >= 0)
         return {};
@@ -147,7 +147,7 @@ vector<Dart> findFreeParametersConvex(const DerivedOnceNet& A) {
     return {};
 }
 
-vector<Dart> findFreeParametersNonConvex(const DerivedOnceNet& A) {
+vector<Dart> findFreeParametersNonConvex(const MarkedCombinatorialMap& A) {
     vector<Dart> res;
     for (auto f: A.faces()) {
         if (A.isConvexFace(f))
@@ -220,7 +220,7 @@ pair<int, optional<MetrizedNet>> searchApproximateMetrization(
         }
     }
 
-    const DerivedOnceNet& A = net.A;
+    const MarkedCombinatorialMap& A = net.A;
 
     if (params.special_rigidity_736) {
         net.length(A.dart(16)).intersect(net.length(A.dart(12)));
@@ -375,7 +375,7 @@ int processNet(int net_id) {
 
     static const set<int> flexible_nets = {827,   1029};
 
-    auto A = parseDerivedOnceNets("data/derived_once_computer.txt")[net_id];
+    auto A = parseMarkedCombinatorialMaps("data/derived_once_computer.txt")[net_id];
 
     SAMParams params;
 
@@ -495,7 +495,7 @@ void testingSearchApproximateMetrization(int test_num = -1) {
         const TestCase& tc = cases[test_id];
         cout << "Test " << test_id << ", net " << tc.net_id << ": ";
         cout.flush();
-        auto A = parseDerivedOnceNets("data/derived_once_computer.txt")[tc.net_id];
+        auto A = parseMarkedCombinatorialMaps("data/derived_once_computer.txt")[tc.net_id];
 
         SAMParams params;
 

@@ -8,7 +8,7 @@ typedef unsigned long long ULL;
 
 
 // Check that the number of edges of convex faces belongs to [2, 5].
-bool checkConvexFaces(const DerivedOnceNet& A) {
+bool checkConvexFaces(const MarkedCombinatorialMap& A) {
     for (const vector<Dart>& face: A.faces()) {
         if (!A.isConvexFace(face))
             continue;
@@ -19,7 +19,7 @@ bool checkConvexFaces(const DerivedOnceNet& A) {
 }
 
 // Check that any face has at most 2 concave angles and its area is positive.
-bool checkNonConvexFaces(const DerivedOnceNet& A) {
+bool checkNonConvexFaces(const MarkedCombinatorialMap& A) {
     for (const vector<Dart>& face: A.faces()) {
         if (A.isConvexFace(face))
             continue;
@@ -37,7 +37,7 @@ bool checkNonConvexFaces(const DerivedOnceNet& A) {
 }
 
 // Two adjacent convex faces have constraints on the number of sides.
-bool checkAdjacentConvexFaces(const DerivedOnceNet& A) {
+bool checkAdjacentConvexFaces(const MarkedCombinatorialMap& A) {
     for (const Dart& d: A.darts()) {
         const Dart& e = A.rev(d);
         if (!A.isConvexFace(d) or !A.isConvexFace(e))
@@ -60,7 +60,7 @@ bool checkAdjacentConvexFaces(const DerivedOnceNet& A) {
 // Returns the boundary distance, avoiding d, between the two concave
 // angles on the boundary of the face.
 // Assumptions: The face containing d has two concave angles.
-int concaveAnglesBoundaryDistanceAvoiding(const DerivedOnceNet& A, Dart d) {
+int concaveAnglesBoundaryDistanceAvoiding(const MarkedCombinatorialMap& A, Dart d) {
     if (A.faceType(d).second != 2)
         return 0;
 
@@ -77,11 +77,11 @@ int concaveAnglesBoundaryDistanceAvoiding(const DerivedOnceNet& A, Dart d) {
     return dist;
 }
 
-int pinContribution(const DerivedOnceNet& A, Dart d) {
+int pinContribution(const MarkedCombinatorialMap& A, Dart d) {
     return max(4-concaveAnglesBoundaryDistanceAvoiding(A, d), 0);
 }
 
-int sumAreaConvexFaces(const DerivedOnceNet& A) {
+int sumAreaConvexFaces(const MarkedCombinatorialMap& A) {
     int res = 0;
     for (auto face: A.faces()) {
         if (A.isConvexFace(face))
@@ -90,7 +90,7 @@ int sumAreaConvexFaces(const DerivedOnceNet& A) {
     return res;
 }
 
-bool checkBiangle(const DerivedOnceNet& A) {
+bool checkBiangle(const MarkedCombinatorialMap& A) {
     vector<vector<Dart>> faces = A.faces();
 
     for (const vector<Dart>& face: faces) {
@@ -126,7 +126,7 @@ bool checkBiangle(const DerivedOnceNet& A) {
     return true;
 }
 
-bool checkSimpleBoundary(const DerivedOnceNet& A) {
+bool checkSimpleBoundary(const MarkedCombinatorialMap& A) {
     vector<vector<Dart>> faces = A.faces();
 
     for (const Dart& d: A.darts()) {
@@ -136,7 +136,7 @@ bool checkSimpleBoundary(const DerivedOnceNet& A) {
     return true;
 }
 
-bool checkConcaveAnglesFar(const DerivedOnceNet& A) {
+bool checkConcaveAnglesFar(const MarkedCombinatorialMap& A) {
     for (const vector<Dart>& face: A.faces()) {
         for (const Dart& d: face) {
             if (!A.isConcaveAngle(d)) continue;
@@ -157,7 +157,7 @@ bool checkConcaveAnglesFar(const DerivedOnceNet& A) {
     return true;
 }
 
-bool validateDerivedOnceNet(const DerivedOnceNet& A) {
+bool validateDerivedOnceNet(const MarkedCombinatorialMap& A) {
     // Exactly two non-convex faces.
     int cnt_non_convex_faces = 0;
     for (const auto& face: A.faces())
@@ -189,7 +189,7 @@ bool validateDerivedOnceNet(const DerivedOnceNet& A) {
 // so that there are no more repeated edges.
 // The list of integers returned represents the list of vertices that
 // were added.
-pair<DerivedOnceNet, vector<int>> removeRepeatedEdges(DerivedOnceNet A) {
+pair<MarkedCombinatorialMap, vector<int>> removeRepeatedEdges(MarkedCombinatorialMap A) {
     vector<int> new_vertices;
     while (1) {
         bool changed = false;
@@ -208,8 +208,8 @@ pair<DerivedOnceNet, vector<int>> removeRepeatedEdges(DerivedOnceNet A) {
     return {A, new_vertices};
 }
 
-vector<DerivedOnceNet> addPin(const DerivedOnceNet& A) {
-    vector<DerivedOnceNet> res;
+vector<MarkedCombinatorialMap> addPin(const MarkedCombinatorialMap& A) {
+    vector<MarkedCombinatorialMap> res;
 
     for (const vector<Dart>& face: A.faces()) {
         if (!A.isConvexFace(face))
@@ -217,11 +217,11 @@ vector<DerivedOnceNet> addPin(const DerivedOnceNet& A) {
         // We add a pin inside face.
         // A pin may generate one or two concave angles.
         for (const Dart& d: face) {
-            DerivedOnceNet A2 = A;
+            MarkedCombinatorialMap A2 = A;
             pair<Dart, Dart> pp = A2.edgeSubdivision(d);
             res.push_back(A2); // One edge coming out of the pin.
             for (const Dart& e: A2.face(pp.first)) {
-                DerivedOnceNet A3 = A2;
+                MarkedCombinatorialMap A3 = A2;
                 A3.edgeSubdivision(e);
                 res.push_back(A3); // Two edges coming out of the pin.
             }
@@ -237,14 +237,14 @@ int main() {
     cout << "There are " << derived_twice_candidates.size()
          << " derived-twice spherical graph candidates." << endl << endl;
 
-    CollectionUpToIsomorphism<DerivedOnceNet> derived_once_candidates;
+    CollectionUpToIsomorphism<MarkedCombinatorialMap> derived_once_candidates;
 
     for (int i = 0; i < ssize(derived_twice_candidates); i++) {
         const CombinatorialMap& A = derived_twice_candidates[i];
-        vector<DerivedOnceNet> pin1 = addPin(A);
-        for (const DerivedOnceNet& A2: pin1) {
-            vector<DerivedOnceNet> pin2 = addPin(A2);
-            for (const DerivedOnceNet& A3: pin2)
+        vector<MarkedCombinatorialMap> pin1 = addPin(A);
+        for (const MarkedCombinatorialMap& A2: pin1) {
+            vector<MarkedCombinatorialMap> pin2 = addPin(A2);
+            for (const MarkedCombinatorialMap& A3: pin2)
                 if (validateDerivedOnceNet(A3))
                     derived_once_candidates.add(A3);
         }
@@ -258,10 +258,10 @@ int main() {
     cout << endl;
 
     // Removing symmetric duplicates.
-    vector<DerivedOnceNet> res = derived_once_candidates.getList();
-    vector<DerivedOnceNet> res_up_to_symmetry;
+    vector<MarkedCombinatorialMap> res = derived_once_candidates.getList();
+    vector<MarkedCombinatorialMap> res_up_to_symmetry;
     for (int i = 0; i < ssize(res); i++) {
-        const DerivedOnceNet& sym = symmetrize(res[i]);
+        const MarkedCombinatorialMap& sym = symmetrize(res[i]);
         bool is_new = true;
         for (int j = 0; j < i and is_new; j++) {
             is_new &= !areIsomorphic(sym, res[j]);
@@ -281,7 +281,7 @@ int main() {
     computer << res.size() << endl;
     for_visualization << res.size() << endl;
     for (int _ = 0; _ < ssize(res); _++) {
-        const DerivedOnceNet& A = res[_];
+        const MarkedCombinatorialMap& A = res[_];
 
         human << "Candidate " << _ << endl;
         human << A << endl;

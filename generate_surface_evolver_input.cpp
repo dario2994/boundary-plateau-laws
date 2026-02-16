@@ -21,7 +21,7 @@ string generateEmbeddingFilename(int net_id, vector<double> params) {
 }
 
 vector<pt> getVertexEmbedding(const MetrizedNet& net) {
-    const DerivedOnceNet& A = net.A;
+    const MarkedCombinatorialMap& A = net.A;
     const Dart root = A.dart(0);
 
     vector<pt> res(A.V());
@@ -63,7 +63,7 @@ vector<Dart> getFaceDarts(const CombinatorialMap& A, vector<int> vertices) {
     return {};
 }
 
-vector<Dart> getConcaveAngles(const DerivedOnceNet& A,
+vector<Dart> getConcaveAngles(const MarkedCombinatorialMap& A,
                               const vector<Dart>& face) {
     vector<Dart> res;
     for (Dart d: face)
@@ -77,7 +77,7 @@ vector<Dart> getConcaveAngles(const DerivedOnceNet& A,
 // Returns the average of the (Euclidean) distance from the pin to the
 // concave angles.
 // It is a naive heuristic used to determine the (non-convex) face a pin belongs to.
-double pinAverageDistance(const DerivedOnceNet& A, vector<pt> embedding,
+double pinAverageDistance(const MarkedCombinatorialMap& A, vector<pt> embedding,
                    pt pin, const vector<Dart>& face) {
     vector<Dart> concave_angles = getConcaveAngles(A, face);
     assert(!concave_angles.empty());

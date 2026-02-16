@@ -10,7 +10,7 @@ using namespace std;
 #include "interval_geometry.cpp"
 #include "utils.cpp"
 
-bool containsBiangle(const DerivedOnceNet& A) {
+bool containsBiangle(const MarkedCombinatorialMap& A) {
     for (const vector<Dart>& f: A.faces()) {
         if (A.faceType(f) == pair<int,int>{2, 0})
             return true;
@@ -18,7 +18,7 @@ bool containsBiangle(const DerivedOnceNet& A) {
     return false;
 }
 
-int pinContribution(const DerivedOnceNet& A, Dart d) {
+int pinContribution(const MarkedCombinatorialMap& A, Dart d) {
     if (A.faceType(d).second != 2)
         return 0;
 
@@ -38,7 +38,7 @@ int pinContribution(const DerivedOnceNet& A, Dart d) {
 
 
 // If this function returns true, then we can prove that the length of d is <= pi.
-bool isShorterThanPi(const DerivedOnceNet& A, const Dart& d) {
+bool isShorterThanPi(const MarkedCombinatorialMap& A, const Dart& d) {
     if (containsBiangle(A))
         return true;
 
@@ -100,7 +100,7 @@ void appendToPath(vector<PathStep>& path, const PathStep& op) {
 
 class MetrizedNet {
   public:
-    const DerivedOnceNet A;
+    const MarkedCombinatorialMap A;
 
   private:
     vector<Interval> _lengths;
@@ -131,7 +131,7 @@ class MetrizedNet {
         return _lengths[d.id>>1];
     }
 
-    MetrizedNet(const DerivedOnceNet& _A): A(_A) {
+    MetrizedNet(const MarkedCombinatorialMap& _A): A(_A) {
         initOptimalPaths();
 
         _lengths.resize(A.E(), Interval(0, 2*M_PI));
@@ -300,7 +300,7 @@ class MetrizedNet {
 };
 
 MetrizedNet parseMetrizedNet(istream& in) {
-    DerivedOnceNet A = parseDerivedOnceNet(in);
+    MarkedCombinatorialMap A = parseMarkedCombinatorialMap(in);
     MetrizedNet net(A);
     for (Dart d: A.darts()) {
         double l, r;

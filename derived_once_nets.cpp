@@ -1,5 +1,5 @@
-#ifndef DERIVED_ONCE_NETS
-#define DERIVED_ONCE_NETS
+#ifndef MARKED_COMBINATORIAL_MAPS
+#define MARKED_COMBINATORIAL_MAPS
 
 #define _USE_MATH_DEFINES
 #include <bits/stdc++.h>
@@ -8,23 +8,26 @@ using namespace std;
 #include "combinatorial_maps.cpp"
 #include "utils.cpp"
 
-// Class representing a derived-once net.
+// Class representing a marked combinatorial map.
 // It is a combinatorial map such that all vertices have degree
 // either 2 or 3.
 // Moreover, for all vertices of degree 2, we know which side is convex and
-// which side is concave. The convex angles are 120 degrees and the concave
+// which side is concave.
+//
+// This class is used to represent candidates to be derived-once spherical
+// graphs. In this context the convex angles are 120 degrees and the concave
 // ones are 240.
 
-class DerivedOnceNet : public CombinatorialMap {
+class MarkedCombinatorialMap : public CombinatorialMap {
   private:
     // If i belongs to _concave_angles, then the angle between
     // dart(i) and phi(dart(i)) is concave.
     vector<Dart> _concave_angles;
 
   public:
-    DerivedOnceNet(const CombinatorialMap& A): CombinatorialMap(A) {}
-    friend DerivedOnceNet parseDerivedOnceNet(istream& in);
-    friend DerivedOnceNet symmetrize(const DerivedOnceNet&);
+    MarkedCombinatorialMap(const CombinatorialMap& A): CombinatorialMap(A) {}
+    friend MarkedCombinatorialMap parseMarkedCombinatorialMap(istream& in);
+    friend MarkedCombinatorialMap symmetrize(const MarkedCombinatorialMap&);
 
     pair<Dart, Dart> addEdge(Dart bef, Dart aft) = delete;
     pair<Dart, Dart> addVertex(Dart bef, Dart aft) = delete;
@@ -151,7 +154,7 @@ class DerivedOnceNet : public CombinatorialMap {
     }
 };
 
-ostream& operator<<(ostream& out, const DerivedOnceNet& A) {
+ostream& operator<<(ostream& out, const MarkedCombinatorialMap& A) {
     out << static_cast<const CombinatorialMap&>(A) << "\n";
     out << "Obtuse angles: " << "\n";
 
@@ -163,10 +166,10 @@ ostream& operator<<(ostream& out, const DerivedOnceNet& A) {
 }
 
 // Returns, if it exists, a bijection between the darts that is an
-// isomorphism of the DerivedOnceNets.
+// isomorphism of the MarkedCombinatorialMaps.
 // The ids of the darts are used for a concise representation.
-vector<int> findIsomorphism(const DerivedOnceNet& A,
-                            const DerivedOnceNet& B) {
+vector<int> findIsomorphism(const MarkedCombinatorialMap& A,
+                            const MarkedCombinatorialMap& B) {
     if (A.V() != B.V() or A.E() != B.E() or A.F() != B.F())
         return {};
 
@@ -188,8 +191,8 @@ vector<int> findIsomorphism(const DerivedOnceNet& A,
     return {};
 }
 
-DerivedOnceNet parseDerivedOnceNet(istream& in) {
-    DerivedOnceNet A(parseCombinatorialMap(in));
+MarkedCombinatorialMap parseMarkedCombinatorialMap(istream& in) {
+    MarkedCombinatorialMap A(parseCombinatorialMap(in));
     int obtuse_angles_num;
     in >> obtuse_angles_num;
 
@@ -201,27 +204,27 @@ DerivedOnceNet parseDerivedOnceNet(istream& in) {
     return A;
 }
 
-// Reads an entire file and parse all the derived once nets listed.
-vector<DerivedOnceNet> parseDerivedOnceNets(string in_file) {
+// Reads an entire file and parse all the marked combinatorial maps listed.
+vector<MarkedCombinatorialMap> parseMarkedCombinatorialMaps(string in_file) {
     ifstream in(in_file);
     assert(in.is_open());
     int cnt;
     in >> cnt;
-    vector<DerivedOnceNet> res;
+    vector<MarkedCombinatorialMap> res;
     for (int i = 0; i < cnt; i++) {
-        DerivedOnceNet A = parseDerivedOnceNet(in);
+        MarkedCombinatorialMap A = parseMarkedCombinatorialMap(in);
         A.checkConsistency();
         res.push_back(A);
     }
     return res;
 }
 
-DerivedOnceNet symmetrize(const DerivedOnceNet& A) {
+MarkedCombinatorialMap symmetrize(const MarkedCombinatorialMap& A) {
     vector<Dart> sym_concave_angles;
     for (const Dart& d: A._concave_angles)
         sym_concave_angles.push_back(A.rev(A.phi(d)));
 
-    DerivedOnceNet B(symmetrize(static_cast<CombinatorialMap>(A)));
+    MarkedCombinatorialMap B(symmetrize(static_cast<CombinatorialMap>(A)));
     B._concave_angles = sym_concave_angles;
     return B;
 }

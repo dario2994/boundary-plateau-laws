@@ -98,7 +98,7 @@ bool refineMetrizationConvexContinent(MetrizedNet& net,
                                       const vector<Dart>& initial_darts) {
     StopWatch _("refineMetrizationConvexContinent");
 
-    const DerivedOnceNet& A = net.A;
+    const MarkedCombinatorialMap& A = net.A;
 
     vector<bool> to_propagate(2*A.E(), false);
     queue<Dart> propagation_queue;
@@ -211,7 +211,7 @@ bool checkPinsAntipodality(const MetrizedNet& net) {
 bool checkPinAngles(const MetrizedNet& net) {
     StopWatch _("checkPinAngles");
 
-    const DerivedOnceNet& A = net.A;
+    const MarkedCombinatorialMap& A = net.A;
 
     for (const auto& f: A.faces()) {
         if (A.faceType(f).second != 2) // The face does not have two concave angles.
@@ -241,7 +241,7 @@ bool checkPinAngles(const MetrizedNet& net) {
 bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
     StopWatch _("refineMetrizationNonConvexFaces");
 
-    const DerivedOnceNet& A = net.A;
+    const MarkedCombinatorialMap& A = net.A;
 
     for (Dart d: A.darts()) {
         if (A.isConvexFace(d))
@@ -292,7 +292,7 @@ bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
 bool checkNonIntersection(MetrizedNet& net) {
     StopWatch _("checkNonIntersection");
 
-    const DerivedOnceNet& A = net.A;
+    const MarkedCombinatorialMap& A = net.A;
     for (Dart d: A.darts()) {
         if (A.isConvexFace(d))
             continue;
@@ -396,7 +396,7 @@ bool checkPinOutsideConvexFaces(const MetrizedNet& net) {
 // intersect the equator described by t.
 // In this way, we have determined the maximum length of s.
 vector<double> maxDistanceToPin(const MetrizedNet& net) {
-    const DerivedOnceNet& A = net.A;
+    const MarkedCombinatorialMap& A = net.A;
 
     vector<double> len_to_pin;
     for (const Dart& to_pin: A.concaveAngles()) {
@@ -445,7 +445,7 @@ bool checkPinsAntipodality2(const MetrizedNet& net) {
     StopWatch _("checkPinsAntipodality2");
 
     auto eucl_to_sphere = [&](double d) { return 2*asin(d/2); };
-    const DerivedOnceNet& A = net.A;
+    const MarkedCombinatorialMap& A = net.A;
 
     vector<double> len_to_pin = maxDistanceToPin(net);
 
@@ -486,7 +486,7 @@ bool checkLengthLowerbound(MetrizedNet& net) {
         return min(0.01, 0.1*min(x, y)) - 1e-10;
     };
 
-    const DerivedOnceNet& A = net.A;
+    const MarkedCombinatorialMap& A = net.A;
 
     auto min_adjacent = [&](const Dart& d)->double {
         vector<double> vals = {net.length(A.next(d)).l};

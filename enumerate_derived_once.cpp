@@ -7,20 +7,13 @@ typedef unsigned long long ULL;
 #include "derived_once_nets.cpp"
 
 
-// Check that convex faces have distinct edges and the number
-// of sides belongs to [2, 5].
+// Check that the number of edges of convex faces belongs to [2, 5].
 bool checkConvexFaces(const DerivedOnceNet& A) {
     for (const vector<Dart>& face: A.faces()) {
-        if (!A.isConvexFace(face[0]))
+        if (!A.isConvexFace(face))
             continue;
         if (ssize(face) < 2 or ssize(face) > 5)
             return false;
-        set<int> rev_sides;
-        for (const Dart& d: face) {
-            if (rev_sides.count(d.id))
-                return false;
-            rev_sides.insert(A.rev(d).id);
-        }
     }
     return true;
 }
@@ -31,8 +24,8 @@ bool checkNonConvexFaces(const DerivedOnceNet& A) {
         if (A.isConvexFace(face))
             continue;
 
-        int cnt_obtuse = A.faceType(face).second;
-        if (cnt_obtuse > 2)
+        int cnt_concave = A.faceType(face).second;
+        if (cnt_concave > 2)
             return false;
 
         int area = A.faceArea(face);
@@ -61,11 +54,16 @@ bool checkAdjacentConvexFaces(const DerivedOnceNet& A) {
     return true;
 }
 
-
-int pinContribution(const DerivedOnceNet& A, Dart d) {
+// TODO: This code is repeated identical in metrized_nets.cpp.
+//
+// Consider the face containing d.
+// Returns the boundary distance, avoiding d, between the two concave
+// angles on the boundary of the face.
+// Assumptions: The face containing d has two concave angles.
+int concaveAnglesBoundaryDistanceAvoiding(const DerivedOnceNet& A, Dart d) {
     if (A.faceType(d).second != 2)
         return 0;
-    //~ assert(A.degree(d.from) == 3 and A.degree(d.to) == 3);
+
     int dist = -1;
     Dart curr = d;
     while (1) {
@@ -76,8 +74,11 @@ int pinContribution(const DerivedOnceNet& A, Dart d) {
 
         curr = A.phi(curr);
     }
-    int contribution = max(4-dist, 0);
-    return contribution;
+    return dist;
+}
+
+int pinContribution(const DerivedOnceNet& A, Dart d) {
+    return max(4-concaveAnglesBoundaryDistanceAvoiding(A, d), 0);
 }
 
 int sumAreaConvexFaces(const DerivedOnceNet& A) {
@@ -156,8 +157,7 @@ bool checkConcaveAnglesFar(const DerivedOnceNet& A) {
 }
 
 bool validateDerivedOnceNet(const DerivedOnceNet& A) {
-    // By definition, any derived-once net has exactly two non-convex faces.
-    // We perform this sanity check here.
+    // Exactly two non-convex faces.
     int cnt_non_convex_faces = 0;
     for (const auto& face: A.faces())
         cnt_non_convex_faces += !A.isConvexFace(face);
@@ -231,61 +231,56 @@ vector<DerivedOnceNet> addPin(const DerivedOnceNet& A) {
 }
 
 int main() {
-    vector<CombinatorialMap> derived_twice =
+    vector<CombinatorialMap> derived_twice_candidates =
         parseCombinatorialMaps("data/derived_twice_computer.txt");
-    cout << "There are " << derived_twice.size()
-         << " derived-twice net candidates." << endl << endl;
+    cout << "There are " << derived_twice_candidates.size()
+         << " derived-twice spherical graph candidates." << endl << endl;
 
-    CollectionUpToIsomorphism<DerivedOnceNet> derived_once;
+    CollectionUpToIsomorphism<DerivedOnceNet> derived_once_candidates;
 
-    auto validate_and_add = [&](const DerivedOnceNet& A) {
-        if (validateDerivedOnceNet(A))
-            derived_once.add(A);
-    };
-
-    int it = 1;
-    for (const CombinatorialMap& A: derived_twice) {
+    for (int i = 0; i < ssize(derived_twice_candidates); i++) {
+        const CombinatorialMap& A = derived_twice_candidates[i];
         vector<DerivedOnceNet> pin1 = addPin(A);
         for (const DerivedOnceNet& A2: pin1) {
             vector<DerivedOnceNet> pin2 = addPin(A2);
             for (const DerivedOnceNet& A3: pin2)
-                validate_and_add(A3);
+                if (validateDerivedOnceNet(A3))
+                    derived_once_candidates.add(A3);
         }
-        if (it % 10 == 0) {
-            cout << "Processed successfully " << it
+        if (i > 0 and i % 10 == 0) {
+            cout << "Processed " << i
                  << " derived-twice net candidates, which generated "
-                 << derived_once.getList().size()
+                 << derived_once_candidates.getList().size()
                  << " derived-once net candidates." << endl;
         }
-        it++;
     }
     cout << endl;
 
     // Removing symmetric duplicates.
-    vector<DerivedOnceNet> derived_once_vec = derived_once.getList();
-    vector<DerivedOnceNet> _tmp;
-    for (int i = 0; i < ssize(derived_once_vec); i++) {
-        const DerivedOnceNet& sym = symmetrize(derived_once_vec[i]);
+    vector<DerivedOnceNet> res = derived_once_candidates.getList();
+    vector<DerivedOnceNet> res_up_to_symmetry;
+    for (int i = 0; i < ssize(res); i++) {
+        const DerivedOnceNet& sym = symmetrize(res[i]);
         bool is_new = true;
         for (int j = 0; j < i and is_new; j++) {
-            is_new &= !areIsomorphic(sym, derived_once_vec[j]);
+            is_new &= !areIsomorphic(sym, res[j]);
         }
         if (is_new)
-            _tmp.push_back(sym);
+            res_up_to_symmetry.push_back(sym);
     }
-    derived_once_vec = _tmp;
+    res = res_up_to_symmetry;
 
 
-    cout << "We found " << derived_once_vec.size()
+    cout << "We found " << res.size()
          << " derived-once nets candidates." << endl;
 
     ofstream computer("data/derived_once_computer.txt");
     ofstream human("data/derived_once_human.txt");
     ofstream for_visualization("data/derived_once_for_visualization.txt");
-    computer << derived_once_vec.size() << endl;
-    for_visualization << derived_once_vec.size() << endl;
-    for (int _ = 0; _ < ssize(derived_once_vec); _++) {
-        const DerivedOnceNet& A = derived_once_vec[_];
+    computer << res.size() << endl;
+    for_visualization << res.size() << endl;
+    for (int _ = 0; _ < ssize(res); _++) {
+        const DerivedOnceNet& A = res[_];
 
         human << "Candidate " << _ << endl;
         human << A << endl;

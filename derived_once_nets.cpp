@@ -11,13 +11,14 @@ using namespace std;
 // Class representing a derived-once net.
 // It is a combinatorial map such that all vertices have degree
 // either 2 or 3.
-// Moreover, for all vertices of degree 2, we know which side has
-// angle 120 and which side has angle 240.
+// Moreover, for all vertices of degree 2, we know which side is convex and
+// which side is concave. The convex angles are 120 degrees and the concave
+// ones are 240.
 
 class DerivedOnceNet : public CombinatorialMap {
   private:
     // If i belongs to _concave_angles, then the angle between
-    // dart(i) and phi(dart(i)) is 240 degrees.
+    // dart(i) and phi(dart(i)) is concave.
     vector<Dart> _concave_angles;
 
   public:
@@ -99,28 +100,6 @@ class DerivedOnceNet : public CombinatorialMap {
         for (const Dart& e: f) concave_num += isConcaveAngle(e);
 
         return {ssize(f), concave_num};
-    }
-
-    // Returns the angles (in radiants) of the face, starting from the
-    // one just after d.
-    vector<double> faceAngles(const Dart& d) const {
-        vector<double> angles;
-        for (const Dart& e: face(d)) {
-            double angle = isConcaveAngle(e) ? 4*M_PI/3 : 2*M_PI/3;
-            angles.push_back(angle);
-        }
-        return angles;
-    }
-
-    // Returns the angles (in degrees) of the face, starting from the
-    // one just after d.
-    vector<int> faceAnglesDeg(const Dart& d) const {
-        vector<int> angles;
-        for (const Dart& e: face(d)) {
-            int angle = isConcaveAngle(e) ? 240 : 120;
-            angles.push_back(angle);
-        }
-        return angles;
     }
 
     // Whether d and e belong to the same face.

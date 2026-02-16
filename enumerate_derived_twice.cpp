@@ -34,35 +34,39 @@ bool validateNet(const CombinatorialMap& A) {
     return true;
 }
 
-
-int computeExternalContribution(int big_faces, int darts) {
-    int res = -darts;
-    while (darts > 0) {
-        res += 6;
-        darts -= (big_faces > 0) ? 7 : 5;
-        big_faces--;
+int qfunction(int i, int j) {
+    int res = 0;
+    while (j > 0) {
+        res++;
+        j -= (i > 0) ? 7 : 5;
+        i--;
     }
     return res;
 }
 
+int Qfunction(int i, int j) {
+    return 6 * qfunction(i, j) - j;
+}
+
+
+// memo_external_contribution[i][j] = min_{j <= j' < 70 and 6|j'-j} Qfunction(i, j').
 int memo_external_contribution[3][80];
 void precomputeExternalContribution() {
-    for (int big_faces = 0; big_faces <= 2; big_faces++) {
-        for (int darts = 70; darts >= 0; darts--) {
-            int& z = memo_external_contribution[big_faces][darts];
-            z = 1000;
-            if (darts <= 62)
-                z = memo_external_contribution[big_faces][darts+6];
-            z = min(z, computeExternalContribution(big_faces, darts));
+    for (int i = 0; i <= 2; i++) {
+        for (int j = 0; j < 70; j++) {
+            int res = 1000;
+            for (int j2 = j; j2 < 70; j2 += 6)
+                res = min(res, Qfunction(i, j2));
+            memo_external_contribution[i][j] = res;
         }
     }
 }
 
 // Uses various heuristics to show that A cannot be transformed (by attaching
-// edges on the "outside") into a valid geodesic net.
-// If it returns false, then A cannot be extended to a valid geodesic net.
+// edges on the "outside") into a twice-derived spherical graph.
+// If it returns false, then A cannot be extended.
 // If it returns true, there might (but does not have to) be an extension
-// of A that is a valid geodesic net.
+// of A that is a valid twice-derived net.
 bool validateSubgraph(const PlanarMap& A) {
     if (A.E() > 30 or A.F() > 12)
         return false;
@@ -142,9 +146,12 @@ vector<PlanarMap> evolve(const PlanarMap& A) {
     const vector<Dart>& boundary = A.boundaryDarts();
     vector<PlanarMap> res;
 
+    // We find a leaf of A (if it exists).
     int leaf = -1;
     for (int v = 0; v < A.V(); v++) if (A.degree(v) == 1) leaf = v;
 
+    // Check whether B (which was obtained adding new_edge) is a nice
+    // children.
     auto add_to_res = [&](const PlanarMap& B, Dart new_edge) {
         if (B.degree(new_edge.from) > 3 or B.degree(new_edge.to) > 3)
             return;
@@ -177,53 +184,52 @@ vector<PlanarMap> evolve(const PlanarMap& A) {
 }
 
 vector<PlanarMap> evolve(const vector<PlanarMap>& V) {
-    CollectionUpToIsomorphism<PlanarMap> mu;
+    CollectionUpToIsomorphism<PlanarMap> res;
     for (const PlanarMap& A: V) {
         const vector<PlanarMap>& vec = evolve(A);
         for (const PlanarMap& B: vec) {
             if (validateSubgraph(B))
-                mu.add(B);
+                res.add(B);
         }
     }
-    return mu.getList();
+    return res.getList();
 }
 
 
 int main() {
     precomputeExternalContribution();
 
-    vector<PlanarMap> vec = {constructOneLoop()};
+    vector<PlanarMap> Cfamily = {constructOneLoop()};
 
-    CollectionUpToIsomorphism<CombinatorialMap> nets;
+    CollectionUpToIsomorphism<CombinatorialMap> twice_derived_candidates;
 
-    cout << "Edges = k\tPlanar maps with k edges\tTwice-derived nets with <= k edges" << endl;
+    cout << "Edges = k\tCfamily_k\tTwice-derived candidates with <= k edges" << endl;
 
     for (int E = 2; E <= 30; E++) {
-        vec = evolve(vec);
+        Cfamily = evolve(Cfamily);
 
         // Adding a cycle of length E.
         PlanarMap cycle = constructOneEdge();
-        for (int k = 2; k < E; k++) {
+        for (int k = 2; k < E; k++)
             cycle.addVertex(cycle.dart(2*(k-2)));
-        }
         cycle.addEdge(cycle.dart(2*(E-2)), cycle.dart(0));
         if (validateSubgraph(cycle))
-            vec.push_back(cycle);
+            Cfamily.push_back(cycle);
 
-        for (const auto& A: vec) {
+        for (const auto& A: Cfamily) {
             if (validateNet(A)) {
                 A.checkConsistency();
-                nets.add(A);
+                twice_derived_candidates.add(A);
             }
         }
 
-        cout << E << "\t\t" << vec.size() << "\t\t\t\t" << nets.getList().size() << endl;
+        cout << E << "\t\t" << Cfamily.size() << "\t\t\t\t" << twice_derived_candidates.getList().size() << endl;
     }
 
     // We save the twice-derived nets into two files.
     // One of the files is optimized for being read by a human, the
     // other one is optimized for being parsed by a computer.
-    vector<CombinatorialMap> res = nets.getList();
+    vector<CombinatorialMap> res = twice_derived_candidates.getList();
     ofstream human("data/derived_twice_human.txt");
     ofstream computer("data/derived_twice_computer.txt");
 

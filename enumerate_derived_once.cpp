@@ -115,6 +115,7 @@ bool checkBiangle(const DerivedOnceNet& A) {
             return false;
 
         for (const Dart& d: A.darts()) {
+            // TODO: Do we actually need this?
             if (A.faceType(d) == pair<int,int>{3, 0}
                     and A.faceType(A.rev(d)) == pair<int,int>{4, 0})
                 return false;
@@ -145,7 +146,7 @@ bool checkConcaveAnglesFar(const DerivedOnceNet& A) {
             while (curr != d) {
                 if (A.isConcaveAngle(curr)) {
                     //~ assert(dist != 1);
-                    if (5 < ssize(face) - dist)
+                    if (dist < ssize(face) - 5)
                         return false;
                 }
                 curr = A.phi(curr);

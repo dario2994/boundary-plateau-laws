@@ -3,7 +3,7 @@
 using namespace std;
 typedef unsigned long long ULL;
 
-#include "../derived_once_nets.cpp"
+#include "../once_derived_nets.cpp"
 
 
 int findNewId(const vector<MarkedCombinatorialMap>& old_list,
@@ -22,8 +22,8 @@ int findNewId(const vector<MarkedCombinatorialMap>& old_list,
 }
 
 int main() {
-    const vector<MarkedCombinatorialMap>& old_list = parseMarkedCombinatorialMaps("../data/old_derived_once_computer.txt");
-    const vector<MarkedCombinatorialMap>& new_list = parseMarkedCombinatorialMaps("../data/derived_once_computer.txt");
+    const vector<MarkedCombinatorialMap>& old_list = parseMarkedCombinatorialMaps("../data/old_once_derived_computer.txt");
+    const vector<MarkedCombinatorialMap>& new_list = parseMarkedCombinatorialMaps("../data/once_derived_computer.txt");
 
     vector<int> old_ids = {
         28, 100, 160, 184, 252, 322, 328, 350, 365, 426, 474, 490, 526, 621, 690, 722, 747, 790, 839, 924, 935, 954, 963, 993, 1048, 1118, 1122, 1147, 1160,100,101,11,39,722, 360,45,1122,1067};

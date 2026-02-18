@@ -2,7 +2,7 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-#include "derived_once_nets.cpp"
+#include "marked_combinatorial_maps.cpp"
 #include "interval_arithmetic.cpp"
 #include "metrized_nets.cpp"
 #include "metrization_constraints.cpp"
@@ -375,7 +375,7 @@ int processNet(int net_id) {
 
     static const set<int> flexible_nets = {827,   1029};
 
-    auto A = parseMarkedCombinatorialMaps("data/derived_once_computer.txt")[net_id];
+    auto A = parseMarkedCombinatorialMaps("data/once_derived_computer.txt")[net_id];
 
     SAMParams params;
 
@@ -495,7 +495,7 @@ void testingSearchApproximateMetrization(int test_num = -1) {
         const TestCase& tc = cases[test_id];
         cout << "Test " << test_id << ", net " << tc.net_id << ": ";
         cout.flush();
-        auto A = parseMarkedCombinatorialMaps("data/derived_once_computer.txt")[tc.net_id];
+        auto A = parseMarkedCombinatorialMaps("data/once_derived_computer.txt")[tc.net_id];
 
         SAMParams params;
 
@@ -563,18 +563,18 @@ int main() {
     // testingSearchApproximateMetrization();
     // return 0;
 
-    ifstream in("data/derived_once_computer.txt");
-    int cnt_derived_once;
-    in >> cnt_derived_once;
-    vector<int> derived_once(cnt_derived_once);
-    for (int i = 0; i < cnt_derived_once; i++)
-        in >> derived_once[i];
+    ifstream in("data/once_derived_computer.txt");
+    int cnt_once_derived;
+    in >> cnt_once_derived;
+    vector<int> once_derived(cnt_once_derived);
+    for (int i = 0; i < cnt_once_derived; i++)
+        in >> once_derived[i];
     in.close();
 
     // Slow possible net: 28
-    vector<int> embeddable_derived_once;
+    vector<int> embeddable_once_derived;
 
-    for (int id = 0; id < ssize(derived_once); id++) {
+    for (int id = 0; id < ssize(once_derived); id++) {
         clog << "net id = " << setw(4) << id << ":\t";
         clog.flush();
 
@@ -597,15 +597,15 @@ int main() {
         clog << endl;
 
         if (outcome != 0)
-            embeddable_derived_once.push_back(id);
+            embeddable_once_derived.push_back(id);
     }
     clog << endl; // TODO: Use clog everywhere?
 
     StopWatch::printState();
 
     ofstream out("data/embeddable_nets.txt");
-    out << embeddable_derived_once.size() << endl;
-    for (int id: embeddable_derived_once)
+    out << embeddable_once_derived.size() << endl;
+    for (int id: embeddable_once_derived)
         out << id << " ";
     out << endl;
     out.close();

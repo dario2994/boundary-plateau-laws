@@ -4,7 +4,7 @@ using namespace std;
 typedef unsigned long long ULL;
 
 #include "combinatorial_maps.cpp"
-#include "derived_once_nets.cpp"
+#include "marked_combinatorial_maps.cpp"
 
 
 // Check that the number of edges of convex faces belongs to [2, 5].
@@ -232,33 +232,33 @@ vector<MarkedCombinatorialMap> addPin(const MarkedCombinatorialMap& A) {
 }
 
 int main() {
-    vector<CombinatorialMap> derived_twice_candidates =
-        parseCombinatorialMaps("data/derived_twice_computer.txt");
-    cout << "There are " << derived_twice_candidates.size()
-         << " derived-twice spherical graph candidates." << endl << endl;
+    vector<CombinatorialMap> twice_derived_candidates =
+        parseCombinatorialMaps("data/twice_derived_computer.txt");
+    cout << "There are " << twice_derived_candidates.size()
+         << " twice-derived spherical graph candidates." << endl << endl;
 
-    CollectionUpToIsomorphism<MarkedCombinatorialMap> derived_once_candidates;
+    CollectionUpToIsomorphism<MarkedCombinatorialMap> once_derived_candidates;
 
-    for (int i = 0; i < ssize(derived_twice_candidates); i++) {
-        const CombinatorialMap& A = derived_twice_candidates[i];
+    for (int i = 0; i < ssize(twice_derived_candidates); i++) {
+        const CombinatorialMap& A = twice_derived_candidates[i];
         vector<MarkedCombinatorialMap> pin1 = addPin(A);
         for (const MarkedCombinatorialMap& A2: pin1) {
             vector<MarkedCombinatorialMap> pin2 = addPin(A2);
             for (const MarkedCombinatorialMap& A3: pin2)
                 if (validateDerivedOnceNet(A3))
-                    derived_once_candidates.add(A3);
+                    once_derived_candidates.add(A3);
         }
         if (i > 0 and i % 10 == 0) {
             cout << "Processed " << i
-                 << " derived-twice net candidates, which generated "
-                 << derived_once_candidates.getList().size()
-                 << " derived-once net candidates." << endl;
+                 << " twice-derived net candidates, which generated "
+                 << once_derived_candidates.getList().size()
+                 << " once-derived net candidates." << endl;
         }
     }
     cout << endl;
 
     // Removing symmetric duplicates.
-    vector<MarkedCombinatorialMap> res = derived_once_candidates.getList();
+    vector<MarkedCombinatorialMap> res = once_derived_candidates.getList();
     vector<MarkedCombinatorialMap> res_up_to_symmetry;
     for (int i = 0; i < ssize(res); i++) {
         const MarkedCombinatorialMap& sym = symmetrize(res[i]);
@@ -271,13 +271,15 @@ int main() {
     }
     res = res_up_to_symmetry;
 
-
     cout << "We found " << res.size()
-         << " derived-once nets candidates." << endl;
+         << " once-derived nets candidates." << endl;
 
-    ofstream computer("data/derived_once_computer.txt");
-    ofstream human("data/derived_once_human.txt");
-    ofstream for_visualization("data/derived_once_for_visualization.txt");
+    return 0;
+
+
+    ofstream computer("data/once_derived_computer.txt");
+    ofstream human("data/once_derived_human.txt");
+    ofstream for_visualization("data/once_derived_for_visualization.txt");
     computer << res.size() << endl;
     for_visualization << res.size() << endl;
     for (int _ = 0; _ < ssize(res); _++) {
@@ -290,8 +292,8 @@ int main() {
 
         // For visualization, we use the python library matplotlib.
         // This library does not support combinatorial maps with
-        // repeated edges, so we create a version of the derived-once
-        // net that does not contain any repeat edge.
+        // repeated edges, so we create a version of the graph
+        // that does not contain any repeated edge.
         auto pp = removeRepeatedEdges(A);
         pp.first.serialize(for_visualization);
         for_visualization << pp.second.size() << "\n";

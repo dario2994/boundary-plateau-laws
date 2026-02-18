@@ -14,7 +14,7 @@ using namespace std;
 // Moreover, for all vertices of degree 2, we know which side is convex and
 // which side is concave.
 //
-// This class is used to represent candidates to be derived-once spherical
+// This class is used to represent candidates to be once-derived spherical
 // graphs. In this context the convex angles are 120 degrees and the concave
 // ones are 240.
 

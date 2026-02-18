@@ -230,8 +230,8 @@ int main() {
     // One of the files is optimized for being read by a human, the
     // other one is optimized for being parsed by a computer.
     vector<CombinatorialMap> res = twice_derived_candidates.getList();
-    ofstream human("data/derived_twice_human.txt");
-    ofstream computer("data/derived_twice_computer.txt");
+    ofstream human("data/twice_derived_human.txt");
+    ofstream computer("data/twice_derived_computer.txt");
 
     computer << ssize(res) << endl;
 

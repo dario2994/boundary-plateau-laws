@@ -1,27 +1,30 @@
 Pipeline:
 
-a) ./enumerate_derived_twice
+a) ./enumerate_twice_derived
 It requires >= 16gb of ram, and a few hours to be executed.
-It creates data/derived_twice_computer.txt and data/derived_twice_human.txt.
-These are lists of candidates for being derived-twice nets.
+It creates data/twice_derived_computer.txt and data/twice_derived_human.txt.
+These are lists of candidates for being twice-derived nets.
+Each element of the list is a spherical map.
 
-b) ./enumerate_derived_once
+b) ./enumerate_once_derived
 It requires a few minutes to be executed.
-It reads the list of derived-twice nets from data/derived_twice_computer.txt
-and creates data/derived_once_computer.txt, data/derived_once_human.txt,
-data/derived_once_for_visualization.txt.
-These are lists of candidates for being derived-once nets.
+It reads the list of twice-derived nets from data/twice_derived_computer.txt
+and creates data/once_derived_computer.txt, data/once_derived_human.txt,
+data/once_derived_for_visualization.txt.
+These are lists of candidates for being once-derived nets.
+Each element of the list is a marked spherical map.
 
 c) ./embed_or_exclude_nets
-Requires ??? hours to be executed.
-It reads the list of derived-once nets from data/derived_once_computer.txt.
+Requires 2 hours to be executed.
+It reads the list of once-derived nets from data/once_derived_computer.txt.
 For each of them, it tries to embed it in the sphere.
 It either manages to embed it (up to error ~0.00001) or proves that it
 cannot be embedded. It also proves (for most nets) the (approximate) rigidity
 of the embedding.
 The ids of the embeddable nets are saved in data/embeddable_nets.txt
-For each embeddable net, the data of a valid embedding is saved in data/metrization/net_id.txt.
+For each embeddable net, the data of a valid embedding is saved in
+data/metrization/net_id.txt.
 
 e) python scripts/run_visualization net_id
-It visualizes the "combinatorial" derived once net with net_id as well
-as an embedding in the sphere (if one was found).
+It visualizes the marked combinatorial map (in the once-derived nets list)
+with net_id as well as an embedding in the sphere (if one was found).

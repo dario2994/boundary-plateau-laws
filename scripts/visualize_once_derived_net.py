@@ -10,12 +10,12 @@ import os
 
 # Base directory of the project.
 base_dir = pathlib.Path(__file__).resolve().parent.parent
-derived_once_for_visualization = base_dir / 'data/derived_once_for_visualization.txt'
-derived_once_images_dir = base_dir / 'data/derived_once_images/'
+once_derived_for_visualization = base_dir / 'data/once_derived_for_visualization.txt'
+once_derived_images_dir = base_dir / 'data/once_derived_images/'
 
 # Ensure a net ID is provided
 if len(sys.argv) != 2:
-    sys.exit("Usage: python visualize_derived_once_net.py <net_id>")
+    sys.exit("Usage: python visualize_once_derived_net.py <net_id>")
 
 net_id = sys.argv[1]
 
@@ -23,13 +23,13 @@ net_id = sys.argv[1]
 if not net_id.isdigit():
     sys.exit("Error: net_id must be a positive integer.")
 
-def parse_derived_once_nets():
+def parse_once_derived_nets():
     lines = []
-    with open(derived_once_for_visualization) as in_file:
+    with open(once_derived_for_visualization) as in_file:
         lines = in_file.readlines()
     cnt = int(lines[0])
 
-    derived_once_nets = []
+    once_derived_nets = []
     it = 1
     for z in range(cnt):
         V, E, F = map(int, lines[it].split())
@@ -56,12 +56,12 @@ def parse_derived_once_nets():
         fake_vertices = list(map(int, lines[it].split()))
         it += 1
 
-        derived_once_nets.append((V, E, darts, next_dart, concave_angles, fake_vertices))
-    return derived_once_nets
+        once_derived_nets.append((V, E, darts, next_dart, concave_angles, fake_vertices))
+    return once_derived_nets
 
 
-def draw_derived_once_net(fig, _id, V, E, darts, next_dart, concave_angles, fake_vertices):
-    print('Drawing derived-once net ' + str(_id) +'.')
+def draw_once_derived_net(fig, _id, V, E, darts, next_dart, concave_angles, fake_vertices):
+    print('Drawing once-derived net ' + str(_id) +'.')
 
     # Convert the combinatorial map in a rotation system.
     rotation_system = [[] for _ in range(V)]
@@ -138,18 +138,18 @@ def draw_derived_once_net(fig, _id, V, E, darts, next_dart, concave_angles, fake
         mark_angle(darts[i][0], darts[i][1], darts[next_dart[i^1]][1])
 
     fig.gca().axis('equal')
-    fig.gca().set_title("Derived-once net: " + str(_id))
+    fig.gca().set_title("once-derived net: " + str(_id))
 
     # ~ plt.show()
-    os.makedirs(derived_once_images_dir, exist_ok=True)
-    fig.savefig(derived_once_images_dir / f'{_id}.png', dpi=300, bbox_inches='tight')
+    os.makedirs(once_derived_images_dir, exist_ok=True)
+    fig.savefig(once_derived_images_dir / f'{_id}.png', dpi=300, bbox_inches='tight')
     fig.clf()
 
 
-derived_once_nets = parse_derived_once_nets()
+once_derived_nets = parse_once_derived_nets()
 
 # ~ survivors = []
-# ~ with open('data/derived_once_survivors.txt') as in_file:
+# ~ with open('data/once_derived_survivors.txt') as in_file:
     # ~ survivors = list(map(int, in_file.readlines()[1].split()))
 
 plt.ioff()
@@ -157,4 +157,4 @@ plt.ioff()
 # matplotlib.
 fig = plt.figure()
 
-draw_derived_once_net(fig, net_id, *(derived_once_nets[int(net_id)]))
+draw_once_derived_net(fig, net_id, *(once_derived_nets[int(net_id)]))

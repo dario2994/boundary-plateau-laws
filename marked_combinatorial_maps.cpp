@@ -52,8 +52,8 @@ class MarkedCombinatorialMap : public CombinatorialMap {
     }
 
     pair<Dart, Dart> edgeSubdivision(Dart d) {
-        bool d_obtuse = isConcaveAngle(d);
-        bool d_rev_obtuse = isConcaveAngle(rev(d));
+        bool d_concave = isConcaveAngle(d);
+        bool d_rev_concave = isConcaveAngle(rev(d));
 
         _concave_angles.erase(
             remove(_concave_angles.begin(), _concave_angles.end(), d), _concave_angles.end());
@@ -62,12 +62,12 @@ class MarkedCombinatorialMap : public CombinatorialMap {
 
         pair<Dart,Dart> pp = CombinatorialMap::edgeSubdivision(d);
 
-        // The newly created angle is obtuse.
+        // The newly created angle is concave.
         _concave_angles.push_back(pp.first);
 
-        if (d_obtuse)
+        if (d_concave)
             _concave_angles.push_back(pp.second);
-        if (d_rev_obtuse)
+        if (d_rev_concave)
             _concave_angles.push_back(rev(pp.first));
 
         return pp;
@@ -156,7 +156,7 @@ class MarkedCombinatorialMap : public CombinatorialMap {
 
 ostream& operator<<(ostream& out, const MarkedCombinatorialMap& A) {
     out << static_cast<const CombinatorialMap&>(A) << "\n";
-    out << "Obtuse angles: " << "\n";
+    out << "Concave angles: " << "\n";
 
     for (const Dart& d: A.concaveAngles()) {
         out << d << " " << A.phi(d) << "\n";
@@ -193,10 +193,10 @@ vector<int> findIsomorphism(const MarkedCombinatorialMap& A,
 
 MarkedCombinatorialMap parseMarkedCombinatorialMap(istream& in) {
     MarkedCombinatorialMap A(parseCombinatorialMap(in));
-    int obtuse_angles_num;
-    in >> obtuse_angles_num;
+    int concave_angles_num;
+    in >> concave_angles_num;
 
-    for (int i = 0; i < obtuse_angles_num; i++) {
+    for (int i = 0; i < concave_angles_num; i++) {
         int id;
         in >> id;
         A._concave_angles.push_back(A.dart(id));

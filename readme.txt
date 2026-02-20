@@ -1,7 +1,7 @@
 Pipeline:
 
 a) ./enumerate_twice_derived
-It requires >= 16gb of ram, and a few hours to be executed.
+It requires >= 16gb of ram, and approximately six hours to be executed.
 It creates data/twice_derived_computer.txt and data/twice_derived_human.txt.
 These are lists of candidates for being twice-derived nets.
 Each element of the list is a spherical map.

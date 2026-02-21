@@ -61,8 +61,7 @@ bool checkAdjacentConvexFaces(const MarkedCombinatorialMap& A) {
 // angles on the boundary of the face.
 // Assumptions: The face containing d has two concave angles.
 int concaveAnglesBoundaryDistanceAvoiding(const MarkedCombinatorialMap& A, Dart d) {
-    if (A.faceType(d).second != 2)
-        return 0;
+    assert(A.faceType(d).second == 2);
 
     int dist = -1;
     Dart curr = d;
@@ -78,6 +77,8 @@ int concaveAnglesBoundaryDistanceAvoiding(const MarkedCombinatorialMap& A, Dart 
 }
 
 int pinContribution(const MarkedCombinatorialMap& A, Dart d) {
+    if (A.faceType(d).second != 2)
+        return 0;
     return max(4-concaveAnglesBoundaryDistanceAvoiding(A, d), 0);
 }
 
@@ -273,8 +274,6 @@ int main() {
 
     cout << "We found " << res.size()
          << " once-derived nets candidates." << endl;
-
-    return 0;
 
 
     ofstream computer("data/once_derived_computer.txt");

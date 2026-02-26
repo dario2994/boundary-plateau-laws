@@ -6,12 +6,13 @@
 using namespace std;
 typedef unsigned long long ULL;
 
-
+//wrapper that checks if findIsomorphism returns a non-empty result.
 template<typename T>
 bool areIsomorphic(const T& A, const T& B) {
     return !findIsomorphism(A, B).empty();
 }
 
+//Standard matrix multiplication
 vector<vector<ULL>> multiplyMatrices(const vector<vector<ULL>>& A,
                                      const vector<vector<ULL>>& B) {
     int n = A.size();
@@ -22,14 +23,14 @@ vector<vector<ULL>> multiplyMatrices(const vector<vector<ULL>>& A,
     return C;
 }
 
-
+//Compute A^{256} for a matrix A
 vector<vector<ULL>> largeMatrixPower(vector<vector<ULL>> mat) {
     for (int _ = 0; _ < 8; _++) mat = multiplyMatrices(mat, mat);
     return mat;
 }
 
 // Class to maintain a collection of objects without duplicates, when
-// to isomorphic objects are considered equal.
+// two isomorphic objects are considered equal.
 // The underlying class T must have: isomorphismSignature and
 // areIsomorphic.
 template <typename T>
@@ -69,7 +70,7 @@ long long get_time() {
         .count();
 }
 
-
+// Tool for profiling code performance
 class StopWatch {
   private:
     struct TimerData {
@@ -136,6 +137,7 @@ class StopWatch {
     }
 };
 
+//Error-handling tools
 struct ErrorMessage {
     string error_str;
     ErrorMessage(string s): error_str(s) {}

@@ -29,8 +29,8 @@ class PlanarMap: public CombinatorialMap {
         return vec;
     }
     
-    // We need to override the definition of EdgeSubdivision as it
-    // may invalidate boundary_dart.
+    // We need to override the definition of EdgeSubdivision of CombinatorialMap
+    //as it may invalidate boundary_dart.
     // TODO: Consider erasing it, as we don't use it.
     //       Though, in principle, this is a function that may be useful.
     pair<Dart, Dart> edgeSubdivision(Dart d) {
@@ -53,7 +53,9 @@ class PlanarMap: public CombinatorialMap {
     
     void setBoundaryDart(Dart d) { _boundary_dart = d; }
     const Dart& getBoundaryDart() const { return _boundary_dart; }
-    
+
+    // A fast fingerpring for detecting nonisomorphic graphs, analogous to the
+    // CombinatorialMap one
     ULL isomorphismSignature() const {
         const auto& mat = largeMatrixPower(matrixSignature());
         
@@ -81,7 +83,8 @@ ostream& operator<<(ostream& out, const PlanarMap& A) {
     return out;
 }
 
-
+// Determines if there exists an isomorphism of planar maps and returns the
+// isomorphism if the answer is positive
 vector<int> findIsomorphism(const PlanarMap& A,
                             const PlanarMap& B) {
     if (A.V() != B.V() or A.E() != B.E() or A.F() != B.F())

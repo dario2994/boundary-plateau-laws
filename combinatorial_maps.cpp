@@ -7,6 +7,7 @@ using namespace std;
 
 #include "utils.cpp"
 
+//Struct representing directed darts in combinatiorial maps
 struct Dart {
     int from, to;
     int id;
@@ -232,6 +233,8 @@ struct CombinatorialMap {
         return {dart(d_id), pp.first};
     }
 
+    // returns the darts that form (the boundary of) a single face
+    // containing a specified dart
     vector<Dart> face(Dart d) const {
         checkDart(d);
 
@@ -244,6 +247,8 @@ struct CombinatorialMap {
         return face;
     }
 
+    //iterates through all darts to discover and return 
+    //every distinct face in the map.
     vector<vector<Dart>> faces() const {
         vector<vector<Dart>> faces;
         vector<bool> visited(2*E());
@@ -441,7 +446,7 @@ struct CombinatorialMap {
 // Starting from either an edge or a loop, one can generate any
 // valid combinatorial map using AddVertex or addEdge.
 
-// Two vertices connected by an edge.
+// Initializes a map with two vertices connected by an edge.
 CombinatorialMap constructOneEdge() {
     CombinatorialMap A;
     A._V = 2;
@@ -454,7 +459,7 @@ CombinatorialMap constructOneEdge() {
     return A;
 }
 
-// One vertex with a loop.
+// Initializes a map with one vertex and a loop.
 CombinatorialMap constructOneLoop() {
     CombinatorialMap A;
     A._V = 1;
@@ -467,6 +472,8 @@ CombinatorialMap constructOneLoop() {
     return A;
 }
 
+//reconstructs one map objects by reading serialized 
+//data from an input stream or file
 CombinatorialMap parseCombinatorialMap(istream& in) {
     CombinatorialMap A;
     in >> A._V >> A._E >> A._F;
@@ -509,6 +516,7 @@ vector<CombinatorialMap> parseCombinatorialMaps(string in_file) {
     return res;
 }
 
+//creates a mirror image of a map by swapping its _next and _prev array
 CombinatorialMap symmetrize(const CombinatorialMap& A) {
     CombinatorialMap B = A;
     swap(B._next, B._prev);
@@ -516,7 +524,7 @@ CombinatorialMap symmetrize(const CombinatorialMap& A) {
     return B;
 }
 
-
+//formats a map's critical data into a human-readable string for debugging
 ostream& operator<<(ostream& out, const CombinatorialMap& A) {
     out << "V = " << A.V();
     out << ", E = " << A.E();

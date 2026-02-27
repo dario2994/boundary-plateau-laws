@@ -8,7 +8,7 @@ typedef unsigned long long ULL;
 #include "planar_maps.cpp"
 
 
-// Checks whether A is a valid geodesic net.
+// Checks whether A is a valid geodesic net (cf. Proposition 4.13).
 bool validateNet(const CombinatorialMap& A) {
     // A must be embeddable on the sphere.
     if (A.V() - A.E() + A.F() != 2) return false;
@@ -34,6 +34,7 @@ bool validateNet(const CombinatorialMap& A) {
     return true;
 }
 
+//Computations for qfunction and Qfunction, cf. Lemma 7.16
 int qfunction(int i, int j) {
     int res = 0;
     while (j > 0) {
@@ -50,6 +51,7 @@ int Qfunction(int i, int j) {
 
 
 // memo_external_contribution[i][j] = min_{j <= j' < 70 and 6|j'-j} Qfunction(i, j').
+// cf. Lemma 7.16
 int memo_external_contribution[3][80];
 void precomputeExternalContribution() {
     for (int i = 0; i <= 2; i++) {
@@ -63,7 +65,7 @@ void precomputeExternalContribution() {
 }
 
 // Uses various heuristics to show that A cannot be transformed (by attaching
-// edges on the "outside") into a twice-derived spherical graph.
+// edges on the "outside") into a twice-derived spherical graph, based on Lemma 7.16
 // If it returns false, then A cannot be extended.
 // If it returns true, there might (but does not have to) be an extension
 // of A that is a valid twice-derived net.
@@ -151,7 +153,7 @@ vector<PlanarMap> evolve(const PlanarMap& A) {
     for (int v = 0; v < A.V(); v++) if (A.degree(v) == 1) leaf = v;
 
     // Check whether B (which was obtained adding new_edge) is a nice
-    // children.
+    // children, cf. Definition 7.14
     auto add_to_res = [&](const PlanarMap& B, Dart new_edge) {
         if (B.degree(new_edge.from) > 3 or B.degree(new_edge.to) > 3)
             return;

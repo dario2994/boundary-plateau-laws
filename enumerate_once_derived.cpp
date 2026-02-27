@@ -36,7 +36,8 @@ bool checkNonConvexFaces(const MarkedCombinatorialMap& A) {
     return true;
 }
 
-// Two adjacent convex faces have constraints on the number of sides.
+// Two adjacent convex faces have constraints on the number of sides
+// cf. Lemma 6.2 and Lemma 6.6
 bool checkAdjacentConvexFaces(const MarkedCombinatorialMap& A) {
     for (const Dart& d: A.darts()) {
         const Dart& e = A.rev(d);
@@ -58,7 +59,7 @@ bool checkAdjacentConvexFaces(const MarkedCombinatorialMap& A) {
 //
 // Consider the face containing d.
 // Returns the boundary distance, avoiding d, between the two concave
-// angles on the boundary of the face.
+// angles on the boundary of the face, cf. Definition 6.1
 // Assumptions: The face containing d has two concave angles.
 int concaveAnglesBoundaryDistanceAvoiding(const MarkedCombinatorialMap& A, Dart d) {
     assert(A.faceType(d).second == 2);
@@ -76,12 +77,14 @@ int concaveAnglesBoundaryDistanceAvoiding(const MarkedCombinatorialMap& A, Dart 
     return dist;
 }
 
+//Computes the contribution of a nonconvex face, cf. Lemma 6.6(a)&(b)
 int pinContribution(const MarkedCombinatorialMap& A, Dart d) {
     if (A.faceType(d).second != 2)
         return 0;
     return max(4-concaveAnglesBoundaryDistanceAvoiding(A, d), 0);
 }
 
+//Computes the sum of the areas of the convex faces
 int sumAreaConvexFaces(const MarkedCombinatorialMap& A) {
     int res = 0;
     for (auto face: A.faces()) {
@@ -91,6 +94,7 @@ int sumAreaConvexFaces(const MarkedCombinatorialMap& A) {
     return res;
 }
 
+//Checks conditions implied by the occurrence of a biangle, cf. Lemma 6.6
 bool checkBiangle(const MarkedCombinatorialMap& A) {
     vector<vector<Dart>> faces = A.faces();
 
@@ -127,6 +131,7 @@ bool checkBiangle(const MarkedCombinatorialMap& A) {
     return true;
 }
 
+//Checks that the boundarires of all faces are topological S^1, cf. Lemma 6.4
 bool checkSimpleBoundary(const MarkedCombinatorialMap& A) {
     vector<vector<Dart>> faces = A.faces();
 
@@ -137,6 +142,7 @@ bool checkSimpleBoundary(const MarkedCombinatorialMap& A) {
     return true;
 }
 
+//Checks that concave angles of nonxonvex faces are sufficiently far, cf. Lemma 6.8
 bool checkConcaveAnglesFar(const MarkedCombinatorialMap& A) {
     for (const vector<Dart>& face: A.faces()) {
         for (const Dart& d: face) {
@@ -158,6 +164,7 @@ bool checkConcaveAnglesFar(const MarkedCombinatorialMap& A) {
     return true;
 }
 
+//checks all conditions described above on a candidate Marked Combinatorial Map
 bool validateDerivedOnceNet(const MarkedCombinatorialMap& A) {
     // Exactly two non-convex faces.
     int cnt_non_convex_faces = 0;
@@ -209,6 +216,7 @@ pair<MarkedCombinatorialMap, vector<int>> removeRepeatedEdges(MarkedCombinatoria
     return {A, new_vertices};
 }
 
+//Function which adds a pin to a MarkedCombinatorialMap
 vector<MarkedCombinatorialMap> addPin(const MarkedCombinatorialMap& A) {
     vector<MarkedCombinatorialMap> res;
 

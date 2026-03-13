@@ -340,8 +340,10 @@ int main() {
     // Interval theta1 = {0.007, 0.009};
     // Interval theta0 = {0.489992, 0.491453};
     // Interval theta1 = {0.00709547, 0.00946062};
-    // proveInstabilityFatFishRecursive(theta0, theta1);
-    // return 0;
+    double t0 = 0.490722;
+    double t1 = 0.008278;
+    processFatFish(t0, t1);
+    return 0;
 
     proveRigidNets();
 

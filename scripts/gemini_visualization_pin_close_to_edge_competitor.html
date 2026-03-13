@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Competitor Surface Visualization</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        body { font-family: sans-serif; margin: 20px; display: flex; flex-direction: column; align-items: center; }
+        .controls { display: flex; gap: 20px; margin-bottom: 20px; background: #f0f0f0; padding: 15px; border-radius: 8px; flex-wrap: wrap; justify-content: center;}
+        .control-group { display: flex; flex-direction: column; align-items: center; }
+        #plot { width: 80vw; height: 70vh; }
+        .stats { font-size: 1.2em; font-weight: bold; margin-bottom: 5px; }
+        .stats-container { display: flex; flex-direction: column; align-items: center; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <div class="control-group">
+            <label for="l-slider">L: <span id="l-val">0.2</span></label>
+            <input type="range" id="l-slider" min="0.1" max="1.0" step="0.01" value="0.2">
+        </div>
+        <div class="control-group">
+            <label for="x-slider">x: <span id="x-val">0.01</span></label>
+            <input type="range" id="x-slider" min="0.000" max="0.1" step="0.001" value="0.01">
+        </div>
+        <div class="control-group">
+            <label for="r-slider">r: <span id="r-val">0.9</span></label>
+            <input type="range" id="r-slider" min="0.1" max="1.0" step="0.01" value="0.9">
+        </div>
+        <div class="control-group">
+            <label for="ax-slider">A_x: <span id="ax-val">0.000</span></label>
+            <input type="range" id="ax-slider" min="-0.5" max="0.5" step="0.001" value="0.000">
+        </div>
+    </div>
+
+    <div class="stats-container">
+        <div class="stats">Competitor Area: <span id="area-val">0.0000</span></div>
+        <div class="stats">Base Area (AMO + BCO): <span id="base-area-val">0.0000</span></div>
+    </div>
+    <div id="plot"></div>
+
+    <script>
+        function triArea(p1, p2, p3) {
+            let v1 = [p2[0]-p1[0], p2[1]-p1[1], p2[2]-p1[2]];
+            let v2 = [p3[0]-p1[0], p3[1]-p1[1], p3[2]-p1[2]];
+            let cross = [
+                v1[1]*v2[2] - v1[2]*v2[1],
+                v1[2]*v2[0] - v1[0]*v2[2],
+                v1[0]*v2[1] - v1[1]*v2[0]
+            ];
+            return 0.5 * Math.sqrt(cross[0]**2 + cross[1]**2 + cross[2]**2);
+        }
+
+        function getExactTorricelli(A, B, M) {
+            let va = [A[0] - M[0], A[1] - M[1]];
+            let vb = [B[0] - M[0], B[1] - M[1]];
+            
+            let vPlus = [va[0] + vb[0], va[1] + vb[1]];
+            let vMinus = [va[0] - vb[0], va[1] - vb[1]];
+            
+            let lenPlus = Math.hypot(vPlus[0], vPlus[1]);
+            let lenMinus = Math.hypot(vMinus[0], vMinus[1]);
+            
+            let coeff = 0.5 - lenMinus / (2 * Math.sqrt(3) * lenPlus);
+            
+            return [M[0] + coeff * vPlus[0], M[1] + coeff * vPlus[1], 1.0];
+        }
+
+        function updatePlot() {
+            let L = parseFloat(document.getElementById('l-slider').value);
+            let x = parseFloat(document.getElementById('x-slider').value);
+            let r = parseFloat(document.getElementById('r-slider').value);
+            let Ax = parseFloat(document.getElementById('ax-slider').value);
+
+            // Clamp Ax so it doesn't exceed L
+            if (Math.abs(Ax) > L) {
+                Ax = Math.sign(Ax) * L;
+                document.getElementById('ax-slider').value = Ax;
+            }
+
+            document.getElementById('l-val').innerText = L.toFixed(2);
+            document.getElementById('x-val').innerText = x.toFixed(3);
+            document.getElementById('r-val').innerText = r.toFixed(2);
+            document.getElementById('ax-val').innerText = Ax.toFixed(3);
+
+            let x_BC = Math.sqrt(L*L - x*x);
+
+            let O = [0, 0, 0];
+            let M = [0, 0, 1];
+            let B = [-x_BC, -x, 1];
+            let C = [x_BC, -x, 1];
+            
+            let Ay = Math.sqrt(L*L - Ax*Ax);
+            let A = [Ax, Ay, 1];
+
+            // Use the exact formula
+            let D = getExactTorricelli(A, B, M);
+
+            let Ap = [r*A[0], r*A[1], r*A[2]];
+            let Bp = [r*B[0], r*B[1], r*B[2]];
+            let Mp = [r*M[0], r*M[1], r*M[2]];
+            let Dp = [r*D[0], r*D[1], r*D[2]];
+
+            let pts = [O, M, A, B, C, D, Ap, Bp, Mp, Dp];
+
+            let tris = [
+                [3, 4, 1], [4, 1, 0], [7, 9, 0], [9, 8, 0], [6, 9, 0],
+                [3, 7, 9], [3, 9, 1], [1, 8, 9], [1, 2, 9], [2, 6, 9]
+            ];
+
+            let totalArea = 0;
+            tris.forEach(t => {
+                totalArea += triArea(pts[t[0]], pts[t[1]], pts[t[2]]);
+            });
+            document.getElementById('area-val').innerText = totalArea.toFixed(6);
+
+            let baseArea = triArea(A, M, O) + triArea(B, C, O);
+            document.getElementById('base-area-val').innerText = baseArea.toFixed(6);
+
+            let x_coords = pts.map(p => p[0]);
+            let y_coords = pts.map(p => p[1]);
+            let z_coords = pts.map(p => p[2]);
+
+            let i_idx = tris.map(t => t[0]);
+            let j_idx = tris.map(t => t[1]);
+            let k_idx = tris.map(t => t[2]);
+
+            let mesh = {
+                type: 'mesh3d',
+                x: x_coords, y: y_coords, z: z_coords,
+                i: i_idx, j: j_idx, k: k_idx,
+                color: 'lightblue',
+                opacity: 0.9,
+                flatshading: true
+            };
+
+            let x_lines = [];
+            let y_lines = [];
+            let z_lines = [];
+
+            tris.forEach(t => {
+                let p1 = pts[t[0]];
+                let p2 = pts[t[1]];
+                let p3 = pts[t[2]];
+
+                x_lines.push(p1[0], p2[0], p3[0], p1[0], null);
+                y_lines.push(p1[1], p2[1], p3[1], p1[1], null);
+                z_lines.push(p1[2], p2[2], p3[2], p1[2], null);
+            });
+
+            let lines = {
+                type: 'scatter3d',
+                mode: 'lines',
+                x: x_lines,
+                y: y_lines,
+                z: z_lines,
+                line: { color: 'black', width: 4 },
+                hoverinfo: 'none'
+            };
+
+            let layout = {
+                scene: {
+                    aspectmode: "data",
+                    camera: { eye: {x: 1.5, y: -1.5, z: 1.2} }
+                },
+                margin: {l: 0, r: 0, b: 0, t: 0},
+                showlegend: false
+            };
+
+            Plotly.react('plot', [mesh, lines], layout);
+        }
+
+        document.getElementById('l-slider').addEventListener('input', updatePlot);
+        document.getElementById('x-slider').addEventListener('input', updatePlot);
+        document.getElementById('r-slider').addEventListener('input', updatePlot);
+        document.getElementById('ax-slider').addEventListener('input', updatePlot);
+
+        updatePlot();
+    </script>
+</body>
+</html>

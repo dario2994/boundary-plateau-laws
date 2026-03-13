@@ -223,52 +223,66 @@ double processFatFish(double theta0, double theta1) {
                 break;
         }
     }
-    if (ssize(error_messages) == 6) {
-        for (string msg: error_messages)
-            cout << msg << endl << endl;
-        assert(0);
-    }
+    // if (ssize(error_messages) == 6) {
+    //     for (string msg: error_messages)
+    //         cout << msg << endl << endl;
+    //     assert(0);
+    // }
     cout << " " << area_gap << " (" << ssize(error_messages) << ")";
 
     return area_gap;
 }
 
 double area_processed = 0;
-bool proveInstabilityFatFishRecursive(Interval theta0, Interval theta1) {
+// theta0 controls the position of the pins
+// theta1 controls the derived-once net
+double proveInstabilityFatFishRecursive(Interval theta0, Interval theta1) {
+    if (theta0.len() + theta1.len() < 1e-4)
+        return -1.0;
+
     double upperbound_theta0 = atan(1.0 / (sqrt(3.) * cos(theta1.r)));
     theta0.intersect(Interval(-1000, upperbound_theta0 - 0.01));
     if (theta0.empty())
         return true;
     cout << theta0 << " " << theta1 << ", " << (100*area_processed / 0.36) << "%, ";
 
+    double desired_area_gap =
+        8 * theta0.len() + 2*sqrt(3) * theta1.len() + 1e-3;
     double p0 = theta0.mid();
     double p1 = theta1.mid();
 
     if (theta0.len() + theta1.len() < 0.01) {
         double area_gap = processFatFish(p0, p1);
-        if ((theta0.len() + theta1.len()) / 2 < area_gap / 10) {
-            cout << endl;
+        if (desired_area_gap / 2 < area_gap) {
+            cout << " OK" << endl;
             area_processed += theta0.len() * theta1.len();
-            return true;
+            return area_gap;
         }
     }
     cout << endl;
 
-    auto res00 = proveInstabilityFatFishRecursive({theta0.l, p0}, {theta1.l, p1});
-    auto res01 = proveInstabilityFatFishRecursive({theta0.l, p0}, {p1, theta1.r});
-    auto res10 = proveInstabilityFatFishRecursive({p0, theta0.r}, {theta1.l, p1});
-    auto res11 = proveInstabilityFatFishRecursive({p0, theta0.r}, {p1, theta1.r});
-
-    return res00 and res01 and res10 and res11;
+    bool children_are_solved = true;
+    double res = -1;
+    for (Interval theta0_child: vector<Interval>{{theta0.l, p0}, {p0, theta0.r}}) {
+        for (Interval theta1_child: vector<Interval>{{theta1.l, p1}, {p1, theta1.r}}) {
+            double child_res = proveInstabilityFatFishRecursive(theta0_child, theta1_child);
+            res = max(res, child_res);
+            children_are_solved &= child_res > 0;
+            if (desired_area_gap < child_res)
+                return child_res;
+        }
+    }
+    if (children_are_solved)
+        return res;
+    return -1.0;
 }
 
 bool proveInstabilityFatFish() {
     const double sigma = sqrt(2. / 3);
     double upperbound_theta1 = acos(sigma);
-    // double upperbound_theta0 = atan(1.0 / (sqrt(3.)));
     return proveInstabilityFatFishRecursive(
         Interval(0, 1000),
-        Interval(0, upperbound_theta1-0.01));
+        Interval(0, upperbound_theta1-0.01)) > 0;
 }
 
 
@@ -322,6 +336,13 @@ void proveNetWithOneFreeParameter() {
 
 
 int main() {
+    // Interval theta0 = {0.489, 0.492};
+    // Interval theta1 = {0.007, 0.009};
+    // Interval theta0 = {0.489992, 0.491453};
+    // Interval theta1 = {0.00709547, 0.00946062};
+    // proveInstabilityFatFishRecursive(theta0, theta1);
+    // return 0;
+
     proveRigidNets();
 
     proveNetWithOneFreeParameter();

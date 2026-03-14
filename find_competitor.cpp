@@ -340,9 +340,13 @@ int main() {
     // Interval theta1 = {0.007, 0.009};
     // Interval theta0 = {0.489992, 0.491453};
     // Interval theta1 = {0.00709547, 0.00946062};
-    double t0 = 0.490722;
-    double t1 = 0.008278;
-    processFatFish(t0, t1);
+    double theta0 = 0.490722;
+    double theta1 = 0.008278;
+    FindCompetitorConfig config;
+    config.net827_pop_type = 1;
+    config.net827_slow_convergence = true;
+    auto maybe_proof = processNet(827, {theta0, theta1}, true, config);
+    cout << maybe_proof << endl;
     return 0;
 
     proveRigidNets();

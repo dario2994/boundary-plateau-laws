@@ -33,7 +33,7 @@ ErrorOr<bool> isCompetitorValid(ImmersedSimplicialComplex competitor, NetEmbedde
 
         auto U = link.embedding[d.from];
         auto V = link.embedding[d.to];
-        auto maybe_boundary_edge = competitor.containsSegment(U, V);
+        auto maybe_boundary_edge = competitor.containsSegment(U, V, false);
         if (!maybe_boundary_edge.isOk()) {
             stringstream ss;
             ss << "The competitor does not contain the boundary edge " << U << ", " << V << "." << endl;
@@ -131,7 +131,9 @@ ErrorOr<double> processNet(int net_id, vector<double> net_params,
     assert(competitor_in.is_open());
     ImmersedSimplicialComplex competitor = parseImmersedSimplicialComplex(competitor_in);
 
-    CHECK_OR_RETURN(isCompetitorValid(competitor, link));
+    auto maybe_validation_error = isCompetitorValid(competitor, link);
+    if (!maybe_validation_error.isOk())
+        return ErrorMessage(maybe_validation_error.getError());
 
     double area_gap = cone.X.area() - competitor.area();
     if (area_gap < 1e-3) {
@@ -162,14 +164,14 @@ bool proveInstabilityOneParameterNet(int net_id) {
         if (net_id == 1029) {
             FindCompetitorConfig config;
             config.net1029_cube_family = false;
-            return VALUE_OR_ASSERT(processNet(net_id, {0., param}, true, config));
+            return valueOrAssert(processNet(net_id, {0., param}, true, config));
         }
         if (net_id == 1096 and param > 0.38) {
             FindCompetitorConfig config;
             config.net1096_removed_face = (param > 0.38) ? 8 : 6;
-            return VALUE_OR_ASSERT(processNet(net_id, {param}, true, config));
+            return valueOrAssert(processNet(net_id, {param}, true, config));
         }
-        return VALUE_OR_ASSERT(processNet(net_id, {param}, true, FindCompetitorConfig()));
+        return valueOrAssert(processNet(net_id, {param}, true, FindCompetitorConfig()));
     };
 
     auto width_covered = [&](double param) {
@@ -336,19 +338,6 @@ void proveNetWithOneFreeParameter() {
 
 
 int main() {
-    // Interval theta0 = {0.489, 0.492};
-    // Interval theta1 = {0.007, 0.009};
-    // Interval theta0 = {0.489992, 0.491453};
-    // Interval theta1 = {0.00709547, 0.00946062};
-    double theta0 = 0.490722;
-    double theta1 = 0.008278;
-    FindCompetitorConfig config;
-    config.net827_pop_type = 1;
-    config.net827_slow_convergence = true;
-    auto maybe_proof = processNet(827, {theta0, theta1}, true, config);
-    cout << maybe_proof << endl;
-    return 0;
-
     proveRigidNets();
 
     proveNetWithOneFreeParameter();

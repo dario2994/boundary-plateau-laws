@@ -182,21 +182,11 @@ ostream& operator << (ostream& out, const ErrorOr<T>& error_or) {
     return out;
 }
 
-#define CHECK_OR_RETURN(error_or) \
-    if (!(error_or).isOk()) return ErrorMessage((error_or).getError());
-
-#define ASSIGN_OR_RETURN(lhs, error_or) \
-  auto res = (error_or);                \
-  if (!res.isOk()) return ErrorMessage(res.getError());     \
-  auto lhs = move(res.getContent());
-
-#define VALUE_OR_ASSERT(error_or) \
-  ({                              \
-    auto res = (error_or);        \
-    assert(res.isOk());           \
-    std::move(res.getContent());  \
-  })
-
+template <typename T>
+T valueOrAssert(const ErrorOr<T>& error_or) {
+    assert(error_or.isOk());
+    return error_or.getContent();
+}
 
 
 #endif

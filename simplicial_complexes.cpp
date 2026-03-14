@@ -289,13 +289,12 @@ struct ImmersedSimplicialComplex {
             double dist = distanceFromLine(A, B, points[i]);
             if (dist > 100*eps)
                 continue;
-            // We want a quantitative gap between the points on the line and
-            // the points not on the line.
-            points_on_line.push_back(i);
-            on_the_line[i] = true;
+
             // We move the points so that they are "perfectly" on the line.
-            if (allow_changes)
+            if (allow_changes) {
                 points[i] = A + segment_dir * (segment_dir * (points[i] - A));
+                dist = distanceFromLine(A, B, points[i]);
+            }
 
             if (dist > eps) {
                 stringstream ss;
@@ -306,6 +305,8 @@ struct ImmersedSimplicialComplex {
                    << eps << ".";
                 return ErrorMessage(ss);
             }
+            points_on_line.push_back(i);
+            on_the_line[i] = true;
         }
 
         // Sorting the vertices by the order in which they appear on AB.

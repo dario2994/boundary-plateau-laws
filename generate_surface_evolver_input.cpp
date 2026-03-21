@@ -20,11 +20,11 @@ string generateEmbeddingFilename(int net_id, vector<double> params) {
     return oss.str();
 }
 
-vector<pt> getVertexEmbedding(const MetrizedNet& net) {
+vector<Point> getVertexEmbedding(const MetrizedNet& net) {
     const MarkedCombinatorialMap& A = net.A;
     const Dart root = A.dart(0);
 
-    vector<pt> res(A.V());
+    vector<Point> res(A.V());
     for (Dart d: A.darts()) {
         ApproximateIsometry q = net.getIsometry(root, d);
         res[d.from] = make_deterministic(q({1, 0, 0}));
@@ -77,14 +77,14 @@ vector<Dart> getConcaveAngles(const MarkedCombinatorialMap& A,
 // Returns the average of the (Euclidean) distance from the pin to the
 // concave angles.
 // It is a naive heuristic used to determine the (non-convex) face a pin belongs to.
-double pinAverageDistance(const MarkedCombinatorialMap& A, vector<pt> embedding,
-                   pt pin, const vector<Dart>& face) {
+double pinAverageDistance(const MarkedCombinatorialMap& A, vector<Point> embedding,
+                   Point pin, const vector<Dart>& face) {
     vector<Dart> concave_angles = getConcaveAngles(A, face);
     assert(!concave_angles.empty());
 
     double res = 0;
     for (Dart concave_angle: concave_angles) {
-        pt P = embedding[concave_angle.to];
+        Point P = embedding[concave_angle.to];
         res += pow(norm(P-pin), 2);
     }
     return sqrt(res) / ssize(concave_angles);
@@ -93,18 +93,18 @@ double pinAverageDistance(const MarkedCombinatorialMap& A, vector<pt> embedding,
 // We locate the two pins metrically.
 //
 // The pins are antipodal points on the unit sphere.
-pair<pt, pt> findPinsEmbedding(const MetrizedNet& net) {
+pair<Point, Point> findPinsEmbedding(const MetrizedNet& net) {
     const Dart root = net.A.dart(0);
-    vector<pt> equators_with_pins;
+    vector<Point> equators_with_pins;
     vector<Dart> concave_angles = net.A.concaveAngles();
     for (Dart d: net.A.concaveAngles())
         equators_with_pins.push_back(
                 make_deterministic(net.getIsometryToPin(root, d)({0, 0, 1})));
-    pair<pt, pt> pins;
+    pair<Point, Point> pins;
     bool found = false;
-    for (pt eq1: equators_with_pins)
-            for (pt eq2: equators_with_pins) {
-        pt z = eq1 ^ eq2;
+    for (Point eq1: equators_with_pins)
+            for (Point eq2: equators_with_pins) {
+        Point z = eq1 ^ eq2;
         if (norm(z) > 0.1) {
             z = z / norm(z);
             pins = {z, -z};
@@ -125,7 +125,7 @@ pair<pt, pt> findPinsEmbedding(const MetrizedNet& net) {
 // net.A.concaveAngles()[0].
 //
 // The pins are antipodal points on the unit sphere.
-pair<pt, pt> choosePinsEmbedding(const MetrizedNet& net, double dist) {
+pair<Point, Point> choosePinsEmbedding(const MetrizedNet& net, double dist) {
     assert(!net.A.concaveAngles().empty());
 
     const Dart root = net.A.dart(0);
@@ -134,7 +134,7 @@ pair<pt, pt> choosePinsEmbedding(const MetrizedNet& net, double dist) {
 
     path_to_pin.push_back(PathStep('E', dist));
 
-    pt pin = make_deterministic(net.isometryFromPath(path_to_pin)({1, 0, 0}));
+    Point pin = make_deterministic(net.isometryFromPath(path_to_pin)({1, 0, 0}));
 
     return {pin, -pin};
 }
@@ -144,7 +144,7 @@ pair<pt, pt> choosePinsEmbedding(const MetrizedNet& net, double dist) {
 // DerivedOnce anymore) and we save the indexes of the pins in pins_id.
 pair<pair<int,int>, CombinatorialMap> addPinsToCombinatorialMap(
         const MetrizedNet& net,
-        vector<pt>& embedding, const pair<pt, pt>& pins_coord) {
+        vector<Point>& embedding, const pair<Point, Point>& pins_coord) {
     vector<vector<Dart>> concave_faces;
     for (auto face: net.A.faces()) {
         if (!net.A.isConvexFace(face))
@@ -152,7 +152,7 @@ pair<pair<int,int>, CombinatorialMap> addPinsToCombinatorialMap(
     }
     assert(ssize(concave_faces) == 2);
 
-    auto find_vertex = [&](pt p) {
+    auto find_vertex = [&](Point p) {
         for (int v = 0; v < ssize(embedding); v++) {
             if (norm(p-embedding[v]) < 1e-4)
                 return v;
@@ -162,7 +162,7 @@ pair<pair<int,int>, CombinatorialMap> addPinsToCombinatorialMap(
 
     CombinatorialMap A = net.A;
     vector<int> pins_vec;
-    for (const pt& pin: {pins_coord.first, pins_coord.second}) {
+    for (const Point& pin: {pins_coord.first, pins_coord.second}) {
         assert(!concave_faces.empty());
 
         double cost0 = pinAverageDistance(net.A, embedding, pin, concave_faces[0]);
@@ -201,7 +201,7 @@ void saveSurfaceEvolverFormat(int net_id,
                               bool print_commands,
                               bool net827_slow_convergence=false) {
     const auto& X = data.X;
-    pt line = X.getPoint(data.pins.first);
+    Point line = X.getPoint(data.pins.first);
 
     map<pair<int,int>, int> edge2id;
     auto get_edge = [&](int a, int b) {
@@ -243,7 +243,7 @@ void saveSurfaceEvolverFormat(int net_id,
 
     out << "vertices" << endl;
     for (int i = 0; i < X.V(); i++) {
-        pt P = X.getPoint(i);
+        Point P = X.getPoint(i);
         bool fixed = is_vertex_fixed[i];
         bool boundary = is_vertex_on_line(i);
         boundary &= !fixed;
@@ -424,21 +424,21 @@ quit;
 
 
 // This is one of the two 1-parameter families corresponding to 1029.
-pair<vector<pt>, pair<pt,pt>> embedGoggles(double q) {
-    auto rotate = [&](pt U) {
-        return pt{U[0]*cos(q)-U[1]*sin(q), U[1]*cos(q)+U[0]*sin(q), U[2]};
+pair<vector<Point>, pair<Point,Point>> embedGoggles(double q) {
+    auto rotate = [&](Point U) {
+        return Point{U[0]*cos(q)-U[1]*sin(q), U[1]*cos(q)+U[0]*sin(q), U[2]};
     };
-    auto sym_x = [&](pt U) { return pt{-U[0], U[1], U[2]}; };
+    auto sym_x = [&](Point U) { return Point{-U[0], U[1], U[2]}; };
 
-    pt pin0 = {0, 0, 1};
-    pt pin1 = -pin0;
+    Point pin0 = {0, 0, 1};
+    Point pin1 = -pin0;
 
-    vector<pt> P(8);
+    vector<Point> P(8);
     // Face of the cube
-    P[1] = pt{1, sqrt(2), 0};
-    P[4] = pt{1, 0, sqrt(2)};
-    P[6] = pt{1, 0, -sqrt(2)};
-    P[0] = pt{1, -sqrt(2), 0};
+    P[1] = Point{1, sqrt(2), 0};
+    P[4] = Point{1, 0, sqrt(2)};
+    P[6] = Point{1, 0, -sqrt(2)};
+    P[0] = Point{1, -sqrt(2), 0};
 
     for (int i: {1, 4, 6, 0})
         P[i] = rotate(P[i]);
@@ -451,27 +451,27 @@ pair<vector<pt>, pair<pt,pt>> embedGoggles(double q) {
     pin0 = pin0 / norm(pin0);
     pin1 = pin1 / norm(pin1);
 
-    for (pt& U: P)
+    for (Point& U: P)
         U = U / norm(U);
 
     return {P, {pin0, pin1}};
 }
 
 // This is one of the two 1-parameter families corresponding to 1029.
-pair<vector<pt>, pair<pt,pt>> embedCube(double q) {
-    auto sym_x = [&](pt U) {
-        return pt{-U[0], U[1], U[2]};
+pair<vector<Point>, pair<Point,Point>> embedCube(double q) {
+    auto sym_x = [&](Point U) {
+        return Point{-U[0], U[1], U[2]};
     };
 
-    pt pin0 = {sin(q), 0, cos(q)};
-    pt pin1 = -pin0;
+    Point pin0 = {sin(q), 0, cos(q)};
+    Point pin1 = -pin0;
 
-    vector<pt> P(8);
+    vector<Point> P(8);
     // Face of the cube
-    P[1] = pt{1, sqrt(2), 0};
-    P[4] = pt{1, 0, sqrt(2)};
-    P[6] = pt{1, 0, -sqrt(2)};
-    P[0] = pt{1, -sqrt(2), 0};
+    P[1] = Point{1, sqrt(2), 0};
+    P[4] = Point{1, 0, sqrt(2)};
+    P[6] = Point{1, 0, -sqrt(2)};
+    P[0] = Point{1, -sqrt(2), 0};
 
     P[5] = sym_x(P[4]);
     P[3] = sym_x(P[0]);
@@ -481,7 +481,7 @@ pair<vector<pt>, pair<pt,pt>> embedCube(double q) {
     pin0 = pin0 / norm(pin0);
     pin1 = pin1 / norm(pin1);
 
-    for (pt& U: P)
+    for (Point& U: P)
         U = U / norm(U);
 
     return {P, {pin0, pin1}};
@@ -604,7 +604,7 @@ const map<int, pair<vector<int>, vector<int>>> pop_description = {
 
 struct NetEmbeddedWithPins {
     CombinatorialMap A;
-    vector<pt> embedding;
+    vector<Point> embedding;
     pair<int,int> pins;
 
     double totalLen() {
@@ -619,18 +619,18 @@ struct NetEmbeddedWithPins {
     }
     double totalInterestingLen() {
         auto f = [&](int x, int y) { return embedding[x] - embedding[y]; };
-        pt line = f(pins.first, pins.second);
-        pair<pt, pt> edge_to_pins;
+        Point line = f(pins.first, pins.second);
+        pair<Point, Point> edge_to_pins;
         for (Dart d: A.darts()) {
             if (d.from == pins.first)
                 edge_to_pins.first = f(d.from, d.to);
             if (d.from == pins.second)
                 edge_to_pins.second = f(d.from, d.to);
         }
-        pt edge_to_pin = edge_to_pins.first;
+        Point edge_to_pin = edge_to_pins.first;
         if (norm(edge_to_pins.second) > norm(edge_to_pins.first))
             edge_to_pin = edge_to_pins.second;
-        pt rotation_axis = edge_to_pin ^ line;
+        Point rotation_axis = edge_to_pin ^ line;
         rotation_axis = rotation_axis / norm(rotation_axis);
 
         double len = 0;
@@ -746,7 +746,7 @@ NetEmbeddedWithPins embed827WithPins(const vector<double>& params) {
 
     pair<int,int> pins = {8, 9};
 
-    vector<pt> embedding(A.V());
+    vector<Point> embedding(A.V());
     embedding[0] = {tau, 0, sigma};
     embedding[1] = {tau, sigma, 0};
     embedding[2] = {tau, 0, -sigma};
@@ -777,8 +777,8 @@ NetEmbeddedWithPins embedNetWithPins(int net_id, const vector<double>& params) {
     MetrizedNet net = parseMetrizedNet(metrized_net_in);
     metrized_net_in.close();
 
-    vector<pt> embedding;
-    pair<pt, pt> pins_coord;
+    vector<Point> embedding;
+    pair<Point, Point> pins_coord;
 
     if (net_id == 1029) {
         assert(ssize(params) == 2);
@@ -851,14 +851,14 @@ SurfaceEvolverData generateCubeCompetitor(const NetEmbeddedWithPins& link) {
     auto embedding = link.embedding;
 
     // up_face[0] - down_face[0] contains link.pins.first
-    pt A = embedding[link.pins.first];
-    pt B = embedding[up_face[1]] + embedding[down_face[1]];
-    pt C = -A;
-    pt D = -B;
-    vector<pt> small_square_pts = {A, B, C, D};
-    for (pt& P: small_square_pts)
+    Point A = embedding[link.pins.first];
+    Point B = embedding[up_face[1]] + embedding[down_face[1]];
+    Point C = -A;
+    Point D = -B;
+    vector<Point> small_square_pts = {A, B, C, D};
+    for (Point& P: small_square_pts)
         P = P / (5 * norm(P));
-    for (pt P: small_square_pts)
+    for (Point P: small_square_pts)
         embedding.push_back(P);
 
 
@@ -924,15 +924,15 @@ SurfaceEvolverData generateFatFishCompetitor(const NetEmbeddedWithPins& link,
     vector<int> internal_square = {10, 11, 12, 13};
     auto embedding = link.embedding;
 
-    vector<pt> internal_square_pts = {
+    vector<Point> internal_square_pts = {
         embedding[link.pins.first],
         (embedding[square[1]] + embedding[biangle[1]]) / 2.0,
         embedding[link.pins.second],
         (embedding[square[3]] + embedding[biangle[3]]) / 2.0,
     };
-    for (pt& P: internal_square_pts)
+    for (Point& P: internal_square_pts)
         P = P / (2 * norm(P));
-    for (pt P: internal_square_pts)
+    for (Point P: internal_square_pts)
         embedding.push_back(P);
 
 
@@ -1007,7 +1007,7 @@ SurfaceEvolverData generatePoppedCone(const NetEmbeddedWithPins& link,
     auto faces = link.A.faces();
     int n = ssize(embedding);
     for (int i = 0; i < n; i++) {
-        pt P = embedding[i];
+        Point P = embedding[i];
         embedding.push_back({P[0]/3, P[1]/3, P[2]/3});
     }
     int origin = 2*n;

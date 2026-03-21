@@ -7,7 +7,7 @@ using namespace std;
 void testSegmentDistanceFromLine() {
     struct TestCase {
         string name;
-        pt A, B, C, D;
+        Point A, B, C, D;
         double expected;
     };
 
@@ -41,13 +41,13 @@ void testSegmentDistanceFromLine() {
 void testTriangleDistanceFromLine() {
     struct TestCase {
         string name;
-        pt A, B, C, D, E;
+        Point A, B, C, D, E;
         double expected;
     };
 
     // Let the line AB be the z-axis for simplicity in most tests
-    pt line_A = {0.0, 0.0, 1.0};
-    pt line_B = {0.0, 0.0, -1.0};
+    Point line_A = {0.0, 0.0, 1.0};
+    Point line_B = {0.0, 0.0, -1.0};
 
     vector<TestCase> tests = {
         {"Intersection",

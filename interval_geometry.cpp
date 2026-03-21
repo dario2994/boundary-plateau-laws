@@ -8,19 +8,27 @@ using namespace std;
 #include "interval_arithmetic.cpp"
 #include "quaternions.cpp"
 
-// TODO: Define Point and ApproximatePoint?
-//       Now we are just defining pt but never really using it.
+// Element of R^3.
+typedef array<double, 3> Point;
 
-typedef array<double, 3> pt;
+// Parallelepiped in R^3 with axis-aligned sides, i.e., the product of three intervals.
+typedef array<Interval, 3> ApproximatePoint;
 
-ostream& operator<<(ostream& out, pt p) {
+ostream& operator<<(ostream& out, Point p) {
     out << p[0] << " " << p[1] << " " << p[2];
     return out;
 }
 
-
-// A quaternion with q with unit norm induces an isometry on R^3 via
-// v -> qv\bar q, through the identification R^3 \cong <i, j, k> \subseteq Quaternions.
+// Class representing a ball in SO(3) endowed with the operator norm.
+// The ball is described by its center, an isometry, and its radius (a positive
+// real value).
+//
+// The center is represented by a quaternion q.
+// A (nonzero) quaternion q represents the isometry v -> qvq^{-1}, through the
+// identification R^3 \cong <i, j, k> \subseteq Quaternions.
+//
+// We enforce that q has norm equal to 1 (up to precision error), as this
+// allows us to use q^{-1} = \bar q.
 class ApproximateIsometry {
   private:
     Quaternion<double> q;
@@ -31,11 +39,17 @@ class ApproximateIsometry {
         return Interval(mid - uncertainty, mid + uncertainty);
     }
   public:
-    ApproximateIsometry(const Quaternion<double>& _q, double _uncertainty) : q(_q), uncertainty(_uncertainty) {}
+    ApproximateIsometry(const Quaternion<double>& _q, double _uncertainty) : q(_q), uncertainty(_uncertainty) {
+        double n2 = norm2(q);
+        assert(1-1e-10 <= n2 and n2 <= 1 + 1e-10);
+        assert(0 < uncertainty);
+    }
 
-    array<Interval, 3> operator()(array<double, 3> vec) const {
-        Quaternion<double> vec4(0, vec[0], vec[1], vec[2]);
-        Quaternion<double> res = q * vec4 * conj(q);
+    // Let A be an approximate isometry.
+    // It is guaranteed that \{a*v: a\in A\} \subseteq A(v).
+    ApproximatePoint operator()(const Point& v) const {
+        Quaternion<double> v4(0, v[0], v[1], v[2]);
+        Quaternion<double> res = q * v4 * conj(q);
         return {miwu(res[1]), miwu(res[2]), miwu(res[3])};
     }
 
@@ -44,43 +58,42 @@ class ApproximateIsometry {
         uncertainty += S.uncertainty;
         return *this;
     }
+    // Let A, B be two approximate isometries.
+    // It is guaranteed that \{a*b: a\in A, b\in B\} \subseteq A*B.
     friend ApproximateIsometry operator *(const ApproximateIsometry&, const ApproximateIsometry&);
+    // It is guaranteed that \{a^{-1}: a\in A\} \subseteq inverse(A).
     friend ApproximateIsometry inverse(const ApproximateIsometry&);
 
     double getUncertainty() { return uncertainty; }
 };
 
-// Here we are implicitly using that (S, T) -> S*T is 1-Lip in both its
-// arguments when SO(3) is endowed with the operator norm.
+// (S, T) -> S*T is 1-Lip in both arguments (wrt the operator norm).
 ApproximateIsometry operator *(const ApproximateIsometry& S, const ApproximateIsometry& T) {
-    return {S.q * T.q, S.uncertainty + T.uncertainty};
+    return {S.q * T.q, S.uncertainty + T.uncertainty + 1e-10};
 }
 
-// Here we are implicitly using that the inverse is an isometry of SO(3)
-// endowed with the operator norm.
+// The inverse is an isometry of SO(3) (wrt the operator norm).
 ApproximateIsometry inverse(const ApproximateIsometry& S) {
-    return {conj(S.q), S.uncertainty};
+    return {conj(S.q), S.uncertainty + 1e-10};
 }
 
-// Set v = (e_1, e_2).
-// This function returns R(v, theta).
+// Let v = (e_1, e_2).
+// This function returns (a superset of) R(v, theta).
 ApproximateIsometry basicRotation(double theta) {
     double theta2 = 0.5 * theta;
-    return ApproximateIsometry({cos(theta2), sin(theta2), 0, 0}, 0);
+    return ApproximateIsometry({cos(theta2), sin(theta2), 0, 0}, 1e-10);
 }
 
-// Set v = (e_1, e_2).
-// This function returns E(\rot_\theta v, len)
+// Let v = (e_1, e_2).
+// This function returns (a superset of) E(\rot_\theta v, len)
 ApproximateIsometry basicTranslation(double theta, Interval len) {
     Interval len2 = 0.5 * len;
     return ApproximateIsometry({cos(len2.mid()), 0,
-            -sin(theta) * sin(len2.mid()), cos(theta) * sin(len2.mid())}, len.len() / 2);
+            -sin(theta) * sin(len2.mid()), cos(theta) * sin(len2.mid())}, len.len() / 2 + 1e-10);
 }
 
 
-// TODO: This function shall guarantee that it returns an isometry (i.e.,
-//       a quaternion with norm 1 is contained in the 4-dim box).
-//       Should this simply use basicRotation and basicTranslation?
+// Return an ApproximateIsometry with very small uncertainty.
 ApproximateIsometry randomIsometry() {
     static default_random_engine engine(123);
     uniform_real_distribution<double> dist(-1.0, 1.0);
@@ -90,13 +103,14 @@ ApproximateIsometry randomIsometry() {
     if (z < 0.1)
         return randomIsometry();
     a /= z, b /= z, c /= z, d /= z;
-    return ApproximateIsometry({a, b, c, d}, 0);
+    return ApproximateIsometry({a, b, c, d}, 1e-10);
 }
 
 
 // (superset of the) Intersection of the unit circle with a rectangle.
 // It returns a superset of
 // \{l \in domain: (cos l, sin l) \in XxY \}
+//
 // Assumption: domain \subseteq [0, 2pi].
 Interval intersectWithCircle(Interval X, Interval Y, const Interval& domain) {
     X.intersect({-1, 1});
@@ -123,42 +137,6 @@ Interval intersectWithCircle(Interval X, Interval Y, const Interval& domain) {
     }
     return hull(lK);
 }
-
-// TESTING intersectWithCircle.
-
-// double randomValue(double a, double b) {
-//     static random_device rd;
-//     static mt19937 gen(rd());
-//     uniform_real_distribution<> distrib(a, b);
-
-//     return distrib(gen);
-// }
-
-// Interval randomInterval(double a, double b) {
-//     double l = randomValue(a, b);
-//     double r = randomValue(a, b);
-//     if (l > r)
-//         swap(l, r);
-//     return Interval{l, r};
-// }
-
-// int main () {
-//     for (int _ = 0; _ < 100000; _++) {
-//         Interval X = randomInterval(-2, 2);
-//         Interval Y = randomInterval(-2, 2);
-//         Interval domain = randomInterval(0, 2*M_PI-1e-6);
-//         double theta = randomValue(domain.l, domain.r);
-//         // cout << theta << " " << X << " " << Y << endl;
-//         if (X.l <= cos(theta) and cos(theta) <= X.r and Y.l <= sin(theta) and sin(theta) <= Y.r) {
-//             Interval I = intersectWithCircle(X, Y, domain);
-//             // cout << X << " " << Y << " " << domain << " " << theta << " " << I << endl;
-//             assert(I.l <= theta and theta <= I.r);
-//             assert(isSubset(I, domain));
-//         }
-//     }
-// }
-
-// END OF TESTING
 
 template<typename T>
 array<T, 3> operator*(const array<T, 3>& X, T lambda) {
@@ -205,18 +183,19 @@ T norm(const array<T, 3>& X) {
     return sqrt(square(X[0]) + square(X[1]) + square(X[2]));
 }
 
-double norm(const array<double, 3>& X) {
+double norm(const Point& X) {
     return sqrt(X[0]*X[0] + X[1]*X[1] + X[2]*X[2]);
 }
 
-array<double, 3> make_deterministic(array<Interval, 3> p) {
+Point make_deterministic(ApproximatePoint p) {
     return {p[0].mid(), p[1].mid(), p[2].mid()};
 }
 
 
 // T is an approximate isometry.
 // Let a be the oriented half-equator starting from (e_1, e_2).
-// Let b be the oriented half-equator starting from (Te_1, Te_2).
+// Let b be the oriented half-equator starting from (T'e_1, T'e_2), where
+// T' is an isometry in T.
 //
 // The return values of this function are:
 //  0: a and b are guaranteed not to intersect.
@@ -241,7 +220,7 @@ int halfEquatorsIntersection(const ApproximateIsometry& T) {
 
 // T is an approximate isometry.
 // Let a be the oriented geodesic starting from (e_1, e_2).
-// Let b be the equator going through (Te_1, Te_2).
+// Let b be the equator going through (T'e_1, T'e_2), where T' is an isometry in T.
 //
 // This function returns a nonempty interval I \subseteq [0, pi].
 // It is guaranteed that the first intersection of a with b happens at
@@ -266,12 +245,10 @@ Interval firstIntersectionWithEquator(const ApproximateIsometry& T) {
 }
 
 // T is an approximate isometry.
-// Let a be the geodesic segment with length I starting from (e_1, e_2).
-// Let b be the geodesic segment with length J starting from (Te_1, Te_2).
-// We assume that I, J \subseteq [0, pi].
-//
-// a and b may have zero or one intersections. Moreover, since we don't know b exactly,
-// we may not be able to tell whether they intersect.
+// I, J are two intervals contained in [0, pi].
+// Let a be a geodesic segment with length in I starting from (e_1, e_2).
+// Let b be a geodesic segment with length in J starting from (T'e_1, T'e_2),
+// where T' is an isometry in T.
 //
 // The return values of this function are:
 //  0: a and b are guaranteed not to intersect.
@@ -302,12 +279,10 @@ int internalIntersectionSign(const ApproximateIsometry& T,
 }
 
 // T is an approximate isometry.
-// Let a be the geodesic segment with length I starting from (e_1, e_2).
-// Let b be the geodesic segment with length J starting from (Te_1, Te_2).
-// We assume that I, J \subseteq [0, 2pi].
-//
-// a and b may have zero or one or two intersections. Moreover, since we don't know them exactly,
-// we may not be able to tell how many intersections they have.
+// I, J are two intervals contained in [0, 2pi].
+// Let a be a geodesic segment with length in I starting from (e_1, e_2).
+// Let b be a geodesic segment with length in J starting from (T'e_1, T'e_2),
+// where T' is an isometry in T.
 //
 // The return values of this function are:
 //  0: a and b are guaranteed not to intersect or to have exactly two intersections (in the latter
@@ -340,9 +315,16 @@ int intersectionSign(const ApproximateIsometry& T,
     return ans;
 }
 
-// Consider a pair of geodesic segments:
-// - One starting from (e_1, e_2) with length in I.
-// - One starting from (Te_1, Te_2) with length in J.
+// T is an approximate isometry.
+// I, J are two intervals contained in [0, 2pi].
+// Let a be a geodesic segment with length in I starting from (e_1, e_2).
+// Let b be a geodesic segment with length in J starting from (T'e_1, T'e_2),
+// where T' is an isometry in T.
+//
+// The return values of this function are:
+//  0: a and b are guaranteed not to intersect.
+//  1: a and b are guaranteed to intersect.
+//  INDETERMINATE: This function does not guarantee anything.
 // This function returns
 // - 0 If all such pairs intersect.
 // - 1 If all such pairs don't intersect.

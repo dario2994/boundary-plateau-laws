@@ -8,22 +8,22 @@ using namespace std;
 #include "utils.cpp"
 #include "interval_geometry.cpp"
 
-void assertBoundedNorm(const vector<pt>& points) {
-    for (const pt& P: points)
+void assertBoundedNorm(const vector<Point>& points) {
+    for (const Point& P: points)
         assert(norm(P) < 3);
 }
 
-void assertWellDefinedLine(const pt& A, const pt& B) {
+void assertWellDefinedLine(const Point& A, const Point& B) {
     assertBoundedNorm({A, B});
     assert(norm(A-B) > 1e-4);
 }
 
 // Distance of the point P to the line through A and B.
 // Assumption: |A-B| is not much smaller than max(|A|, |B|).
-double distanceFromLine(pt A, pt B, pt P) {
+double distanceFromLine(Point A, Point B, Point P) {
     assertWellDefinedLine(A, B);
     assertBoundedNorm({P});
-    pt L = (B-A) / norm(B-A);
+    Point L = (B-A) / norm(B-A);
     P = P - A;
 
     return norm(L ^ P);
@@ -31,31 +31,31 @@ double distanceFromLine(pt A, pt B, pt P) {
 
 // Distance of the segment CD to the line through A and B.
 // Assumption: |A-B| is not much smaller than max(|A|, |B|).
-double distanceFromLine(const pt& A,
-                        const pt& B,
-                        const pt& C,
-                        const pt& D) {
+double distanceFromLine(const Point& A,
+                        const Point& B,
+                        const Point& C,
+                        const Point& D) {
     assertWellDefinedLine(A, B);
     assertBoundedNorm({C, D});
 
-    pt x = (B - A) ^ (D - C);
-    pt y = (B - A) ^ (A - C);
+    Point x = (B - A) ^ (D - C);
+    Point y = (B - A) ^ (A - C);
 
     double s_unclamped = (norm(x) < 1e-5) ? 0.0 : (x * y) / (x * x);
     double s = max(0.0, min(1.0, s_unclamped));
 
-    pt closest_point = C + (D - C) * s;
+    Point closest_point = C + (D - C) * s;
 
     return distanceFromLine(A, B, closest_point);
 }
 
 // Distance of the triangle CDE to the line through A and B.
 // Assumption: |A-B| is not much smaller than max(|A|, |B|).
-double distanceFromLine(const pt& A,
-                        const pt& B,
-                        const pt& C,
-                        const pt& D,
-                        const pt& E) {
+double distanceFromLine(const Point& A,
+                        const Point& B,
+                        const Point& C,
+                        const Point& D,
+                        const Point& E) {
     assertWellDefinedLine(A, B);
     assertBoundedNorm({C, D, E});
 
@@ -69,12 +69,12 @@ double distanceFromLine(const pt& A,
     // Determining whether is zero is annoying.
     // We use the Moller-Trumbore algorithm.
     // The implementation is inspired from wikipedia.
-    pt CD = D - C;
-    pt CE = E - C;
-    pt CA = A - C;
+    Point CD = D - C;
+    Point CE = E - C;
+    Point CA = A - C;
 
-    pt U = (B-A) ^ CE;
-    pt V = CA ^ CD;
+    Point U = (B-A) ^ CE;
+    Point V = CA ^ CD;
 
     double det = CD * U;
 
@@ -103,7 +103,7 @@ double distanceFromLine(const pt& A,
 struct ImmersedSimplicialComplex {
   private:
     // The vertices are indexed 0, 1, ..., V-1.
-    vector<pt> points;
+    vector<Point> points;
     // All faces, not only maximal ones.
     // Any constructor will make sure that faces are distinct and form a family
     // closed with respect to subset.
@@ -129,7 +129,7 @@ struct ImmersedSimplicialComplex {
   public:
     int V() const { return ssize(points); }
 
-    const pt& getPoint(int id) const { return points[id]; }
+    const Point& getPoint(int id) const { return points[id]; }
 
     // Get the skeleton of the given dimension.
     // If no dimension is specified, all faces are returned.
@@ -160,7 +160,7 @@ struct ImmersedSimplicialComplex {
         for (auto face: faces) {
             if (ssize(face) != 3)
                 continue;
-            vector<pt> vertices;
+            vector<Point> vertices;
             for (int v: face)
                 vertices.push_back(points[v]);
             array<double,3> triangle_vec = (vertices[2]-vertices[0])^(vertices[1]-vertices[0]);
@@ -276,11 +276,11 @@ struct ImmersedSimplicialComplex {
     // the complex to satisfy the above assumptions satisfied (but sometimes
     // it may fail in any case).
     ErrorOr<ImmersedSimplicialComplex> containsSegment(
-                         const pt& A,
-                         const pt& B,
+                         const Point& A,
+                         const Point& B,
                          bool allow_changes=true,
                          const double eps=1e-6) {
-        pt segment_dir = (B-A) * (1.0 / norm(B-A));
+        Point segment_dir = (B-A) * (1.0 / norm(B-A));
 
         // The vertices are mapped on the line AB.
         vector<bool> on_the_line(V(), false);
@@ -340,7 +340,7 @@ struct ImmersedSimplicialComplex {
         // We check that A and B are univocally matched with vertices for the
         // simplicial complex.
         for (int i = 0; i < ssize(points_on_line); i++) {
-            pt P = points[points_on_line[i]];
+            Point P = points[points_on_line[i]];
             if (i != 0 and norm(P-A) < 100*eps) {
                 stringstream ss;
                 ss << "There are multiple vertices of the complex which "
@@ -475,8 +475,8 @@ struct ImmersedSimplicialComplex {
             assert(ssize(face) <= 3);
             if (ssize(face) == 2) {
                 int c = *face.begin(), d = *face.rbegin();
-                pt C = points[c];
-                pt D = points[d];
+                Point C = points[c];
+                Point D = points[d];
                 if (distanceFromLine(A, B, C, D) < 100*eps) {
                     stringstream ss;
                     ss   << "points[" << c << "] = " << C << ", "
@@ -513,7 +513,7 @@ struct ImmersedSimplicialComplex {
 ImmersedSimplicialComplex parseImmersedSimplicialComplex(istream& in) {
     int V, F;
     in >> V >> F;
-    vector<pt> points(V);
+    vector<Point> points(V);
     for (int i = 0; i < V; i++)
         in >> points[i][0] >> points[i][1] >> points[i][2];
     vector<set<int>> faces;

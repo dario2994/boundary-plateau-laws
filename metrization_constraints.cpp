@@ -185,7 +185,7 @@ bool checkPinsAntipodality(const MetrizedNet& net) {
             for (int k = j+1; k < q; k++) {
                 Dart root = net.A.concaveAngles()[i];
 
-                vector<array<Interval, 3>> equators;
+                vector<ApproximatePoint> equators;
                 for (int z: {i, j, k}) {
                     Dart d = net.A.concaveAngles()[z];
                     // Using getIsometryFromPinToPin instead of getIsometryToPin
@@ -269,9 +269,9 @@ bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
         // T(e_1) = (cos l, -sin l, 0)
         // T(e_2) = (sin l,  cos l, 0)
         // T(e_3) = (0,          0, 0)
-        array<Interval, 3> T0 = T({1, 0, 0});
-        array<Interval, 3> T1 = T({0, 1, 0});
-        array<Interval, 3> T2 = T({0, 0, 1});
+        ApproximatePoint T0 = T({1, 0, 0});
+        ApproximatePoint T1 = T({0, 1, 0});
+        ApproximatePoint T2 = T({0, 0, 1});
         if (!T0[2].containsZero() or !T1[2].containsZero()
               or !T2[0].containsZero() or !T2[1].containsZero()
               or !(T2[2]-1).containsZero()) {
@@ -337,10 +337,10 @@ bool checkNonIntersection(MetrizedNet& net) {
 // P or -P is inside the face, 0 if it can show that both are not inside,
 // and INDETERMINATE if it cannot prove anything.
 int isInsideConvexFace(const MetrizedNet& net,
-                              array<Interval, 3> P,
-                              const Dart& root,
-                              const vector<Dart>& face,
-                              bool up_to_symmetry = false) {
+                       ApproximatePoint P,
+                       const Dart& root,
+                       const vector<Dart>& face,
+                       bool up_to_symmetry = false) {
     assert(net.A.isConvexFace(face));
 
     vector<int> signs;
@@ -459,11 +459,11 @@ bool checkPinsAntipodality2(const MetrizedNet& net) {
             if (l1 >= M_PI-1e-5 or l2 >= M_PI-1e-5)
                 return true;
 
-            array<Interval, 3> start1 = {1, 0, 0}, end1 = {cos(l1), sin(l1), 0};
+            ApproximatePoint start1 = {1, 0, 0}, end1 = {cos(l1), sin(l1), 0};
             vector<PathStep> path = net.getPathFromPinToPin(d1, d2);
-            array<Interval, 3> start2 = net.isometryFromPath(path)({1, 0, 0});
+            ApproximatePoint start2 = net.isometryFromPath(path)({1, 0, 0});
             path.push_back(PathStep('E', l2));
-            array<Interval, 3> end2 = net.isometryFromPath(path)({1, 0, 0});
+            ApproximatePoint end2 = net.isometryFromPath(path)({1, 0, 0});
 
             for (auto p1: {start1, end1}) for (auto p2: {start2, end2}) {
                 Interval eucl_dist = norm(p1-p2);

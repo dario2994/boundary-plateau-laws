@@ -62,4 +62,14 @@ ostream& operator <<(ostream& out, const Quaternion<T>& q) {
     return out;
 }
 
+template<typename T>
+T norm2(const Quaternion<T>& q) {
+    return q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3];
+}
+
+template<typename T>
+T norm(const Quaternion<T>& q) {
+    return sqrt(norm2(q));
+}
+
 #endif

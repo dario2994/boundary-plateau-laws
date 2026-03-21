@@ -7,8 +7,8 @@ using namespace std;
 #include "metrized_nets.cpp"
 #include "metrization_constraints.cpp"
 
-void savePicture(vector<pair<pt, string>> vertices,
-                 vector<tuple<pt, pt, double>> edges, string out_file) {
+void savePicture(vector<pair<Point, string>> vertices,
+                 vector<tuple<Point, Point, double>> edges, string out_file) {
     ofstream out(out_file);
     out << ssize(vertices) << " " << ssize(edges) << endl;
     for (auto pp: vertices) {
@@ -21,12 +21,12 @@ void savePicture(vector<pair<pt, string>> vertices,
     out.close();
 }
 
-pair<vector<pair<pt, string>>, vector<tuple<pt, pt, double>>>
+pair<vector<pair<Point, string>>, vector<tuple<Point, Point, double>>>
         embedNet(const MetrizedNet& net) {
     const MarkedCombinatorialMap& A = net.A;
 
-    vector<pair<pt, string>> vertex_embedding(A.V());
-    vector<tuple<pt, pt, double>> dart_embedding(2 * A.E());
+    vector<pair<Point, string>> vertex_embedding(A.V());
+    vector<tuple<Point, Point, double>> dart_embedding(2 * A.E());
     Dart root = A.dart(0);
     for (Dart d: A.darts()) {
         ApproximateIsometry q = net.getIsometry(root, d);

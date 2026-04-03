@@ -7,6 +7,7 @@ using namespace std;
 #include "metrized_nets.cpp"
 #include "metrization_constraints.cpp"
 
+// Move the following two functions somewhere else. Maybe in metrized_nets.
 void savePicture(vector<pair<Point, string>> vertices,
                  vector<tuple<Point, Point, double>> edges, string out_file) {
     ofstream out(out_file);
@@ -113,7 +114,7 @@ int lengthsImplications(const MarkedCombinatorialMap& A,
 
 // Returns the smallest possible set of darts such that once their
 // length is chosen, the lengths of all the sides of convex faces
-// can be uniquely determined through simple rules.
+// can be uniquely determined through simple inference rules.
 // Among the valid possible sets, it returns one that determines
 // all the lengths in a "numerically robust" way.
 vector<Dart> findFreeParametersConvex(const MarkedCombinatorialMap& A) {
@@ -165,6 +166,7 @@ vector<Dart> findFreeParametersNonConvex(const MarkedCombinatorialMap& A) {
     return res;
 }
 
+// TODO: Remove all this stuff.
 vector<pair<long long, MetrizedNet>> virtual_stack;
 long long begin_timestamp = 0;
 long long last_timestamp = 0;
@@ -182,6 +184,8 @@ struct SAMParams {
 };
 
 
+// TODO: This should return only an optional<MetrizedNet>
+
 // Takes an approximately metrized once-derived net and returns:
 //  0: No refinement of the given approximate metrization can be realized by
 //     a stable cone.
@@ -193,7 +197,7 @@ struct SAMParams {
 pair<int, optional<MetrizedNet>> searchApproximateMetrization(
         MetrizedNet net,
         const SAMParams& params) {
-    // TODO: The following should be triggered using a debug flag.
+    // TODO: Remove this (to be done when everything else is done)
     if (false and get_time() - last_timestamp > timestamp_diff * 1e9) {
         last_timestamp = get_time(); // Even if nothing is printed.
         int it = -1;
@@ -229,6 +233,7 @@ pair<int, optional<MetrizedNet>> searchApproximateMetrization(
 
     // If the computation takes too long, we skip.
     // The slowest net, which is 28, requires TODO hours.
+    // TODO: Remove this.
     static const long long one_second = 1e9;
     static const long long one_minute = 60*one_second;
     [[maybe_unused]] static const long long one_hour = 60*one_minute;
@@ -358,6 +363,8 @@ void relaxMetrization(MetrizedNet& net, double len) {
     }
 }
 
+// TODO: INDETERMINATE should not be an option.
+
 // Return values:
 // 0: Impossible.
 // 1: Possible.
@@ -392,6 +399,7 @@ int processNet(int net_id) {
         return 0;
 
     if (possible_nets.count(net_id)) {
+        // TODO: This should go away.
         // The following lines use an existing metrization to skip the
         // existence proof.
         // string metrized_net_filename = "data/metrized_nets/" + to_string(net_id) + ".txt";
@@ -457,7 +465,7 @@ int processNet(int net_id) {
     }
 }
 
-
+// TODO: Move in a different file.
 void testingSearchApproximateMetrization(int test_num = -1) {
     struct TestCase {
         int net_id;
@@ -560,9 +568,8 @@ void testingSearchApproximateMetrization(int test_num = -1) {
 }
 
 int main() {
-    // testingSearchApproximateMetrization();
-    // return 0;
-
+    testingSearchApproximateMetrization();
+    return 0;
     ifstream in("data/once_derived_computer.txt");
     int cnt_once_derived;
     in >> cnt_once_derived;
@@ -571,7 +578,6 @@ int main() {
         in >> once_derived[i];
     in.close();
 
-    // Slow possible net: 28
     vector<int> embeddable_once_derived;
 
     for (int id = 0; id < ssize(once_derived); id++) {
@@ -600,8 +606,6 @@ int main() {
             embeddable_once_derived.push_back(id);
     }
     clog << endl; // TODO: Use clog everywhere?
-
-    StopWatch::printState();
 
     ofstream out("data/embeddable_nets.txt");
     out << embeddable_once_derived.size() << endl;

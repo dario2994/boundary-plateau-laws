@@ -64,13 +64,19 @@ bool isShorterThanPi(const MarkedCombinatorialMap& A, const Dart& d) {
 // This is a trick necessary to speed up some computation.
 struct PathStep {
     char type;
-    double t;
+    int deg;
+    double len;
     Dart d;
 
-    PathStep(char _type, double _t): type(_type), t(_t) {
-        assert(type == 'R' or type == 'E');
+    static PathStep rot(int _deg) {
+        PathStep step; step.type = 'R'; step.deg = _deg; return step;
     }
-    PathStep(Dart _d): type('D'), d(_d) {}
+    static PathStep exp(double _len) {
+        PathStep step; step.type = 'E'; step.len = _len; return step;
+    }
+    static PathStep exp(Dart _d) {
+        PathStep step; step.type = 'D'; step.d = _d; return step;
+    }
 
     double cost(const vector<Interval>& lengths) {
         return 1e-10 + ((type == 'D') ? lengths[d.id].len() : 0.0 );
@@ -81,10 +87,9 @@ ostream& operator<<(ostream& out, const PathStep& x) {
     if (x.type == 'D') {
         out << "D(" << x.d.from << "->" << x.d.to << ")";
     } else if (x.type == 'R') {
-        int angle = round(x.t * 360 / (2*M_PI));
-        out << "R(" << angle << ")";
+        out << "R(" << x.deg << ")";
     } else if (x.type == 'E') {
-        out << "E(" << x.t << ")";
+        out << "E(" << x.len << ")";
     } else assert(0);
 
     return out;
@@ -92,10 +97,12 @@ ostream& operator<<(ostream& out, const PathStep& x) {
 
 // To compress consecutive rotations in a single one.
 void appendToPath(vector<PathStep>& path, const PathStep& op) {
-    if (!path.empty() and path.back().type == op.type and op.type != 'D')
-        path.back().t += op.t;
-    else
+    if (path.empty() or path.back().type != op.type or op.type == 'D')
         path.push_back(op);
+    else if (op.type == 'R')
+        path.back().deg += op.deg;
+    else if (op.type == 'E')
+        path.back().len += op.len;
 }
 
 class MetrizedNet {
@@ -134,13 +141,13 @@ class MetrizedNet {
     MetrizedNet(const MarkedCombinatorialMap& _A): A(_A) {
         initOptimalPaths();
 
-        _lengths.resize(A.E(), Interval(0, 2*M_PI));
+        _lengths.resize(A.E(), Interval(0, (2*pi).r));
 
         for (Dart d: A.darts()) {
             Interval& I = length(d);
 
             if (isShorterThanPi(A, d))
-                I.intersect(Interval(0, M_PI));
+                I.intersect(Interval(0, pi.r));
 
             if (A.isConvexFace(d)) {
                 int q = ssize(A.face(d));
@@ -149,11 +156,11 @@ class MetrizedNet {
                 static const double ell_T = acos(-1.0/3);
 
                 if (q == 2)
-                    I.intersect(Interval(M_PI));
+                    I.intersect(pi);
                 if (q == 3)
                     I.intersect(Interval(ell_T));
                 if (q == 4)
-                    I.intersect(Interval(0.01, M_PI - 1e-3));
+                    I.intersect(Interval(0.01, pi.r - 1e-3));
                 if (q == 5)
                     I.intersect(Interval(0.01, ell_T - 1e-3));
             }
@@ -173,13 +180,13 @@ class MetrizedNet {
     ApproximateIsometry isometryFromPath(const vector<PathStep>& path) const {
         StopWatch _("isometryFromPath");
 
-        double sum_theta = 0;
-        ApproximateIsometry res(1, 0);
+        int sum_theta = 0;
+        ApproximateIsometry res(1, 1e-10);
         for (auto op: path) {
             if (op.type == 'R')
-                sum_theta += op.t;
+                sum_theta += op.deg;
             else if (op.type == 'E')
-                res *= basicTranslation(sum_theta, op.t);
+                res *= basicTranslation(sum_theta, op.len);
             else if (op.type == 'D')
                 res *= basicTranslation(sum_theta, length(op.d));
             else assert(0);
@@ -194,7 +201,7 @@ class MetrizedNet {
     void computeOptimalPaths(const Dart& root) const {
         if (!optimal_path[root.id].empty())
             return;
-        StopWatch _("computeOptimalPaths");
+        StopWatch _("computeOptimalPaths"); // TODO: Remove all the StopWatch instances.
         // Run Dijkstra from the root.
         // The cost of traversing a dart is the length of the corresponding
         // interval.
@@ -237,11 +244,11 @@ class MetrizedNet {
             while (father[curr.id] != '-') {
                 if (father[curr.id] == 'n') { // Rotation by 120 or 240.
                     curr = A.prev(curr);
-                    appendToPath(path, PathStep('R', A.nextAngle(curr)));
+                    appendToPath(path, PathStep::rot(A.nextAngle(curr)));
                 } else if (father[curr.id] == 'r') { // Exponential + Rotation by 180.
-                    appendToPath(path, PathStep('R', M_PI));
+                    appendToPath(path, PathStep::rot(180));
                     curr = A.rev(curr);
-                    appendToPath(path, curr);
+                    appendToPath(path, PathStep::exp(curr));
                 } else assert(0);
             }
             reverse(path.begin(), path.end());
@@ -258,7 +265,7 @@ class MetrizedNet {
     vector<PathStep> getPathToPin(const Dart& from, const Dart& to) const {
         assert(A.isConcaveAngle(to));
         vector<PathStep> path = getPath(from, A.rev(to));
-        appendToPath(path, PathStep('R', 2*M_PI/3));
+        appendToPath(path, PathStep::rot(120));
         return path;
     }
 
@@ -267,9 +274,9 @@ class MetrizedNet {
         assert(A.isConcaveAngle(to));
         vector<PathStep> path = getPath(A.rev(from), A.rev(to));
         reverse(path.begin(), path.end());
-        appendToPath(path, PathStep('R', -2*M_PI/3));
+        appendToPath(path, PathStep::rot(-120));
         reverse(path.begin(), path.end());
-        appendToPath(path, PathStep('R', 2*M_PI/3));
+        appendToPath(path, PathStep::rot(120));
         return path;
     }
 
@@ -288,13 +295,10 @@ class MetrizedNet {
     void serialize(ostream& out) const {
         A.serialize(out);
 
-        auto old_precision = out.precision();
-        out.precision(17);
         for (const Dart& d: A.darts()) {
             Interval I = length(d);
-            out << I.l << " " << I.r << endl;
+            out << std::format("{:.17g} {:.17g}\n", I.l, I.r);
         }
-        out.precision(old_precision);
     }
 
 };

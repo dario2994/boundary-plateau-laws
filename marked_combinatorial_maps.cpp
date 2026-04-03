@@ -43,12 +43,12 @@ class MarkedCombinatorialMap : public CombinatorialMap {
         return it - _concave_angles.begin();
     }
 
-    double phiAngle(const Dart& d) const {
-        return isConcaveAngle(d) ? M_PI/3 : -M_PI/3;
+    int phiAngle(const Dart& d) const {
+        return isConcaveAngle(d) ? 60 : -60;
     }
 
-    double nextAngle(const Dart& d) const {
-        return isConcaveAngle(rev(d)) ? 4*M_PI/3 : 2*M_PI/3;
+    int nextAngle(const Dart& d) const {
+        return isConcaveAngle(rev(d)) ? 240 : 120;
     }
 
     pair<Dart, Dart> edgeSubdivision(Dart d) {

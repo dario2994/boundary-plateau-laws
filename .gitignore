@@ -51,3 +51,4 @@ embed_or_exclude
 find_competitor
 data/surface_evolver/*
 test_simplicial_complexes
+test_interval_geometry

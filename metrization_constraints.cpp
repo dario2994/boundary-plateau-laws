@@ -13,26 +13,20 @@ using namespace std;
 
 
 
-// Utility function to enforce the constraint on the sides of a
-// quadrilateral.
-//
-// I is strictly inside [0, \pi].
-// One side of a quadrilateral belongs to I.
-// The other side belongs to the interval returned by this function.
+// I is an interval strictly contained in [0, \pi].
+// Let ABCD be a spherical quadrilateral with angles equal to 120.
+// If AB \in I, then BC belongs to the interval returned by this function.
 Interval quadrilateralConstraint(Interval I) {
     if (I.empty())
         return EMPTY_INTERVAL;
     const static double eps = 1e-10;
     static auto f = [](double x) { return 2*atan(0.5 / tan(x/2)); };
     return Interval(f(I.r) - eps, f(I.l) + eps);
-}
+} // TODO: Float computation
 
-// Utility function to enforce the constraint on the sides of a
-// pentagon.
-//
-// I, J are strictly inside [0, \ell_T].
-// Let ABCDE be a spherical pentagon with angles 120.
-// If AB \in I, BC\in J, then DE belongs to the interval returned by
+// I, J are intervals strictly contained [0, \ell_T].
+// Let ABCDE be a spherical pentagon with angles equal to 120.
+// If AB \in I and BC\in J, then DE belongs to the interval returned by
 // this function.
 Interval pentagon1Constraint(const Interval& I, const Interval& J) {
     if (I.empty() or J.empty())
@@ -47,15 +41,12 @@ Interval pentagon1Constraint(const Interval& I, const Interval& J) {
     double low = f(I.r, J.r);
 
     return acos(Interval(low, high));
-}
+} // TODO: Float computation
 
-// Utility function to enforce the constraint on the sides of a
-// pentagon.
-//
-// I, J are strictly inside [0, \ell_T].
-// Let ABCDE be a spherical pentagon with angles 120.
-// AB \in I, DE\in J.
-// Then BC belongs to the interval returned by this function.
+// I, J are intervals strictly contained [0, \ell_T].
+// Let ABCDE be a spherical pentagon with angles equal to 120.
+// If AB \in I and DE\in J, then BC belongs to the interval returned by this
+// function.
 Interval pentagon2Constraint(const Interval& I, const Interval& J) {
     if (I.empty() or J.empty())
         return EMPTY_INTERVAL;
@@ -83,7 +74,7 @@ Interval pentagon2Constraint(const Interval& I, const Interval& J) {
 
     double l = (high < 1) ?  acos(high) : 0;
     l -= get_theta(I.r);
-    double r = (low > -1) ? acos(low) : M_PI;
+    double r = (low > -1) ? acos(low) : pi.r;
     r -= get_theta(I.l);
     Interval K(l, r);
 
@@ -91,13 +82,11 @@ Interval pentagon2Constraint(const Interval& I, const Interval& J) {
     K.intersect(Interval(0, ellT));
 
     return K;
-}
+} // TODO: Float computation
 
 
 bool refineMetrizationConvexContinent(MetrizedNet& net,
                                       const vector<Dart>& initial_darts) {
-    StopWatch _("refineMetrizationConvexContinent");
-
     const MarkedCombinatorialMap& A = net.A;
 
     vector<bool> to_propagate(2*A.E(), false);
@@ -125,6 +114,7 @@ bool refineMetrizationConvexContinent(MetrizedNet& net,
         net.length(d).intersect(I);
         double aft = net.length(d).len();
 
+        // If the length change is non-negligible, we propagate it.
         bool updated = bef > 1e-12 and aft < 0.9*bef;
         if (updated) {
             if (!to_propagate[d.id]) {
@@ -177,8 +167,6 @@ bool refineMetrizationConvexContinent(MetrizedNet& net,
 // Checks that the equators corresponding to any three edges going to
 // a pin are concurrent.
 bool checkPinsAntipodality(const MetrizedNet& net) {
-    StopWatch _("checkPinsAntipodality");
-
     int q = ssize(net.A.concaveAngles());
     for (int i = 0; i < q; i++)
         for (int j = i+1; j < q; j++)
@@ -209,8 +197,6 @@ bool checkPinsAntipodality(const MetrizedNet& net) {
 // Checks that the angles between edges meeting at a pin belongs to
 // [120, 240].
 bool checkPinAngles(const MetrizedNet& net) {
-    StopWatch _("checkPinAngles");
-
     const MarkedCombinatorialMap& A = net.A;
 
     for (const auto& f: A.faces()) {
@@ -232,15 +218,13 @@ bool checkPinAngles(const MetrizedNet& net) {
             return false;
     }
     return true;
-}
+} // TODO: Float computation
 
 // Assume that you know the lengths of k-1 sides of a non-convex face
 // with k sides. This function determines (robustly) whether they
 // can form the non-convex face (i.e., the angles are correct) and
 // enforces the right length of the remaining side.
 bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
-    StopWatch _("refineMetrizationNonConvexFaces");
-
     const MarkedCombinatorialMap& A = net.A;
 
     for (Dart d: A.darts()) {
@@ -261,8 +245,8 @@ bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
         for (int i = 0; i < q; i++) {
             Dart e = A.phi(d, i);
             if (i > 0)
-                path.emplace_back(e);
-            path.emplace_back(PathStep('R', A.phiAngle(e)));
+                path.push_back(PathStep::exp(e));
+            path.push_back(PathStep::rot(A.phiAngle(e)));
         }
         ApproximateIsometry T = net.isometryFromPath(path);
         // Let l be the length of d.
@@ -290,18 +274,15 @@ bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
 
 // Checks that non-convex faces are not self-intersecting.
 bool checkNonIntersection(MetrizedNet& net) {
-    StopWatch _("checkNonIntersection");
-
     const MarkedCombinatorialMap& A = net.A;
     for (Dart d: A.darts()) {
         if (A.isConvexFace(d))
             continue;
 
         // We don't use net.isometryFromPath to improve the performance.
-        double sum_theta = 0;
-        sum_theta += M_PI;
+        int sum_theta = 180;
         const vector<Dart>& f = A.face(d);
-        ApproximateIsometry iso(1, 0);
+        ApproximateIsometry iso(1, 1e-10);
 
         for (int i = 0; i < ssize(f)-2; i++) {
             sum_theta += A.phiAngle(f[i]);
@@ -324,7 +305,7 @@ bool checkNonIntersection(MetrizedNet& net) {
         }
     }
     return true;
-}
+} // TODO: Float computation
 
 // The face must be convex.
 // Set the dart root to (e_1, e_2).
@@ -361,8 +342,6 @@ int isInsideConvexFace(const MetrizedNet& net,
 
 // Checks that no pins fall strictly inside a convex face.
 bool checkPinOutsideConvexFaces(const MetrizedNet& net) {
-    StopWatch _("checkPinOutsideConvexFaces");
-
     int cnt = ssize(net.A.concaveAngles());
     for (int i = 0; i < cnt; i++) for (int j = i+1; j < cnt; j++) {
         const Dart& root = net.A.concaveAngles()[i];
@@ -428,11 +407,17 @@ vector<double> maxDistanceToPin(const MetrizedNet& net) {
     return len_to_pin;
 }
 
-// This is a check useful (almost) only when all the equators identifying the
-// pins coincide (as in this case checkPinsAntipodality does not work).
+// If this function returns false, then there is no realization of this metrized
+// net such that the pins can be placed in antipodal points and without the edges
+// to the pins intersecting other edges of the net.
 //
+// This is a check useful (almost) only when all the great circle identifying
+// the pins coincide (as in this case checkPinsAntipodality does not work).
+//
+// Method:
 // Consider two "edges to pins" going to different pins.
-// Let l1, l2 be the upper bounds on their lenghts.
+// The fact that they can't intersect other edges of the net implied an upper
+// bound on their lengths. Let l1, l2 be the upper bounds on their lenghts.
 // And let q1, q2 be the edges extended to have length l1 and l2.
 // Since p\in q1 and -p\in q2 (where p is a pin), it must hold
 // dist(q1, q2) + l1 + l2 >= pi.
@@ -442,9 +427,7 @@ vector<double> maxDistanceToPin(const MetrizedNet& net) {
 // almost only in degenerate cases (e.g., when q1, q2 belong to the same
 // equator).
 bool checkPinsAntipodality2(const MetrizedNet& net) {
-    StopWatch _("checkPinsAntipodality2");
-
-    auto eucl_to_sphere = [&](double d) { return 2*asin(d/2); };
+    auto euclidean_to_spherical = [&](Interval d) { return 2*asin(d / 2); };
     const MarkedCombinatorialMap& A = net.A;
 
     vector<double> len_to_pin = maxDistanceToPin(net);
@@ -456,21 +439,20 @@ bool checkPinsAntipodality2(const MetrizedNet& net) {
                 continue;
             double l1 = len_to_pin[i], l2 = len_to_pin[j];
 
-            if (l1 >= M_PI-1e-5 or l2 >= M_PI-1e-5)
+            if (l1 >= pi.l or l2 >= pi.l)
                 return true;
 
-            ApproximatePoint start1 = {1, 0, 0}, end1 = {cos(l1), sin(l1), 0};
+            ApproximatePoint start1 = {1, 0, 0};
+            ApproximatePoint end1 = {cos(Interval(l1)), sin(Interval(l1)), 0};
             vector<PathStep> path = net.getPathFromPinToPin(d1, d2);
             ApproximatePoint start2 = net.isometryFromPath(path)({1, 0, 0});
-            path.push_back(PathStep('E', l2));
+            path.push_back(PathStep::exp(l2));
             ApproximatePoint end2 = net.isometryFromPath(path)({1, 0, 0});
 
             for (auto p1: {start1, end1}) for (auto p2: {start2, end2}) {
-                Interval eucl_dist = norm(p1-p2);
-                if (eucl_dist.r > 2-0.1)
-                    continue;
-                double max_sphere_dist = eucl_to_sphere(eucl_dist.r);
-                if (l1 + l2 + max_sphere_dist < M_PI - 1e-5)
+                Interval euclidean_dist = norm(p1-p2);
+                Interval spherical_dist = euclidean_to_spherical(euclidean_dist);
+                if (l1 + l2 + spherical_dist < pi)
                     return false;
             }
         }
@@ -478,13 +460,14 @@ bool checkPinsAntipodality2(const MetrizedNet& net) {
     return true;
 }
 
-
-// Implementation of the lower bounds on edge lengths that follow from
-// the stability of the net.
+// Enforces the a-priori lower bounds on the length of edges (it changes the
+// metrized net).
+// If it returns false, then there is no realization of the metrized net which
+// satisfies all the lower bounds.
 bool checkLengthLowerbound(MetrizedNet& net) {
     static const auto fun = [](double x, double y) {
         return min(0.01, 0.1*min(x, y)) - 1e-10;
-    };
+    }; // The -1e-10 is for avoiding floating-point related issues.
 
     const MarkedCombinatorialMap& A = net.A;
 
@@ -525,6 +508,12 @@ bool checkLengthLowerbound(MetrizedNet& net) {
     return true;
 }
 
+
+// If this function returns false, in all realizations of the metrized net
+// there are either two distinct vertices coinciding or two distinct edges which
+// intersect in a point that is not the vertex of at least one of the two.
+//
+// Method:
 // For 100 times, we randomly pick a geodesic segment g of length 1 on
 // the sphere.
 // For each face F, we check that the the (signed) total intersection of
@@ -535,8 +524,6 @@ bool checkLengthLowerbound(MetrizedNet& net) {
 //  - If g(0) and g(1) belong to different faces, then exactly one face
 //    shall yield value -1 and exactly one face shall yield value -1.
 bool checkFacesAreBoundaries(const MetrizedNet& net) {
-    StopWatch _("checkFacesAreBoundaries");
-
     for (int _ = 0; _ < 100; _++) {
         ApproximateIsometry T = randomIsometry();
         int pos = 0, neg = 0;

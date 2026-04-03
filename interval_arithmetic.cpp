@@ -14,7 +14,7 @@ struct Interval {
 
     Interval(): l(-1e9), r(1e9) {}
     Interval(double _l, double _r): l(_l), r(_r) {}
-    Interval(double x): l(x-1e-10), r(x+1e-10) {}
+    Interval(double x): l(x-1e-10), r(x+1e-10) {} // TODO: This is "wrong".
 
     bool empty() const { return r < l; }
 
@@ -33,6 +33,15 @@ struct Interval {
 };
 
 const Interval EMPTY_INTERVAL(0, -1);
+const Interval pi(nextafter(numbers::pi, -INFINITY),
+                  nextafter(numbers::pi, INFINITY));
+
+// I < J: i < j for all i in I and all j in J.
+bool operator <(const Interval& I, const Interval& J) {
+    if (I.empty() or J.empty())
+        return true;
+    return I.r < J.l;
+}
 
 ostream& operator <<(ostream& out, const Interval& I) {
     out << "[" << I.l << ", " << I.r << "]";
@@ -102,10 +111,18 @@ Interval operator *(const Interval& I, const Interval& J) {
 }
 
 // -I
-Interval operator-(Interval I) {
+Interval operator -(Interval I) {
     if (I.empty())
         return EMPTY_INTERVAL;
     return Interval(-I.r, -I.l);
+}
+
+// I / J
+Interval operator /(const Interval& I, const Interval& J) {
+    assert(!J.containsZero());
+    if (I.empty() or J.empty())
+        return EMPTY_INTERVAL;
+    return I * Interval(1.0 / J.r, 1.0 / J.l);
 }
 
 // {x²: x\in I}
@@ -129,17 +146,34 @@ Interval sqrt(Interval I) {
 
 
 // If cos(theta) \in I, then theta belongs to the returned interval.
-// Returned interval is a subset of [0, pi]
+// Returned interval is a subset of [0, pi.r]
 Interval acos(Interval I) {
     I.intersect(Interval(-1, 1));
     if (I.empty())
-        return EMPTY_INTERVAL; // empty
+        return EMPTY_INTERVAL;
     double l = acos(I.r);
     double r = acos(I.l);
 
     const static double eps = 1e-10;
     Interval J(l-eps, r+eps);
-    J.intersect(Interval(0, M_PI));
+    J.intersect(Interval(0, pi.r));
+    return J;
+}
+
+// If sin(theta) \in I, then theta belongs to the returned interval.
+// Returned interval is a subset of [-pi.r/2, pi.r/2]
+Interval asin(Interval I) {
+    I.intersect(Interval(-1, 1));
+    if (I.empty())
+        return EMPTY_INTERVAL;
+
+    // asin is strictly increasing, so l maps to l and r maps to r
+    double l = asin(I.l);
+    double r = asin(I.r);
+
+    const static double eps = 1e-10;
+    Interval J(l - eps, r + eps);
+    J.intersect(Interval(-pi.r / 2.0, pi.r / 2.0));
     return J;
 }
 

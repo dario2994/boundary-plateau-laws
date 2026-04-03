@@ -8,6 +8,11 @@ using namespace std;
 #include "interval_arithmetic.cpp"
 #include "quaternions.cpp"
 
+double deg2rad(int deg) {
+    return deg * pi.mid() / 180;
+}
+
+
 // Element of R^3.
 typedef array<double, 3> Point;
 
@@ -79,17 +84,18 @@ ApproximateIsometry inverse(const ApproximateIsometry& S) {
 
 // Let v = (e_1, e_2).
 // This function returns (a superset of) R(v, theta).
-ApproximateIsometry basicRotation(double theta) {
-    double theta2 = 0.5 * theta;
+ApproximateIsometry basicRotation(int theta) {
+    double theta2 = 0.5 * deg2rad(theta);
     return ApproximateIsometry({cos(theta2), sin(theta2), 0, 0}, 1e-10);
 }
 
 // Let v = (e_1, e_2).
 // This function returns (a superset of) E(\rot_\theta v, len)
-ApproximateIsometry basicTranslation(double theta, Interval len) {
+ApproximateIsometry basicTranslation(int theta_deg, Interval len) {
+    double theta_rad = deg2rad(theta_deg);
     Interval len2 = 0.5 * len;
     return ApproximateIsometry({cos(len2.mid()), 0,
-            -sin(theta) * sin(len2.mid()), cos(theta) * sin(len2.mid())}, len.len() / 2 + 1e-10);
+            -sin(theta_rad) * sin(len2.mid()), cos(theta_rad) * sin(len2.mid())}, len.len() / 2 + 1e-10);
 }
 
 
@@ -117,17 +123,17 @@ Interval intersectWithCircle(Interval X, Interval Y, const Interval& domain) {
     Y.intersect({-1, 1});
     if (X.empty() or Y.empty())
         return EMPTY_INTERVAL;
-    Interval I = {acos(X.r), acos(X.l)}; // Subset of [0, pi].
-    Interval J = {asin(Y.l), asin(Y.r)}; // Subset of [-pi/2, pi/2].
-    vector<Interval> lI = {I, {2*M_PI-I.r, 2*M_PI-I.l}};
-    vector<Interval> lJ = {{M_PI-J.r, M_PI-J.l}};
+    Interval I = acos(X);
+    Interval J = asin(Y);
+    vector<Interval> lI = {I, 2*pi - I};
+    vector<Interval> lJ = {pi - J};
     if (J.containsZero()) {
         lJ.emplace_back(0, J.r);
-        lJ.emplace_back(2*M_PI + J.l, 2*M_PI);
+        lJ.emplace_back((2*pi + J).l, (2*pi).r);
     } else if (J.l > 0) {
         lJ.push_back(J);
     } else if (J.r < 0) {
-        lJ.emplace_back(2*M_PI + J.l, 2*M_PI + J.r);
+        lJ.push_back(2*pi + J);
     }
     vector<Interval> lK;
     for (const Interval& i: lI) for (const Interval& j: lJ) {
@@ -234,7 +240,7 @@ Interval firstIntersectionWithEquator(const ApproximateIsometry& T) {
     Interval Y = -Te3[0];
 
     if (Y.containsZero())
-        return Interval(0, M_PI);
+        return Interval(0, pi.r);
 
     // We identify the *first* intersection.
     if (Y.l < 0) X = -X, Y = -Y;
@@ -245,7 +251,7 @@ Interval firstIntersectionWithEquator(const ApproximateIsometry& T) {
 }
 
 // T is an approximate isometry.
-// I, J are two intervals contained in [0, pi].
+// I, J are two intervals contained in [0, pi.r].
 // Let a be a geodesic segment with length in I starting from (e_1, e_2).
 // Let b be a geodesic segment with length in J starting from (T'e_1, T'e_2),
 // where T' is an isometry in T.
@@ -257,8 +263,8 @@ Interval firstIntersectionWithEquator(const ApproximateIsometry& T) {
 //  INDETERMINATE: This function does not guarantee anything.
 int internalIntersectionSign(const ApproximateIsometry& T,
                              const Interval& I, const Interval& J) {
-    assert(0 <= I.l and I.r <= M_PI+1e-10);
-    assert(0 <= J.l and J.r <= M_PI+1e-10);
+    assert(0 <= I.l and I.r <= pi.r);
+    assert(0 <= J.l and J.r <= pi.r);
 
     int x = halfEquatorsIntersection(T);
     if (x == 0)
@@ -292,14 +298,13 @@ int internalIntersectionSign(const ApproximateIsometry& T,
 //  INDETERMINATE: This function does not guarantee anything.
 int intersectionSign(const ApproximateIsometry& T,
                      const Interval& I, const Interval& J) {
-    const Interval& pi = Interval(0, M_PI);
     int ans = 0;
     vector<pair<Interval, Interval>> halves = {{I, J}};
     for (int i = 0; i < 2; i++) for (int j = 0; j < 2; j++) {
-        Interval I2 = intersection(pi, i == 0 ? I : I-M_PI);
-        Interval J2 = intersection(pi, j == 0 ? J : J-M_PI);
+        Interval I2 = intersection(Interval(0, pi.r), i == 0 ? I : I-pi);
+        Interval J2 = intersection(Interval(0, pi.r), j == 0 ? J : J-pi);
         ApproximateIsometry S = T;
-        ApproximateIsometry k({0, 0, 0, 1}, 0);
+        ApproximateIsometry k({0, 0, 0, 1}, 1e-10);
         if (i == 1)
             S = k * S;
         if (j == 1)
@@ -325,13 +330,9 @@ int intersectionSign(const ApproximateIsometry& T,
 //  0: a and b are guaranteed not to intersect.
 //  1: a and b are guaranteed to intersect.
 //  INDETERMINATE: This function does not guarantee anything.
-// This function returns
-// - 0 If all such pairs intersect.
-// - 1 If all such pairs don't intersect.
-// - INDETERMINATE: If the function does not guarantee intersection or non-intersection.
 int areIntersecting(const ApproximateIsometry& T,
                     Interval& I, Interval& J) {
-    if (I.r >= M_PI or J.r >= M_PI)
+    if (I.r >= pi.l or J.r >= pi.l)
         return INDETERMINATE; // We do not handle these cases.
     int x = halfEquatorsIntersection(T);
     if (x == INDETERMINATE)

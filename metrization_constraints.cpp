@@ -19,10 +19,10 @@ using namespace std;
 Interval quadrilateralConstraint(Interval I) {
     if (I.empty())
         return EMPTY_INTERVAL;
-    const static double eps = 1e-10;
-    static auto f = [](double x) { return 2*atan(0.5 / tan(x/2)); };
-    return Interval(f(I.r) - eps, f(I.l) + eps);
-} // TODO: Float computation
+
+    static auto f = [](double x) { return 2 * atan2(cos(x/2), 2*sin(x/2)); };
+    return Interval(f(I.r) - 1e-10, f(I.l) + 1e-10);
+}
 
 // I, J are intervals strictly contained [0, \ell_T].
 // Let ABCDE be a spherical pentagon with angles equal to 120.
@@ -37,11 +37,11 @@ Interval pentagon1Constraint(const Interval& I, const Interval& J) {
             cos(x) + cos(y) + cos(x)*cos(y) - 2*sin(x)*sin(y));
     };
 
-    double high = f(I.l, J.l);
     double low = f(I.r, J.r);
+    double high = f(I.l, J.l);
 
-    return acos(Interval(low, high));
-} // TODO: Float computation
+    return acos(Interval(low - 1e-10, high + 1e-10));
+}
 
 // I, J are intervals strictly contained [0, \ell_T].
 // Let ABCDE be a spherical pentagon with angles equal to 120.
@@ -52,37 +52,25 @@ Interval pentagon2Constraint(const Interval& I, const Interval& J) {
         return EMPTY_INTERVAL;
 
     static auto get_theta = [](double x) {
-        return atan(2*sin(x) / (1+cos(x)));
-    };
-
-    static auto get_lambda = [](double x) {
-        return 2*sin(x) / sin(get_theta(x));
+        return atan2(2*sin(x), 1+cos(x));
     };
 
     static auto f = [&](double x, double z) {
-        return (2*cos(z)-1.0/3-cos(x))/get_lambda(x);
+        double cx = cos(x);
+        double lambda = sqrt(5.0 + 2.0 * cx - 3.0 * cx * cx);
+        return (2*cos(z)-1.0/3-cx) / lambda;
     };
 
     double low = f(I.l, J.r);
     double high = f(I.r, J.l);
-
-    // Applying acos on [low, high] is wrong here, hence we do the
-    // computation explicitly. TODO: Check.
-
-    if (low > 1 or high < -1)
-        return EMPTY_INTERVAL;
-
-    double l = (high < 1) ?  acos(high) : 0;
-    l -= get_theta(I.r);
-    double r = (low > -1) ? acos(low) : pi.r;
-    r -= get_theta(I.l);
-    Interval K(l, r);
+    Interval K = acos(Interval(low - 1e-10, high + 1e-10))
+               - Interval(get_theta(I.l) - 1e-10, get_theta(I.r) + 1e-10);
 
     const static double ellT = acos(-1.0/3);
-    K.intersect(Interval(0, ellT));
+    K.intersect(Interval(0, ellT + 1e-10));
 
     return K;
-} // TODO: Float computation
+}
 
 
 bool refineMetrizationConvexContinent(MetrizedNet& net,
@@ -214,11 +202,11 @@ bool checkPinAngles(const MetrizedNet& net) {
         Interval scal_prod = iso({0, 0, 1})[2];
 
         // scal_prod <= -1/2 is equivalent to the condition on the angle at the pin.
-        if (scal_prod.l > -0.5 + 1e-8)
+        if (scal_prod.l > -0.5 + 1e-10)
             return false;
     }
     return true;
-} // TODO: Float computation
+}
 
 // Assume that you know the lengths of k-1 sides of a non-convex face
 // with k sides. This function determines (robustly) whether they
@@ -305,7 +293,7 @@ bool checkNonIntersection(MetrizedNet& net) {
         }
     }
     return true;
-} // TODO: Float computation
+}
 
 // The face must be convex.
 // Set the dart root to (e_1, e_2).
@@ -427,7 +415,7 @@ vector<double> maxDistanceToPin(const MetrizedNet& net) {
 // almost only in degenerate cases (e.g., when q1, q2 belong to the same
 // equator).
 bool checkPinsAntipodality2(const MetrizedNet& net) {
-    auto euclidean_to_spherical = [&](Interval d) { return 2*asin(d / 2); };
+    auto euclidean_to_spherical = [&](Interval d) { return 2 * asin(d / 2); };
     const MarkedCombinatorialMap& A = net.A;
 
     vector<double> len_to_pin = maxDistanceToPin(net);

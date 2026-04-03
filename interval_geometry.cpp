@@ -8,10 +8,6 @@ using namespace std;
 #include "interval_arithmetic.cpp"
 #include "quaternions.cpp"
 
-double deg2rad(int deg) {
-    return deg * pi.mid() / 180;
-}
-
 
 // Element of R^3.
 typedef array<double, 3> Point;
@@ -81,6 +77,8 @@ ApproximateIsometry operator *(const ApproximateIsometry& S, const ApproximateIs
 ApproximateIsometry inverse(const ApproximateIsometry& S) {
     return {conj(S.q), S.uncertainty + 1e-10};
 }
+
+double deg2rad(int deg) { return deg * pi.mid() / 180; }
 
 // Let v = (e_1, e_2).
 // This function returns (a superset of) R(v, theta).

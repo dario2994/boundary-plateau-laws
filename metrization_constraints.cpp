@@ -21,7 +21,7 @@ Interval quadrilateralConstraint(Interval I) {
         return EMPTY_INTERVAL;
 
     static auto f = [](double x) { return 2 * atan2(cos(x/2), 2*sin(x/2)); };
-    return Interval(f(I.r) - 1e-10, f(I.l) + 1e-10);
+    return paddedInterval(f(I.r), f(I.l));
 }
 
 // I, J are intervals strictly contained [0, \ell_T].
@@ -40,7 +40,7 @@ Interval pentagon1Constraint(const Interval& I, const Interval& J) {
     double low = f(I.r, J.r);
     double high = f(I.l, J.l);
 
-    return acos(Interval(low - 1e-10, high + 1e-10));
+    return acos(paddedInterval(low, high));
 }
 
 // I, J are intervals strictly contained [0, \ell_T].
@@ -63,8 +63,8 @@ Interval pentagon2Constraint(const Interval& I, const Interval& J) {
 
     double low = f(I.l, J.r);
     double high = f(I.r, J.l);
-    Interval K = acos(Interval(low - 1e-10, high + 1e-10))
-               - Interval(get_theta(I.l) - 1e-10, get_theta(I.r) + 1e-10);
+    Interval K = acos(paddedInterval(low, high))
+               - paddedInterval(get_theta(I.l), get_theta(I.r));
 
     const static double ellT = acos(-1.0/3);
     K.intersect(Interval(0, ellT + 1e-10));
@@ -246,7 +246,7 @@ bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
         ApproximatePoint T2 = T({0, 0, 1});
         if (!T0[2].containsZero() or !T1[2].containsZero()
               or !T2[0].containsZero() or !T2[1].containsZero()
-              or !(T2[2]-1).containsZero()) {
+              or !(T2[2] - 1).containsZero()) {
             net.length(d) = EMPTY_INTERVAL;
             return false;
         }
@@ -440,7 +440,7 @@ bool checkPinsAntipodality2(const MetrizedNet& net) {
             for (auto p1: {start1, end1}) for (auto p2: {start2, end2}) {
                 Interval euclidean_dist = norm(p1-p2);
                 Interval spherical_dist = euclidean_to_spherical(euclidean_dist);
-                if (l1 + l2 + spherical_dist < pi)
+                if (Interval(l1) + Interval(l2) + spherical_dist < pi)
                     return false;
             }
         }
@@ -522,7 +522,7 @@ bool checkFacesAreBoundaries(const MetrizedNet& net) {
             int cnt = 0;
             for (const Dart& d: f) {
                 int x = intersectionSign(T*net.getIsometry(root, d),
-                                         Interval(1), net.length(d));
+                                         1, net.length(d));
                 if (x == INDETERMINATE) {
                     ambiguous = true;
                     break;

@@ -14,7 +14,7 @@ struct Interval {
 
     Interval(): l(-1e9), r(1e9) {}
     Interval(double _l, double _r): l(_l), r(_r) {}
-    Interval(double x): l(x-1e-10), r(x+1e-10) {} // TODO: This is "wrong".
+    Interval(double x): l(x), r(x) {}
 
     bool empty() const { return r < l; }
 
@@ -35,6 +35,14 @@ struct Interval {
 const Interval EMPTY_INTERVAL(0, -1);
 const Interval pi(nextafter(numbers::pi, -INFINITY),
                   nextafter(numbers::pi, INFINITY));
+
+Interval paddedInterval(double l, double r) {
+    return Interval(l - 1e-10, r + 1e-10);
+}
+
+Interval paddedInterval(double x) {
+    return paddedInterval(x, x);
+}
 
 // I < J: i < j for all i in I and all j in J.
 bool operator <(const Interval& I, const Interval& J) {

@@ -71,6 +71,8 @@ struct PathStep {
     static PathStep rot(int _deg) {
         PathStep step; step.type = 'R'; step.deg = _deg; return step;
     }
+    // TODO: Sarebbe ideale cancellare questo del tutto!
+    // Viene usato soltanto una volta.
     static PathStep exp(double _len) {
         PathStep step; step.type = 'E'; step.len = _len; return step;
     }
@@ -158,7 +160,7 @@ class MetrizedNet {
                 if (q == 2)
                     I.intersect(pi);
                 if (q == 3)
-                    I.intersect(Interval(ell_T));
+                    I.intersect(paddedInterval(ell_T));
                 if (q == 4)
                     I.intersect(Interval(0.01, pi.r - 1e-3));
                 if (q == 5)

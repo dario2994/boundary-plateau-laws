@@ -91,7 +91,7 @@ ApproximateIsometry basicRotation(int theta) {
 // This function returns (a superset of) E(\rot_\theta v, len)
 ApproximateIsometry basicTranslation(int theta_deg, Interval len) {
     double theta_rad = deg2rad(theta_deg);
-    Interval len2 = 0.5 * len;
+    Interval len2 = len / 2;
     return ApproximateIsometry({cos(len2.mid()), 0,
             -sin(theta_rad) * sin(len2.mid()), cos(theta_rad) * sin(len2.mid())}, len.len() / 2 + 1e-10);
 }

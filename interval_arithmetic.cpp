@@ -8,7 +8,13 @@ using namespace std;
 static const int INDETERMINATE = -9832521;
 
 // Struct maintaining a closed interval [l, r].
-// In many of our applications, the interval is a subset of [0, pi].
+// All operations are *guaranteed*.
+// For example, I + J is guaranteed to be a *superset* of
+// {x + y: x \in I, y \in J}.
+// The same is true for all operations.
+// We guarantee this by adding a padding of 1e-10 to all operations.
+// Observe that 1e-10 is way more than the machine precision in the range of
+// values we care about.
 struct Interval {
     double l, r;
 
@@ -133,7 +139,7 @@ Interval operator /(const Interval& I, const Interval& J) {
     return I * paddedInterval(1.0 / J.r, 1.0 / J.l);
 }
 
-// {x²: x\in I}
+// {x²: x \in I}
 Interval square(Interval I) {
     if (I.empty())
         return EMPTY_INTERVAL; // empty
@@ -144,17 +150,18 @@ Interval square(Interval I) {
     return Interval(min(a, b), max(a, b));
 }
 
-// sqrt(I)
+// {x >= 0: x² \in I\}
 Interval sqrt(Interval I) {
     if (I.empty())
         return EMPTY_INTERVAL;
-    assert(I.l >= 0);
+    if (I.l < 0)
+        I.l = 0;
     return paddedInterval(sqrt(I.l), sqrt(I.r));
 }
 
 
-// If cos(theta) \in I, then theta belongs to the returned interval.
-// Returned interval is a subset of [0, pi.r]
+// {0 <= x < pi: cos(x) \in I}
+// The returned interval is a subset of [0, pi.r]
 Interval acos(Interval I) {
     I.intersect(Interval(-1, 1));
     if (I.empty())
@@ -167,8 +174,8 @@ Interval acos(Interval I) {
     return J;
 }
 
-// If sin(theta) \in I, then theta belongs to the returned interval.
-// Returned interval is a subset of [-pi.r/2, pi.r/2]
+// {-pi/2 <= x <= pi/2: sin(x) \in I}
+// The returned interval is a subset of [-pi.r/2, pi.r/2].
 Interval asin(Interval I) {
     I.intersect(Interval(-1, 1));
     if (I.empty())
@@ -179,7 +186,7 @@ Interval asin(Interval I) {
     double r = asin(I.r);
 
     Interval J = paddedInterval(l, r);
-    J.intersect(Interval(-pi.r / 2.0, pi.r / 2.0));
+    J.intersect(Interval((-pi / 2.0).r, (pi / 2.0).r));
     return J;
 }
 

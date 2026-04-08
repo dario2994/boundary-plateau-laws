@@ -94,7 +94,7 @@ Interval intersection(Interval I, const Interval& J) {
 Interval operator +(const Interval& I, const Interval& J) {
     if (I.empty() or J.empty())
         return EMPTY_INTERVAL;
-    return Interval(I.l + J.l, I.r + J.r);
+    return paddedInterval(I.l + J.l, I.r + J.r);
 }
 
 Interval& operator +=(Interval& I, const Interval& J) {
@@ -107,7 +107,7 @@ Interval& operator +=(Interval& I, const Interval& J) {
 Interval operator -(const Interval& I, const Interval& J) {
     if (I.empty() or J.empty())
         return EMPTY_INTERVAL;
-    return Interval(I.l - J.r, I.r - J.l);
+    return paddedInterval(I.l - J.r, I.r - J.l);
 }
 
 // I*J
@@ -130,7 +130,7 @@ Interval operator /(const Interval& I, const Interval& J) {
     assert(!J.containsZero());
     if (I.empty() or J.empty())
         return EMPTY_INTERVAL;
-    return I * Interval(1.0 / J.r, 1.0 / J.l);
+    return I * paddedInterval(1.0 / J.r, 1.0 / J.l);
 }
 
 // {x²: x\in I}
@@ -149,7 +149,7 @@ Interval sqrt(Interval I) {
     if (I.empty())
         return EMPTY_INTERVAL;
     assert(I.l >= 0);
-    return Interval(sqrt(I.l), sqrt(I.r));
+    return paddedInterval(sqrt(I.l), sqrt(I.r));
 }
 
 
@@ -162,8 +162,7 @@ Interval acos(Interval I) {
     double l = acos(I.r);
     double r = acos(I.l);
 
-    const static double eps = 1e-10;
-    Interval J(l-eps, r+eps);
+    Interval J = paddedInterval(l, r);
     J.intersect(Interval(0, pi.r));
     return J;
 }
@@ -179,23 +178,21 @@ Interval asin(Interval I) {
     double l = asin(I.l);
     double r = asin(I.r);
 
-    const static double eps = 1e-10;
-    Interval J(l - eps, r + eps);
+    Interval J = paddedInterval(l, r);
     J.intersect(Interval(-pi.r / 2.0, pi.r / 2.0));
     return J;
 }
 
 
-// Returns whether x+2pik belongs to I for some integer k.
-// 0 <= x < 2pi.
-bool containsMod2pi(Interval I, double x) {
+// If (I-x) contains a multiple of 2pi, this function is guaranteed to
+// return true.
+bool containsMod2pi(Interval I, Interval x) {
     if (I.empty())
         return false;
-    double lower = (I.l - x) / (2*M_PI);
-    double upper = (I.r - x) / (2*M_PI);
+    Interval J = (I - x) / (2 * pi);
 
-    int k_min = static_cast<int>(ceil(lower));
-    int k_max = static_cast<int>(floor(upper));
+    int k_min = static_cast<int>(ceil(J.l));
+    int k_max = static_cast<int>(floor(J.r));
 
     return k_min <= k_max;
 }
@@ -206,10 +203,13 @@ Interval sin(const Interval& I) {
         return EMPTY_INTERVAL;
     double sl = sin(I.l), sr = sin(I.r);
 
-    double l = containsMod2pi(I, 3*M_PI/2) ? -1 : min(sl, sr);
-    double r = containsMod2pi(I, M_PI/2) ? 1 : max(sl, sr);
+    double l = containsMod2pi(I, 3*pi/2) ? -1 : min(sl, sr);
+    double r = containsMod2pi(I, pi/2) ? 1 : max(sl, sr);
 
-    return Interval(l, r);
+    Interval J = paddedInterval(l, r);
+    J.intersect(Interval(-1, 1));
+
+    return J;
 }
 
 // cos(I)
@@ -218,10 +218,13 @@ Interval cos(const Interval& I) {
         return EMPTY_INTERVAL;
     double sl = cos(I.l), sr = cos(I.r);
 
-    double l = containsMod2pi(I, M_PI) ? -1 : min(sl, sr);
+    double l = containsMod2pi(I, pi) ? -1 : min(sl, sr);
     double r = containsMod2pi(I, 0) ? 1 : max(sl, sr);
 
-    return Interval(l, r);
+    Interval J = paddedInterval(l, r);
+    J.intersect(Interval(-1, 1));
+
+    return J;
 }
 
 // Returns 1, -1, INDETERMINATE if respectively I is an interval of positive values,

@@ -55,6 +55,12 @@ Quaternion<T> conj(const Quaternion<T>& z) {
     return Quaternion<T>(z[0], -z[1], -z[2], -z[3]);
 }
 
+template<typename T>
+Quaternion<T> operator /(const Quaternion<T>& z, T s) {
+    return Quaternion<T>(z[0] / s, z[1] / s, z[2] / s, z[3] / s);
+}
+
+
 
 template<typename T>
 ostream& operator <<(ostream& out, const Quaternion<T>& q) {

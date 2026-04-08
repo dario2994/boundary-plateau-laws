@@ -37,13 +37,14 @@ class ApproximateIsometry {
 
     // Make interval with uncertainty
     Interval miwu(double mid) const {
-        return Interval(mid - uncertainty, mid + uncertainty);
+        return paddedInterval(mid - uncertainty, mid + uncertainty);
     }
   public:
     ApproximateIsometry(const Quaternion<double>& _q, double _uncertainty) : q(_q), uncertainty(_uncertainty) {
         double n2 = norm2(q);
         assert(1-1e-10 <= n2 and n2 <= 1 + 1e-10);
         assert(0 < uncertainty);
+        q = q / n2;
     }
 
     // Let A be an approximate isometry.
@@ -56,7 +57,7 @@ class ApproximateIsometry {
 
     ApproximateIsometry& operator *=(const ApproximateIsometry& S) {
         q *= S.q;
-        uncertainty += S.uncertainty;
+        uncertainty += S.uncertainty + 1e-10;
         return *this;
     }
     // Let A, B be two approximate isometries.
@@ -89,8 +90,8 @@ ApproximateIsometry basicRotation(int theta) {
 
 // Let v = (e_1, e_2).
 // This function returns (a superset of) E(\rot_\theta v, len)
-ApproximateIsometry basicTranslation(int theta_deg, Interval len) {
-    double theta_rad = deg2rad(theta_deg);
+ApproximateIsometry basicTranslation(int theta, Interval len) {
+    double theta_rad = deg2rad(theta);
     Interval len2 = len / 2;
     return ApproximateIsometry({cos(len2.mid()), 0,
             -sin(theta_rad) * sin(len2.mid()), cos(theta_rad) * sin(len2.mid())}, len.len() / 2 + 1e-10);
@@ -245,7 +246,7 @@ Interval firstIntersectionWithEquator(const ApproximateIsometry& T) {
 
     double min_theta = min(atan2(Y.l, X.r), atan2(Y.r, X.r));
     double max_theta = max(atan2(Y.l, X.l), atan2(Y.r, X.l));
-    return Interval(min_theta, max_theta);
+    return paddedInterval(min_theta, max_theta);
 }
 
 // T is an approximate isometry.

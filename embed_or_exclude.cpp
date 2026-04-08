@@ -166,13 +166,6 @@ vector<Dart> findFreeParametersNonConvex(const MarkedCombinatorialMap& A) {
     return res;
 }
 
-// TODO: Remove all this stuff.
-vector<pair<long long, MetrizedNet>> virtual_stack;
-long long begin_timestamp = 0;
-long long last_timestamp = 0;
-const long long timestamp_diff = 10*60; // Ten minutes.
-const long long interesting_duration = 60; // One minute.
-
 // Parameters for searchApproximateMetrization.
 struct SAMParams {
     vector<Dart> convex_fixed_darts;
@@ -183,47 +176,15 @@ struct SAMParams {
     bool special_rigidity_736;
 };
 
-
-// TODO: This should return only an optional<MetrizedNet>
-
 // Takes an approximately metrized once-derived net and returns:
-//  0: No refinement of the given approximate metrization can be realized by
-//     a stable cone.
-//  1: The current approximate metrization is precise enough (error 1e-5) and
-//     the metrized net has antipodal pins, correct angles, and no side
-//     extremely short.
-//  INDETERMINATE: The program stopped because the execution was taking
-//                 too long.
-pair<int, optional<MetrizedNet>> searchApproximateMetrization(
+//  Nothing: No refinement of the given approximate metrization is the link
+//           of a stable cone.
+//  A net: A refinement of the given approximate metrization that is precise enough
+//         (error 1e-5), has antipodal pins, correct angles, and no extremely
+//         short side.
+optional<MetrizedNet> searchApproximateMetrization(
         MetrizedNet net,
         const SAMParams& params) {
-    // TODO: Remove this (to be done when everything else is done)
-    if (false and get_time() - last_timestamp > timestamp_diff * 1e9) {
-        last_timestamp = get_time(); // Even if nothing is printed.
-        int it = -1;
-        for (int i = 0; i < ssize(virtual_stack); i++) {
-            if (get_time() - virtual_stack[i].first > interesting_duration * 1e9)
-                it = i;
-        }
-        for (int i = 0; i <= it; i++) {
-            long long duration = get_time() - virtual_stack[i].first;
-            duration /= 1e9;
-            duration /= 60; // In minutes.
-            auto zet = virtual_stack[i].second;
-            cout << duration << "min: ";
-            for (auto d: params.convex_fixed_darts)
-                cout << zet.length(d) << " ";
-            cout << endl;
-        }
-        if (it != -1) {
-            auto zet = virtual_stack[it].second;
-            for (auto d: net.A.darts())
-                if (d.from < d.to)
-                    cout << d << ": " << zet.length(d) << endl;
-            cout << endl;
-        }
-    }
-
     const MarkedCombinatorialMap& A = net.A;
 
     if (params.special_rigidity_736) {
@@ -231,17 +192,10 @@ pair<int, optional<MetrizedNet>> searchApproximateMetrization(
         net.length(A.dart(12)).intersect(net.length(A.dart(16)));
     }
 
-    // If the computation takes too long, we skip.
-    // The slowest net, which is 28, requires TODO hours.
-    // TODO: Remove this.
-    static const long long one_second = 1e9;
-    static const long long one_minute = 60*one_second;
-    [[maybe_unused]] static const long long one_hour = 60*one_minute;
-    if (get_time() - params.begin_time > 1000*one_hour)
-        return {INDETERMINATE, nullopt};
 
+    // TODO: Make this more reasonable.
     if (net.totalError() < -0.5)
-        return {0, nullopt};
+        return nullopt;
 
     if (params.forbidden_metrization.has_value()) {
         bool is_refinement = true;
@@ -251,29 +205,29 @@ pair<int, optional<MetrizedNet>> searchApproximateMetrization(
                 params.forbidden_metrization->length(d));
         }
         if (is_refinement)
-            return {0, nullopt};
+            return nullopt;
     }
 
     if (!refineMetrizationConvexContinent(net, params.convex_fixed_darts))
-        return {0, nullopt};
+        return nullopt;
 
     if (!refineMetrizationNonConvexFaces(net))
-        return {0, nullopt};
+        return nullopt;
 
     if (!checkPinsAntipodality(net))
-        return {0, nullopt};
+        return nullopt;
 
     if (!checkPinAngles(net))
-        return {0, nullopt};
+        return nullopt;
 
     if (!checkNonIntersection(net))
-        return {0, nullopt};
+        return nullopt;
 
     if (!checkPinOutsideConvexFaces(net))
-        return {0, nullopt};
+        return nullopt;
 
     if (!checkLengthLowerbound(net))
-        return {0, nullopt};
+        return nullopt;
 
     bool run_now_pathological_checks = net.totalError() < 1e-2
                                        and params.run_pathological_checks;
@@ -286,16 +240,16 @@ pair<int, optional<MetrizedNet>> searchApproximateMetrization(
         //  - They are _almost_ always implied by other checks.
         //  - They are slow.
         if (!checkPinsAntipodality2(net))
-            return {0, nullopt};
+            return nullopt;
 
         if (!checkFacesAreBoundaries(net))
-            return {0, nullopt};
+            return nullopt;
     }
 
     // If we reached the desired precision of the metrization, we
     // end the search.
     if (net.totalError() < 1e-5)
-        return {1, net};
+        return net;
 
 
     // Computes the maximum error on the lengths at the boundary of
@@ -337,14 +291,12 @@ pair<int, optional<MetrizedNet>> searchApproximateMetrization(
                 I = Interval(m, I.r);
         }
 
-        virtual_stack.emplace_back(get_time(), new_net);
-        auto outcome = searchApproximateMetrization(new_net, params);
-        virtual_stack.pop_back();
-        if (outcome.first != 0)
-            return outcome;
+        auto maybe_res = searchApproximateMetrization(new_net, params);
+        if (maybe_res)
+            return maybe_res;
     }
 
-    return {0, nullopt};
+    return nullopt;
 }
 
 void saveMetrizedNet(const MetrizedNet& net, string picture, string data) {
@@ -363,14 +315,10 @@ void relaxMetrization(MetrizedNet& net, double len) {
     }
 }
 
-// TODO: INDETERMINATE should not be an option.
-
 // Return values:
 // 0: Impossible.
 // 1: Possible.
 // 2: Possible and rigid.
-// INDETERMINATE: The computation was taking too long and it was interrupted
-//                before it could prove anything.
 int processNet(int net_id) {
     static const set<int> possible_nets = {
         28, 99, 158, 182, 250,
@@ -399,24 +347,11 @@ int processNet(int net_id) {
         return 0;
 
     if (possible_nets.count(net_id)) {
-        // TODO: This should go away.
-        // The following lines use an existing metrization to skip the
-        // existence proof.
-        // string metrized_net_filename = "data/metrized_nets/" + to_string(net_id) + ".txt";
-        // if (possible_nets.count(net_id) and
-        //         filesystem::exists(metrized_net_filename)) {
-        //     ifstream metrized_net_in(metrized_net_filename);
-        //     MetrizedNet net2 = parseMetrizedNet(metrized_net_in);
-        // }
-
         // Existence
         params.begin_time = get_time();
         auto res = searchApproximateMetrization(net, params);
-        assert(res.first == 1 or res.first == INDETERMINATE);
-        if (res.first == INDETERMINATE)
-            return INDETERMINATE;
-        assert(res.second.has_value());
-        MetrizedNet net2 = *res.second;
+        assert(res.has_value());
+        MetrizedNet net2 = *res;
         saveMetrizedNet(net2,
             "data/metrized_nets/" + to_string(net_id) + "_visualization.txt",
             "data/metrized_nets/" + to_string(net_id) + ".txt");
@@ -437,21 +372,18 @@ int processNet(int net_id) {
         }
         params.forbidden_metrization.emplace(net2);
         params.begin_time = get_time();
-        int res2 = searchApproximateMetrization(net, params).first;
-        assert(res2 == 0 or res2 == INDETERMINATE);
-        if (res2 == INDETERMINATE)
-            return INDETERMINATE;
+        auto res2 = searchApproximateMetrization(net, params);
+        assert(!res2.has_value());
+
         if (net_id == 736) {
             params.special_rigidity_736 = true;
             params.begin_time = get_time();
-            int res3 = searchApproximateMetrization(net, params).first;
-            assert(res3 == INDETERMINATE or res3 == 0);
-            if (res3 == INDETERMINATE)
-                return INDETERMINATE;
+            auto res3 = searchApproximateMetrization(net, params);
+            assert(!res3.has_value());
             params.forbidden_metrization.reset();
             auto res4 = searchApproximateMetrization(net, params);
-            assert(res4.first == 1);
-            saveMetrizedNet(*res4.second,
+            assert(res4.has_value());
+            saveMetrizedNet(*res4,
                 "data/metrized_nets/" + to_string(net_id) + "_visualization.txt",
                 "data/metrized_nets/" + to_string(net_id) + ".txt");
             return 2;
@@ -459,9 +391,9 @@ int processNet(int net_id) {
         return 2;
     } else {
         params.begin_time = get_time();
-        int res = searchApproximateMetrization(net, params).first;
-        assert(res == 0 or res == INDETERMINATE);
-        return res;
+        auto res = searchApproximateMetrization(net, params);
+        assert(!res.has_value());
+        return 0;
     }
 }
 
@@ -471,7 +403,7 @@ void testingSearchApproximateMetrization(int test_num = -1) {
         int net_id;
         bool run_pathological_checks;
         optional<vector<Interval>> initial_metrization;
-        int expected_outcome;
+        bool expected_outcome;
         double expected_duration; // seconds;
         optional<vector<double>> expected_metrization;
     };
@@ -524,11 +456,11 @@ void testingSearchApproximateMetrization(int test_num = -1) {
         }
 
         StopWatch stopwatch;
-        auto [outcome, maybe_metrized_net] = searchApproximateMetrization(net, params);
+        auto maybe_metrized_net = searchApproximateMetrization(net, params);
         double elapsed_time = stopwatch.get();
 
-        assert(outcome == tc.expected_outcome);
-        cout << "outcome = " << outcome << ", ";
+        assert(maybe_metrized_net.has_value() == tc.expected_outcome);
+        cout << "outcome = " << maybe_metrized_net.has_value() << ", ";
         cout << "elapsed = "<< elapsed_time;
         double time_diff = (tc.expected_duration - elapsed_time) / tc.expected_duration;
         if (time_diff > 0.1)
@@ -536,7 +468,7 @@ void testingSearchApproximateMetrization(int test_num = -1) {
         if (time_diff < -0.1)
             cout << " (degraded from " << tc.expected_duration << ")";
 
-        if (outcome == 1) {
+        if (maybe_metrized_net.has_value()) {
             const double acceptable_total_error = 1e-5;
             assert(maybe_metrized_net->totalError() < acceptable_total_error);
             if (tc.expected_metrization) {
@@ -597,8 +529,6 @@ int main() {
             clog << "POSSIBLE";
         else if (outcome == 2)
             clog << "RIGID";
-        else if (outcome == INDETERMINATE)
-            clog << "INDETERMINATE";
         else assert(0);
         clog << endl;
 

@@ -330,7 +330,7 @@ int intersectionSign(const ApproximateIsometry& T,
 //  1: a and b are guaranteed to intersect.
 //  INDETERMINATE: This function does not guarantee anything.
 int areIntersecting(const ApproximateIsometry& T,
-                    Interval& I, Interval& J) {
+                    const Interval& I, const Interval& J) {
     if (I.r >= pi.l or J.r >= pi.l)
         return INDETERMINATE; // We do not handle these cases.
     int x = halfEquatorsIntersection(T);

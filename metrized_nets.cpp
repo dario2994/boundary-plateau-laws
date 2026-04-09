@@ -179,6 +179,13 @@ class MetrizedNet {
         return res;
     }
 
+    bool isImpossible() const {
+        for (const Interval& I: _lengths)
+            if (I.empty())
+                return true;
+        return false;
+    }
+
     ApproximateIsometry isometryFromPath(const vector<PathStep>& path) const {
         StopWatch _("isometryFromPath");
 

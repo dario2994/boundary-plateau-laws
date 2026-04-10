@@ -54,7 +54,7 @@ bool isShorterThanPi(const MarkedCombinatorialMap& A, const Dart& d) {
     return false;
 }
 
-// A step in a path on a sphere made of rotations and translations.
+// A step in a path on the sphere made of rotations and translations.
 //
 // - PathStep('R', deg): Corresponds to a rotation by an of deg degrees.
 // - PathStep('E', len): Corresponds to the exponential for length len.
@@ -107,6 +107,20 @@ void appendToPath(vector<PathStep>& path, const PathStep& op) {
         path.back().len += op.len;
 }
 
+// A class representing a family of geodesic nets on the sphere.
+// The family consists of the nets that are combinatorially a give marked
+// combinatorial map, have all angles of 120 degrees, and have lengths of
+// edges constrained to belong to an interval (one interval per edge).
+//
+// A realization of the MetrizedNet is an element of the family identified
+// by the metrized net.
+//
+// The crucial method offered by this class is the following.
+// Fixed a realization, identify each dart with the element of T^1S^2 given by
+// its initial point and its direction.
+// Given two darts, compute the isometry that sends one into the other.
+// We return an approximate isometry and we guarantee that, for any realization,
+// the exact isometry is represented by this approximate isometry.
 class MetrizedNet {
   public:
     const MarkedCombinatorialMap A;

@@ -80,15 +80,15 @@ print(asym_factor)
 
 assert(factors[2].subs(x, 1).subs(z, 33) == factors[2].subs(x, 33).subs(z, 1))
 print("The third factor is symmetric in x and z.")
-print("Since P(x, y, z) = P(z, y, x) = 0. Either the third factor is zero or the second factor is zero and remains zero if we swap x and z. But if x >= z than the second factor is strictly positive, thus the third factor must be 0.")
+print("Since P(x, y, z) = P(z, y, x) = 0, either the third factor is zero or the second factor is zero and remains zero if we swap x and z. But if x >= z than the second factor is strictly positive, thus the third factor must be 0.")
 
 Q = factors[2]
 print("We have shown that Q(x, y, z) = 0, where Q is the polynomial")
 print(Q)
 print()
 
-print("Now, we move our attention to the configuration appearing in net 736. There are two pentagons sharing a side and two other sides with two quadrilaterals. Thus, if a, b, c are the three consecutive sides of one of the pentagons and b is the one shared with the other pentagon, it must hold Q(x, y, z) = Q(1/(2x), y, 1/(2z)=0.")
-print("By taking the resultant of this two polynomials (with respect to y) we deduce that x, z satisfy R(x, z) = 0 where R is the polynomial:")
+print("Now, we move our attention to the configuration appearing in net 736. There are two pentagons sharing a side and two other sides with two quadrilaterals. Thus, if a, b, c are the three consecutive sides of one of the pentagons and b is the one shared with the other pentagon, it must hold Q(x, y, z) = Q(1/(2x), y, 1/(2z))=0.")
+print("By taking the resultant of these two polynomials (with respect to y) we deduce that x, z satisfy R(x, z) = 0 where R is the polynomial:")
 Q2 = (16*x**2*z**2*Q.subs(x, 1/(2*x)).subs(z, 1/(2*z))).expand()
 R = resultant(Q, Q2, y)
 print(R)

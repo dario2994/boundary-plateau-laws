@@ -10,6 +10,7 @@ using namespace std;
 #include "interval_geometry.cpp"
 #include "utils.cpp"
 
+// TODO: This functions are duplicated.
 bool containsBiangle(const MarkedCombinatorialMap& A) {
     for (const vector<Dart>& f: A.faces()) {
         if (A.faceType(f) == pair<int,int>{2, 0})
@@ -55,9 +56,8 @@ bool isShorterThanPi(const MarkedCombinatorialMap& A, const Dart& d) {
 
 // A step in a path on a sphere made of rotations and translations.
 //
-// - PathStep('R', t): Corresponds to a rotation by t (\rot_t in the paper).
-// - PathStep('E', t): Corresponds to the exponential for time t
-//   (\exp_t in the paper).
+// - PathStep('R', deg): Corresponds to a rotation by an of deg degrees.
+// - PathStep('E', len): Corresponds to the exponential for length len.
 //
 // Additionally, there's also PathStep(Dart) which corresponds
 // to PathStep('E', Dart.len()).
@@ -210,7 +210,6 @@ class MetrizedNet {
     void computeOptimalPaths(const Dart& root) const {
         if (!optimal_path[root.id].empty())
             return;
-        StopWatch _("computeOptimalPaths"); // TODO: Remove all the StopWatch instances.
         // Run Dijkstra from the root.
         // The cost of traversing a dart is the length of the corresponding
         // interval.

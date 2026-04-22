@@ -152,7 +152,7 @@ bool proveInstabilityOneParameterNet(int net_id) {
     if (rigid_nets_flexible_pins.count(net_id)) {
         ifstream metrized_net_in("data/metrized_nets/"+ to_string(net_id) + ".txt");
         assert(metrized_net_in.is_open());
-        MetrizedNet net = parseMetrizedNet(metrized_net_in);
+        ApproximatelyMetrizedNet net = parseApproximatelyMetrizedNet(metrized_net_in);
         param_region = validPinEdgeLength(net_id, net);
     } else if (net_id == 1029) // goggles
         param_region = {0., acos(1.0/3) / 2};

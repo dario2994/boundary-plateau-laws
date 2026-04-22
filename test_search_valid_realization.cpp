@@ -56,7 +56,7 @@ void testingSearchApproximateMetrization(int test_num = -1) {
         params.special_rigidity_736 = false;
         params.forbidden_metrization = nullopt;
 
-        MetrizedNet net(A);
+        ApproximatelyMetrizedNet net(A);
 
         if (tc.initial_metrization) {
             assert(ssize(*tc.initial_metrization) == ssize(params.convex_fixed_darts));

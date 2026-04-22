@@ -1,5 +1,5 @@
-#ifndef SEARCH_APPROXIMATE_METRIZATION
-#define SEARCH_APPROXIMATE_METRIZATION
+#ifndef SEARCH_VALID_REALIZATION
+#define SEARCH_VALID_REALIZATION
 
 #define _USE_MATH_DEFINES
 #include <bits/stdc++.h>
@@ -142,18 +142,18 @@ struct SAMParams {
     vector<Dart> non_convex_fixed_darts;
     long long begin_time;
     bool run_pathological_checks;
-    optional<MetrizedNet> forbidden_metrization;
+    optional<ApproximatelyMetrizedNet> forbidden_metrization;
     bool special_rigidity_736;
 };
 
-// Takes an approximately metrized once-derived net and returns:
-//  Nothing: No refinement of the given approximate metrization is the link
-//           of a stable cone.
-//  A net: A refinement of the given approximate metrization that is precise enough
-//         (error 1e-5), has antipodal pins, correct angles, and no extremely
-//         short side.
-optional<MetrizedNet> searchApproximateMetrization(
-        MetrizedNet net,
+// Takes an approximately metrized net and returns:
+// Nothing: We can prove that no refinement of the given approximately metrized
+//          net is the link of a minimizing cone.
+// A metrized net: A realization of the given approximately metrized net that
+//                 is (approximately) a stationary geodesic net with two
+//                 antipodal pins without short edges.
+optional<ApproximatelyMetrizedNet> searchValidRealization(
+        ApproximatelyMetrizedNet net,
         const SAMParams& params) {
     const MarkedCombinatorialMap& A = net.A;
 
@@ -260,7 +260,7 @@ optional<MetrizedNet> searchApproximateMetrization(
                 I = Interval(m, I.r);
         }
 
-        auto maybe_res = searchApproximateMetrization(new_net, params);
+        auto maybe_res = searchValidRealization(new_net, params);
         if (maybe_res)
             return maybe_res;
     }

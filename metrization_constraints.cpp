@@ -74,14 +74,14 @@ Interval pentagon2Constraint(const Interval& I, const Interval& J) {
 
 // If this function returns false, we can find a contradiction by repeatedly
 // enforcing the correctness of the angles of convex faces.
-// It modifies the metrized net.
+// It modifies the approximately metrized net.
 //
 // Method:
 // We repeat in a "propagate the inferences" fashion the following idea.
 // We choose a convex face with s sides.
 // We select s-3 of its edges and we use their lengths to compute bounds
 // on the lengths of the remaining edges. Then we enforce these bounds.
-bool refineMetrizationConvexContinent(MetrizedNet& net,
+bool refineMetrizationConvexContinent(ApproximatelyMetrizedNet& net,
                                       const vector<Dart>& initial_darts) {
     const MarkedCombinatorialMap& A = net.A;
 
@@ -161,9 +161,8 @@ bool refineMetrizationConvexContinent(MetrizedNet& net,
 
 
 // If this function returns false, we can show that there is no realization of
-// this metrized net such that all the equators that should pass through the
-// pins are concurrent.
-bool checkPinsAntipodality(const MetrizedNet& net) {
+// such that all the equators that should pass through the pins are concurrent.
+bool checkPinsAntipodality(const ApproximatelyMetrizedNet& net) {
     int q = ssize(net.A.concaveAngles());
     for (int i = 0; i < q; i++)
         for (int j = i+1; j < q; j++)
@@ -191,9 +190,9 @@ bool checkPinsAntipodality(const MetrizedNet& net) {
     return true;
 }
 
-// If this function returns false, then in any realization of this metrized net
-// the angle at the pins does not belong to [120, 240].
-bool checkPinAngles(const MetrizedNet& net) {
+// If this function returns false, then in any realization the angle at the pins
+// does not belong to [120, 240].
+bool checkPinAngles(const ApproximatelyMetrizedNet& net) {
     const MarkedCombinatorialMap& A = net.A;
 
     for (const auto& f: A.faces()) {
@@ -219,14 +218,14 @@ bool checkPinAngles(const MetrizedNet& net) {
 
 // If this function returns false, then there is a non-convex face that cannot
 // be realized with the correct angles as a closed curve.
-// It modifies the metrized net.
+// It modifies the approximately metrized net.
 //
 // Method:
 // Assume that you know the lengths of k-1 sides of a non-convex face
 // with k sides. This function determines (robustly) whether they
 // can be the boundary of a face with the desired angles  and enforces the right
 // length of the remaining side.
-bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
+bool refineMetrizationNonConvexFaces(ApproximatelyMetrizedNet& net) {
     const MarkedCombinatorialMap& A = net.A;
 
     for (Dart d: A.darts()) {
@@ -275,8 +274,8 @@ bool refineMetrizationNonConvexFaces(MetrizedNet& net) {
 }
 
 // If this function returns false, then there is a non-convex face that, in any
-// realization of this metrized net, generates a self-intersection.
-bool checkNonIntersection(const MetrizedNet& net) {
+// realization of this approximately metrized net, generates a self-intersection.
+bool checkNonIntersection(const ApproximatelyMetrizedNet& net) {
     const MarkedCombinatorialMap& A = net.A;
     for (Dart d: A.darts()) {
         if (A.isConvexFace(d))
@@ -320,7 +319,7 @@ bool checkNonIntersection(const MetrizedNet& net) {
 // and INDETERMINATE if it cannot prove anything.
 //
 // It assumes that face is a convex face.
-int isInsideConvexFace(const MetrizedNet& net,
+int isInsideConvexFace(const ApproximatelyMetrizedNet& net,
                        ApproximatePoint P,
                        const Dart& root,
                        const vector<Dart>& face,
@@ -344,9 +343,8 @@ int isInsideConvexFace(const MetrizedNet& net,
 }
 
 // If this function returns false, then there is a pin and a convex face such
-// that in any realization of the metrized net the pin falls strictly inside
-// the convex face.
-bool checkPinOutsideConvexFaces(const MetrizedNet& net) {
+// that, in any realization, the pin falls strictly inside the convex face.
+bool checkPinOutsideConvexFaces(const ApproximatelyMetrizedNet& net) {
     int cnt = ssize(net.A.concaveAngles());
     for (int i = 0; i < cnt; i++) for (int j = i+1; j < cnt; j++) {
         const Dart& root = net.A.concaveAngles()[i];
@@ -380,7 +378,7 @@ bool checkPinOutsideConvexFaces(const MetrizedNet& net) {
 // identified by s and the pin are on same side of t, then s cannot
 // intersect the equator described by t.
 // In this way, we have determined the maximum length of s.
-vector<double> maxDistanceToPin(const MetrizedNet& net) {
+vector<double> maxDistanceToPin(const ApproximatelyMetrizedNet& net) {
     const MarkedCombinatorialMap& A = net.A;
 
     vector<double> len_to_pin;
@@ -413,9 +411,9 @@ vector<double> maxDistanceToPin(const MetrizedNet& net) {
     return len_to_pin;
 }
 
-// If this function returns false, then there is no realization of this metrized
-// net such that the pins can be placed in antipodal points and without the edges
-// to the pins intersecting other edges of the net.
+// If this function returns false, then there is no realization such that the
+// pins can be placed in antipodal points and without the edges to the pins
+// intersecting other edges of the net.
 //
 // This is a check useful (almost) only when all the great circle identifying
 // the pins coincide (as in this case checkPinsAntipodality does not work).
@@ -432,7 +430,7 @@ vector<double> maxDistanceToPin(const MetrizedNet& net) {
 // kind of check is very hard in degenerate cases and this function is interesting
 // almost only in degenerate cases (e.g., when q1, q2 belong to the same
 // equator).
-bool checkPinsAntipodality2(const MetrizedNet& net) {
+bool checkPinsAntipodality2(const ApproximatelyMetrizedNet& net) {
     auto euclidean_to_spherical = [&](Interval d) { return 2 * asin(d / 2); };
     const MarkedCombinatorialMap& A = net.A;
 
@@ -467,10 +465,11 @@ bool checkPinsAntipodality2(const MetrizedNet& net) {
 }
 
 // TODO: Check consistency of the constants with the paper.
-// If it returns false, then there is no realization of the metrized net which
-// satisfies all the a-priori lower bounds on the length of the edges.
-// It modifies the metrized net.
-bool checkLengthLowerbound(MetrizedNet& net) {
+// If it returns false, then there is no realization of the approximately
+// metrized net which satisfies all the a-priori lower bounds on the length of
+// the edges.
+// It modifies the approximately metrized net.
+bool checkLengthLowerbound(ApproximatelyMetrizedNet& net) {
     static const auto fun = [](double x, double y) {
         return min(0.01, 0.1*min(x, y)) - 1e-10;
     }; // The -1e-10 is for avoiding floating-point related issues.
@@ -515,9 +514,9 @@ bool checkLengthLowerbound(MetrizedNet& net) {
 }
 
 
-// If this function returns false, in all realizations of the metrized net
-// there are either two distinct vertices coinciding or two distinct edges which
-// intersect in a point that is not the vertex of at least one of the two.
+// If this function returns false, in all realizations there are either two
+// distinct vertices coinciding or two distinct edges which intersect in a
+// point that is not the vertex of at least one of the two.
 //
 // Method:
 // For 100 times, we randomly pick a geodesic segment g of length 1 on
@@ -529,7 +528,7 @@ bool checkLengthLowerbound(MetrizedNet& net) {
 //    values shall be 0.
 //  - If g(0) and g(1) belong to different faces, then exactly one face
 //    shall yield value -1 and exactly one face shall yield value -1.
-bool checkFacesAreBoundaries(const MetrizedNet& net) {
+bool checkFacesAreBoundaries(const ApproximatelyMetrizedNet& net) {
     for (int _ = 0; _ < 100; _++) {
         ApproximateIsometry T = randomIsometry();
         int pos = 0, neg = 0;

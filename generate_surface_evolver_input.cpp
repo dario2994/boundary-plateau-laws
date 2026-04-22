@@ -20,7 +20,7 @@ string generateEmbeddingFilename(int net_id, vector<double> params) {
     return oss.str();
 }
 
-vector<Point> getVertexEmbedding(const MetrizedNet& net) {
+vector<Point> getVertexEmbedding(const ApproximatelyMetrizedNet& net) {
     const MarkedCombinatorialMap& A = net.A;
     const Dart root = A.dart(0);
 
@@ -93,7 +93,7 @@ double pinAverageDistance(const MarkedCombinatorialMap& A, vector<Point> embeddi
 // We locate the two pins metrically.
 //
 // The pins are antipodal points on the unit sphere.
-pair<Point, Point> findPinsEmbedding(const MetrizedNet& net) {
+pair<Point, Point> findPinsEmbedding(const ApproximatelyMetrizedNet& net) {
     const Dart root = net.A.dart(0);
     vector<Point> equators_with_pins;
     vector<Dart> concave_angles = net.A.concaveAngles();
@@ -125,7 +125,7 @@ pair<Point, Point> findPinsEmbedding(const MetrizedNet& net) {
 // net.A.concaveAngles()[0].
 //
 // The pins are antipodal points on the unit sphere.
-pair<Point, Point> choosePinsEmbedding(const MetrizedNet& net, double dist) {
+pair<Point, Point> choosePinsEmbedding(const ApproximatelyMetrizedNet& net, double dist) {
     assert(!net.A.concaveAngles().empty());
 
     const Dart root = net.A.dart(0);
@@ -143,7 +143,7 @@ pair<Point, Point> choosePinsEmbedding(const MetrizedNet& net, double dist) {
 // Doing so, we obtain a CombinatorialMap (as the result is not
 // DerivedOnce anymore) and we save the indexes of the pins in pins_id.
 pair<pair<int,int>, CombinatorialMap> addPinsToCombinatorialMap(
-        const MetrizedNet& net,
+        const ApproximatelyMetrizedNet& net,
         vector<Point>& embedding, const pair<Point, Point>& pins_coord) {
     vector<vector<Dart>> concave_faces;
     for (auto face: net.A.faces()) {
@@ -650,7 +650,7 @@ struct NetEmbeddedWithPins {
 // Let I be the interval of lengths of the edge connecting concave_angles[0] to
 // its pins that generate a valid net.
 // This function returns I.
-Interval validPinEdgeLength(int net_id, MetrizedNet net) {
+Interval validPinEdgeLength(int net_id, ApproximatelyMetrizedNet net) {
     assert(rigid_nets_flexible_pins.count(net_id));
     // All arcs connecting to pins belong to the same equator.
     vector<double> lens = maxDistanceToPin(net);
@@ -774,7 +774,7 @@ NetEmbeddedWithPins embedNetWithPins(int net_id, const vector<double>& params) {
 
     ifstream metrized_net_in("data/metrized_nets/"+ to_string(net_id) + ".txt");
     assert(metrized_net_in.is_open());
-    MetrizedNet net = parseMetrizedNet(metrized_net_in);
+    ApproximatelyMetrizedNet net = parseApproximatelyMetrizedNet(metrized_net_in);
     metrized_net_in.close();
 
     vector<Point> embedding;

@@ -6,7 +6,7 @@ using namespace std;
 #include "interval_arithmetic.cpp"
 #include "metrized_nets.cpp"
 #include "metrization_constraints.cpp"
-#include "search_approximate_metrization.cpp"
+#include "search_valid_realization.cpp"
 
 // Move the following two functions somewhere else. Maybe in metrized_nets.
 void savePicture(vector<pair<Point, string>> vertices,
@@ -24,7 +24,7 @@ void savePicture(vector<pair<Point, string>> vertices,
 }
 
 pair<vector<pair<Point, string>>, vector<tuple<Point, Point, double>>>
-        embedNet(const MetrizedNet& net) {
+        embedNet(const ApproximatelyMetrizedNet& net) {
     const MarkedCombinatorialMap& A = net.A;
 
     vector<pair<Point, string>> vertex_embedding(A.V());
@@ -46,19 +46,19 @@ pair<vector<pair<Point, string>>, vector<tuple<Point, Point, double>>>
     return {vertex_embedding, dart_embedding};
 }
 
-void saveMetrizedNet(const MetrizedNet& net, string picture, string data) {
+void saveMetrizedNet(const ApproximatelyMetrizedNet& net, string picture, string data) {
     auto pp = embedNet(net);
     savePicture(pp.first, pp.second, picture);
     ofstream metrized_net_out(data);
     net.serialize(metrized_net_out);
 }
 
-void relaxMetrization(MetrizedNet& net, double len) {
+void relaxMetrization(ApproximatelyMetrizedNet& net, double tolerance) {
     for (const Dart& d: net.A.darts()) {
         const Interval I = net.length(d);
         assert(!I.empty());
         double m = I.mid();
-        net.length(d) = Interval(m-len/2, m + len/2);
+        net.length(d) = Interval(m-tolerance + 1e-10, m + tolerance - 1e-10);
     }
 }
 
@@ -87,7 +87,7 @@ int processNet(int net_id) {
     params.special_rigidity_736 = false;
     params.forbidden_metrization = nullopt;
 
-    MetrizedNet net(A);
+    ApproximatelyMetrizedNet net(A);
 
     // Necessary to take care of nets that are metrically fixed obviously.
     if (!refineMetrizationConvexContinent(net, A.darts()))
@@ -96,9 +96,9 @@ int processNet(int net_id) {
     if (possible_nets.count(net_id)) {
         // Existence
         params.begin_time = get_time();
-        auto res = searchApproximateMetrization(net, params);
+        auto res = searchValidRealization(net, params);
         assert(res.has_value());
-        MetrizedNet net2 = *res;
+        ApproximatelyMetrizedNet net2 = *res;
         saveMetrizedNet(net2,
             "data/metrized_nets/" + to_string(net_id) + "_visualization.txt",
             "data/metrized_nets/" + to_string(net_id) + ".txt");
@@ -106,7 +106,7 @@ int processNet(int net_id) {
             return 1;
 
         // Rigidity
-        relaxMetrization(net2, 2e-4); // TODO: Is this constant good enough?
+        relaxMetrization(net2, 1e-4);
         // For net 736, we prove rigidity by first proving that all lengths
         // but two are rigid.
         // Then, with this information, we prove algebraically that the
@@ -119,16 +119,16 @@ int processNet(int net_id) {
         }
         params.forbidden_metrization.emplace(net2);
         params.begin_time = get_time();
-        auto res2 = searchApproximateMetrization(net, params);
+        auto res2 = searchValidRealization(net, params);
         assert(!res2.has_value());
 
         if (net_id == 736) {
             params.special_rigidity_736 = true;
             params.begin_time = get_time();
-            auto res3 = searchApproximateMetrization(net, params);
+            auto res3 = searchValidRealization(net, params);
             assert(!res3.has_value());
             params.forbidden_metrization.reset();
-            auto res4 = searchApproximateMetrization(net, params);
+            auto res4 = searchValidRealization(net, params);
             assert(res4.has_value());
             saveMetrizedNet(*res4,
                 "data/metrized_nets/" + to_string(net_id) + "_visualization.txt",
@@ -138,7 +138,7 @@ int processNet(int net_id) {
         return 2;
     } else {
         params.begin_time = get_time();
-        auto res = searchApproximateMetrization(net, params);
+        auto res = searchValidRealization(net, params);
         assert(!res.has_value());
         return 0;
     }

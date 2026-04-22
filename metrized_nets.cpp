@@ -108,12 +108,12 @@ void appendToPath(vector<PathStep>& path, const PathStep& op) {
 }
 
 // A class representing a family of geodesic nets on the sphere.
-// The family consists of the nets that are combinatorially a give marked
-// combinatorial map, have all angles of 120 degrees, and have lengths of
+// The family consists of the nets that are combinatorially a given marked
+// spherical graph, have all angles of 120 degrees, and have lengths of
 // edges constrained to belong to an interval (one interval per edge).
 //
-// A realization of the MetrizedNet is an element of the family identified
-// by the metrized net.
+// A realization of an ApproximatelyMetrizedNet is an element of the family
+// identified by the approximately metrized net.
 //
 // The crucial method offered by this class is the following.
 // Fixed a realization, identify each dart with the element of T^1S^2 given by
@@ -121,7 +121,7 @@ void appendToPath(vector<PathStep>& path, const PathStep& op) {
 // Given two darts, compute the isometry that sends one into the other.
 // We return an approximate isometry and we guarantee that, for any realization,
 // the exact isometry is represented by this approximate isometry.
-class MetrizedNet {
+class ApproximatelyMetrizedNet {
   public:
     const MarkedCombinatorialMap A;
 
@@ -140,12 +140,12 @@ class MetrizedNet {
 
   public:
 
-    MetrizedNet(const MetrizedNet& other) : A(other.A), _lengths(other._lengths) {
+    ApproximatelyMetrizedNet(const ApproximatelyMetrizedNet& other) : A(other.A), _lengths(other._lengths) {
         initOptimalPaths();
     }
 
     // Deleting the copy-assignment operator (since our copy-logic is not the default one).
-    MetrizedNet& operator=(const MetrizedNet& other) = delete;
+    ApproximatelyMetrizedNet& operator=(const ApproximatelyMetrizedNet& other) = delete;
 
     Interval& length(const Dart& d) {
         return _lengths[d.id>>1];
@@ -154,7 +154,7 @@ class MetrizedNet {
         return _lengths[d.id>>1];
     }
 
-    MetrizedNet(const MarkedCombinatorialMap& _A): A(_A) {
+    ApproximatelyMetrizedNet(const MarkedCombinatorialMap& _A): A(_A) {
         initOptimalPaths();
 
         _lengths.resize(A.E(), Interval(0, (2*pi).r));
@@ -325,9 +325,9 @@ class MetrizedNet {
 
 };
 
-MetrizedNet parseMetrizedNet(istream& in) {
+ApproximatelyMetrizedNet parseApproximatelyMetrizedNet(istream& in) {
     MarkedCombinatorialMap A = parseMarkedCombinatorialMap(in);
-    MetrizedNet net(A);
+    ApproximatelyMetrizedNet net(A);
     for (Dart d: A.darts()) {
         double l, r;
         in >> l >> r;

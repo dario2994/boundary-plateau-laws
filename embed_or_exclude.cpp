@@ -95,7 +95,6 @@ int processNet(int net_id) {
 
     if (possible_nets.count(net_id)) {
         // Existence
-        params.begin_time = get_time();
         auto res = searchValidRealization(net, params);
         assert(res.has_value());
         ApproximatelyMetrizedNet net2 = *res;
@@ -118,13 +117,11 @@ int processNet(int net_id) {
             net2.length(A.dart(12)) = Interval(0, 10);
         }
         params.forbidden_metrization.emplace(net2);
-        params.begin_time = get_time();
         auto res2 = searchValidRealization(net, params);
         assert(!res2.has_value());
 
         if (net_id == 736) {
             params.special_rigidity_736 = true;
-            params.begin_time = get_time();
             auto res3 = searchValidRealization(net, params);
             assert(!res3.has_value());
             params.forbidden_metrization.reset();
@@ -137,14 +134,37 @@ int processNet(int net_id) {
         }
         return 2;
     } else {
-        params.begin_time = get_time();
         auto res = searchValidRealization(net, params);
         assert(!res.has_value());
         return 0;
     }
 }
 
+// Proving that the once-derived net that is a quadrilateral with angles
+// 120, 120, 240, 240 (in this order) cannot be induced by the link of a
+// minimizing cone.
+void processImpossibleQuadrilateralExtinct() {
+    ifstream in("data/impossible_quadrilateral_extinct.txt");
+    auto A = parseMarkedCombinatorialMap(in);
+
+    SAMParams params;
+
+    params.run_pathological_checks = true;
+    params.convex_fixed_darts = findFreeParametersConvex(A);
+    params.non_convex_fixed_darts = findFreeParametersNonConvex(A);
+    params.special_rigidity_736 = false;
+    params.forbidden_metrization = nullopt;
+
+    ApproximatelyMetrizedNet net(A);
+
+    auto res = searchValidRealization(net, params);
+    assert(!res.has_value());
+}
+
 int main() {
+    processImpossibleQuadrilateralExtinct();
+
+
     ifstream in("data/once_derived_computer.txt");
     int cnt_once_derived;
     in >> cnt_once_derived;

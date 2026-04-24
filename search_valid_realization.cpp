@@ -140,7 +140,6 @@ vector<Dart> findFreeParametersNonConvex(const MarkedCombinatorialMap& A) {
 struct SAMParams {
     vector<Dart> convex_fixed_darts;
     vector<Dart> non_convex_fixed_darts;
-    long long begin_time;
     bool run_pathological_checks;
     optional<ApproximatelyMetrizedNet> forbidden_metrization;
     bool special_rigidity_736;

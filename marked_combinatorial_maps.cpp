@@ -196,10 +196,17 @@ MarkedCombinatorialMap parseMarkedCombinatorialMap(istream& in) {
     int concave_angles_num;
     in >> concave_angles_num;
 
+    set<int> concave_vertices;
     for (int i = 0; i < concave_angles_num; i++) {
         int id;
         in >> id;
         A._concave_angles.push_back(A.dart(id));
+
+        int v = A.dart(id).to;
+        cout << concave_angles_num << " " << v << endl;
+        assert(concave_vertices.count(v) == 0);
+        concave_vertices.insert(v);
+        assert(A.degree(v) == 2);
     }
     return A;
 }

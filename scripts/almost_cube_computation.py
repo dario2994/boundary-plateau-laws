@@ -14,17 +14,17 @@ def cot_rule(A, c, B, a):
     return Eq(cos(c)*cos(B)*sin(a)*sin(A), sin(A)*cos(a)*sin(c)-sin(a)*cos(A)*sin(B))
 
 
-theta, AC, AD, ADC, EX, DEX = symbols('theta AC AD ADC EX DEX')
+BAC, AC, AD, ADC, EX, DEX = symbols('BAC AC AD ADC EX DEX')
 ccos = symbols('c0 c1 c2 c3 c4 c5')
 ssin = symbols('s0 s1 s2 s3 s4 s5')
 
 ellT = acos(-Rational(1, 3))
 ellT2 = acos(1/sqrt(3)) # = ellT/2
-theta_val, AC_val, AD_val, ADC_val, EX_val, DEX_val = pi/2, ellT2, ellT2, 2*pi/3, ellT, pi/3
+BAC_val, AC_val, AD_val, ADC_val, EX_val, DEX_val = pi/2, ellT2, ellT2, 2*pi/3, ellT, pi/3
 
 
-variables = [theta, AC, AD, ADC, EX, DEX]
-var_vals = [theta_val, AC_val, AD_val, ADC_val, EX_val, DEX_val]
+variables = [BAC, AC, AD, ADC, EX, DEX]
+var_vals = [BAC_val, AC_val, AD_val, ADC_val, EX_val, DEX_val]
 
 var_num = len(variables)
 
@@ -43,9 +43,9 @@ def substitute_values(eq):
 trig_system = [[], []]
 
 # Four equations, 4 variables
-trig_system[0].append(cos_rule_angles(pi/3, pi/3, theta, AC))
+trig_system[0].append(cos_rule_angles(pi/3, pi/3, BAC, AC))
 trig_system[0].append(sin_rule(ADC, pi/3, AC, AD))
-trig_system[0].append(cos_rule_angles(pi/3, pi/2-theta, ADC, AD))
+trig_system[0].append(cos_rule_angles(pi/3, pi/2-BAC, ADC, AD))
 trig_system[0].append(Eq(2*cos(AD)*sin(ADC), 1)) # This additional equation is explained later on.
 
 # Three equations, 4 variables
@@ -111,3 +111,10 @@ print("From this point it is easy to conclude that the cubical configuration is 
 
 print()
 print("Let us remark that simply joining the two trigonometric/polynomial system does not yield the result effortlessly because the resulting algebraic system has a zero-set of dimension 1.")
+
+
+
+# What follows is used to report the results in the paper.
+x, y = symbols('x y')
+display_pol = factor(pol.as_expr()).subs({ccos[2]: x, ccos[3]: y})
+print(display_pol, "= 0")

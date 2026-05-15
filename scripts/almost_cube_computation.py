@@ -115,6 +115,6 @@ print("Let us remark that simply joining the two trigonometric/polynomial system
 
 
 # What follows is used to report the results in the paper.
-x, y = symbols('x y')
-display_pol = factor(pol.as_expr()).subs({ccos[2]: x, ccos[3]: y})
-print(display_pol, "= 0")
+# x, y = symbols('x y')
+# display_pol = factor(pol.as_expr()).subs({ccos[2]: x, ccos[3]: y})
+# print(display_pol, "= 0")

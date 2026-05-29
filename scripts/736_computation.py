@@ -50,7 +50,7 @@ for eq in trig_system:
     rational_expr = rational_eq.lhs-rational_eq.rhs
     poly_expr = rational_expr.expand().together().as_numer_denom()[0].expand()
 
-    poly_system.append(Poly(poly_expr))
+    poly_system.append(Poly(poly_expr) / 4)
 
 print("The trigonometric system is equivalent to the following algebraic system. (Variable 'tV' stands for tan(V/2).)")
 for eq in poly_system[0:5]:
@@ -101,6 +101,23 @@ for f in factors_R:
     print("(---) ", f)
 
 S = factors_R[2]
-print("So, either 2xz=1, which is what we want to show, or the last factor S(x, z)=0. We know a priori that x, z are very close to 1/sqrt(2) and if we evaluate S(1/sqrt(2), 1/sqrt(2)) we obtain:")
-print(S.subs(x, 1/sqrt(2)).subs(z, 1/sqrt(2)).evalf())
-print("Thus, S(x, z) is not zero for the range of values we are interested in an we conclude that tan(a/2)*tan(c/2)=1/2 as desired.")
+S_exact_val = S.subs({x: 1/sqrt(2), z: 1/sqrt(2)}).evalf()
+print("So, either 2xz=1, which is what we want to show, or the last factor S(x, z)=0. We know a priori that x, z are very close to 1/sqrt(2); more precisely we know that |x-1/sqrt(2)|, |z-1/sqrt(2)| < 0.05. If we evaluate S(1/sqrt(2), 1/sqrt(2)) we obtain", S_exact_val, ".")
+
+dx, dz = symbols('dx dz')
+S_shifted = S.subs({x: 1 / sqrt(2) + dx, z: 1 / sqrt(2) + dz}).expand()
+coeffs = S_shifted.as_poly(dx, dz).coeffs()
+monoms = S_shifted.as_poly(dx, dz).monoms()
+# We want sum |c_ij| * epsilon^(i+j).
+eps = symbols('p')
+error_pol = 0
+
+for c, m in zip(coeffs, monoms):
+    deg = sum(m)
+    if deg == 0:
+        continue
+    else:
+        c_abs = abs(float(c.evalf()))
+        error_pol += c_abs * eps**deg
+print("Moreover, if |x-1/sqrt(2)|, |z-1/sqrt(2)| < p, then it is not hard to show that |S(x, z)+1944| < E(p) where E(p) = ", error_pol, ".")
+print("Since E(0.05)=", error_pol.subs(eps, 0.05), "< 1944, we deduce that S(x, z) is not zero for the range of values we are interested in an we conclude that tan(a/2)*tan(c/2)=1/2 as desired.")

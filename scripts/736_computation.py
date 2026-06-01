@@ -1,5 +1,4 @@
-from sympy import symbols, sin, cos, tan, Eq, pi, expand_trig, simplify, Poly, Rational, groebner, diff, resultant, sqrt, solve, factor, acos, factor_list
-from sympy.parsing.sympy_parser import parse_expr
+from sympy import symbols, sin, cos, tan, Eq, pi, expand_trig, Poly, Rational, groebner, diff, resultant, sqrt, solve, factor, acos, factor_list
 import math
 
 

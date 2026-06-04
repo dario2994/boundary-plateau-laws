@@ -2,7 +2,6 @@
 #define COMBINATORIAL_MAPS
 
 #define _USE_MATH_DEFINES
-#include <bits/stdc++.h>
 using namespace std;
 
 #include "utils.cpp"
@@ -247,7 +246,7 @@ struct CombinatorialMap {
         return face;
     }
 
-    //iterates through all darts to discover and return 
+    //iterates through all darts to discover and return
     //every distinct face in the map.
     vector<vector<Dart>> faces() const {
         vector<vector<Dart>> faces;
@@ -472,7 +471,7 @@ CombinatorialMap constructOneLoop() {
     return A;
 }
 
-//reconstructs one map objects by reading serialized 
+//reconstructs one map objects by reading serialized
 //data from an input stream or file
 CombinatorialMap parseCombinatorialMap(istream& in) {
     CombinatorialMap A;

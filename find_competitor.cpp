@@ -1,7 +1,3 @@
-#define _USE_MATH_DEFINES
-#include <bits/stdc++.h>
-using namespace std;
-
 #include "utils.cpp"
 #include "interval_geometry.cpp"
 #include "simplicial_complexes.cpp"
@@ -95,7 +91,6 @@ ErrorOr<double> processNet(int net_id, vector<double> net_params,
                            bool run_surface_evolver,
                            FindCompetitorConfig config) {
     NetEmbeddedWithPins link = embedNetWithPins(net_id, net_params);
-
     SurfaceEvolverData cone = generateCone(link);
     SurfaceEvolverData popped_cone = generatePoppedConeCases(net_id, link, config);
 
@@ -147,6 +142,32 @@ ErrorOr<double> processNet(int net_id, vector<double> net_params,
     return area_gap;
 }
 
+// If this function terminates, it is guaranteed that there is a finite set S of
+// points strictly inside (l, r) such that:
+//  [l, r] \subseteq \bigcup_{s\in S} interval_covered(s)
+// where interval_covered(s) = [s-distance_covered(s), s+distance_covered(s)].
+void coverInterval(double l, double r, function<double(double)> distance_covered) {
+    // We try to avoid to call distance_covered(s) with values of s very close
+    // to l or r (because it can lead to failures in our problem).
+    // This is the reason why the code is a bit involved.
+    double new_l  = (l + r) / 2;
+    while (distance_covered(new_l) < new_l - l)
+        new_l = (new_l + l) / 2;
+
+    double new_r  = (l + r) / 2;
+    while (distance_covered(new_r) < r - new_r)
+        new_r = (new_r + r) / 2;
+
+    clog << "new_l = " << new_l << ", new_r = " << new_r << endl;
+
+    // We have covered [l, new_l] and [new_r, r].
+    // Now we focus on the interval [new_l, new_r].
+    double param = new_l;
+    while (param < new_r) {
+        param += distance_covered(param);
+    }
+}
+
 bool proveInstabilityOneParameterNet(int net_id) {
     Interval param_region;
     if (rigid_nets_flexible_pins.count(net_id)) {
@@ -174,34 +195,14 @@ bool proveInstabilityOneParameterNet(int net_id) {
         return valueOrAssert(processNet(net_id, {param}, true, FindCompetitorConfig()));
     };
 
-    auto width_covered = [&](double param) {
+    auto distance_covered = [&](double param) {
         double area_gap = get_area_gap(param);
         clog << "area_gap(" << param << ") = " << area_gap << endl;
         return area_gap / 10.;
     };
 
-    // We execute run_surface_evolver(param) for some values of param
-    // in param_region in order to prove the instability for all the possible
-    // values of param.
-    // Our methods fail if param is too close to one of the extreme points
-    // of the interval of admissible values, so we try to avoid such situation
-    // as much as possible (this is the reason why the code is a bit involved).
-    double new_l  = param_region.mid();
-    while (width_covered(new_l) < new_l - param_region.l)
-        new_l = (new_l + param_region.l) / 2;
+    coverInterval(param_region.l, param_region.r, distance_covered);
 
-    double new_r  = param_region.mid();
-    while (width_covered(new_r) < param_region.r - new_r)
-        new_r = (new_r + param_region.r) / 2;
-
-    clog << "new_l = " << new_l << ", new_r = " << new_r << endl;
-
-    // We have proven instability in [I.l, new_l] and [new_r, I.r].
-    // So, now we can restrict our analysis to the interval [new_l, new_r].
-    double param = new_l;
-    while (param < new_r) {
-        param += width_covered(param);
-    }
     return true;
 }
 
@@ -336,12 +337,18 @@ void proveNetWithOneFreeParameter() {
     }
 }
 
+set<int> completely_rigid_nets = {182, 250, 319, 325, 361, 421, 468, 484, 520, 614, 712, 736, 909, 938, 1122};
+// set<int> rigid_nets_flexible_pins = {28, 99, 346, 779, 1096};
+set<int> special_nets = {158, 681, 827, 920, 1029, 1100};
+int FAT_FISH_ID = 827;
+int GOGGLES_ID = 1029;
 
 int main() {
-    proveRigidNets();
+    // proveRigidNets();
 
     proveNetWithOneFreeParameter();
 
-    proveInstabilityFatFish();
+    // proveInstabilityFatFish();
+
     return 0;
 }

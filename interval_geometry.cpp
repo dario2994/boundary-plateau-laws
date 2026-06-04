@@ -1,10 +1,7 @@
 #ifndef INTERVAL_GEOMETRY
 #define INTERVAL_GEOMETRY
 
-#define _USE_MATH_DEFINES
-#include <bits/stdc++.h>
-using namespace std;
-
+#include "utils.cpp"
 #include "interval_arithmetic.cpp"
 #include "quaternions.cpp"
 

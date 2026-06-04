@@ -1,10 +1,7 @@
 #ifndef PLANAR_MAPS
 #define PLANAR_MAPS
 
-#define _USE_MATH_DEFINES
-#include <bits/stdc++.h>
-using namespace std;
-
+#include "utils.cpp"
 #include "combinatorial_maps.cpp"
 #include "utils.cpp"
 
@@ -19,16 +16,16 @@ class PlanarMap: public CombinatorialMap {
     PlanarMap(const CombinatorialMap& A): CombinatorialMap(A) {
         _boundary_dart = dart(0);
     }
-    
+
     // Returns a list of all darts on the boundary of the unbounded face.
     vector<Dart> boundaryDarts() const {
         vector<Dart> vec = {_boundary_dart};
         while (phi(vec.back()) != _boundary_dart)
             vec.push_back(phi(vec.back()));
-        
+
         return vec;
     }
-    
+
     // We need to override the definition of EdgeSubdivision of CombinatorialMap
     //as it may invalidate boundary_dart.
     // TODO: Consider erasing it, as we don't use it.
@@ -41,16 +38,16 @@ class PlanarMap: public CombinatorialMap {
             on_boundary |= d == e;
             on_boundary_rev |= rev(d) == e;
         }
-        
+
         pair<Dart,Dart> pp = CombinatorialMap::edgeSubdivision(d);
         if (on_boundary)
             _boundary_dart = pp.first;
         if (on_boundary_rev)
             _boundary_dart = rev(pp.first);
-        
+
         return pp;
     }
-    
+
     void setBoundaryDart(Dart d) { _boundary_dart = d; }
     const Dart& getBoundaryDart() const { return _boundary_dart; }
 
@@ -58,12 +55,12 @@ class PlanarMap: public CombinatorialMap {
     // CombinatorialMap one
     ULL isomorphismSignature() const {
         const auto& mat = largeMatrixPower(matrixSignature());
-        
+
         ULL res = 0;
         for (const Dart& d: darts()) {
             res += mat[d.id][next(d).id]^mat[d.id][rev(d).id];
         }
-        
+
         vector<Dart> boundary = boundaryDarts();
         for (Dart d: boundary) {
             ULL tmp = 0;

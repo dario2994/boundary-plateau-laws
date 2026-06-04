@@ -1,7 +1,4 @@
-#define _USE_MATH_DEFINES
-#include <bits/stdc++.h>
-using namespace std;
-
+#include "utils.cpp"
 #include "marked_combinatorial_maps.cpp"
 #include "interval_arithmetic.cpp"
 #include "metrized_nets.cpp"

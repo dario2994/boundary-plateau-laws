@@ -1,8 +1,3 @@
-#define _USE_MATH_DEFINES
-#include <bits/stdc++.h>
-using namespace std;
-typedef unsigned long long ULL;
-
 #include "utils.cpp"
 #include "combinatorial_maps.cpp"
 #include "planar_maps.cpp"

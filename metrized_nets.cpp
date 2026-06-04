@@ -1,10 +1,7 @@
 #ifndef METRIZED_NETS
 #define METRIZED_NETS
 
-#define _USE_MATH_DEFINES
-#include <bits/stdc++.h>
-using namespace std;
-
+#include "utils.cpp"
 #include "marked_combinatorial_maps.cpp"
 #include "interval_arithmetic.cpp"
 #include "interval_geometry.cpp"
@@ -74,10 +71,12 @@ struct PathStep {
     // TODO: Sarebbe ideale cancellare questo del tutto!
     // Viene usato soltanto una volta.
     static PathStep exp(double _len) {
-        PathStep step; step.type = 'E'; step.len = _len; return step;
+        PathStep step; step.type = 'E'; step.len = _len; step.d = Dart();
+        return step;
     }
     static PathStep exp(Dart _d) {
-        PathStep step; step.type = 'D'; step.d = _d; return step;
+        PathStep step; step.type = 'D'; step.d = _d;
+        return step;
     }
 
     double cost(const vector<Interval>& lengths) {

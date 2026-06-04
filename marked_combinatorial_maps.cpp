@@ -1,12 +1,8 @@
 #ifndef MARKED_COMBINATORIAL_MAPS
 #define MARKED_COMBINATORIAL_MAPS
 
-#define _USE_MATH_DEFINES
-#include <bits/stdc++.h>
-using namespace std;
-
-#include "combinatorial_maps.cpp"
 #include "utils.cpp"
+#include "combinatorial_maps.cpp"
 
 // Class representing a marked combinatorial map.
 // It is a combinatorial map such that all vertices have degree
@@ -203,7 +199,6 @@ MarkedCombinatorialMap parseMarkedCombinatorialMap(istream& in) {
         A._concave_angles.push_back(A.dart(id));
 
         int v = A.dart(id).to;
-        cout << concave_angles_num << " " << v << endl;
         assert(concave_vertices.count(v) == 0);
         concave_vertices.insert(v);
         assert(A.degree(v) == 2);

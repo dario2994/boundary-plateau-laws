@@ -2,10 +2,7 @@
 #define GENERATE_SURFACE_EVOLVER_INPUT
 
 
-#define _USE_MATH_DEFINES
-#include <bits/stdc++.h>
-using namespace std;
-
+#include "utils.cpp"
 #include "metrized_nets.cpp"
 #include "metrization_constraints.cpp"
 #include "simplicial_complexes.cpp"
@@ -132,7 +129,7 @@ pair<Point, Point> choosePinsEmbedding(const ApproximatelyMetrizedNet& net, doub
     Dart concave_angle = net.A.concaveAngles()[0];
     vector<PathStep> path_to_pin = net.getPathToPin(root, concave_angle);
 
-    path_to_pin.push_back(PathStep('E', dist));
+    path_to_pin.push_back(PathStep::exp(dist));
 
     Point pin = make_deterministic(net.isometryFromPath(path_to_pin)({1, 0, 0}));
 
@@ -795,7 +792,6 @@ NetEmbeddedWithPins embedNetWithPins(int net_id, const vector<double>& params) {
         assert(ssize(params) == 1);
         double len = params[0];
         Interval valid_lens = validPinEdgeLength(net_id, net);
-        // cout << valid_lens << endl;
         assert(valid_lens.contains(len));
         // clog << "Interval of valid edge-to-pin lengths: " << valid_lens << endl;
         embedding = getVertexEmbedding(net);

@@ -1,15 +1,12 @@
-#define _USE_MATH_DEFINES
-#include <bits/stdc++.h>
-using namespace std;
-
+#include "utils.cpp"
 #include "marked_combinatorial_maps.cpp"
 #include "interval_arithmetic.cpp"
 #include "metrized_nets.cpp"
 #include "metrization_constraints.cpp"
-#include "search_approximate_metrization.cpp"
+#include "search_valid_realization.cpp"
 
 
-void testingSearchApproximateMetrization(int test_num = -1) {
+void testingSearchValidRealization(int test_num = -1) {
     struct TestCase {
         int net_id;
         bool run_pathological_checks;
@@ -67,7 +64,7 @@ void testingSearchApproximateMetrization(int test_num = -1) {
         }
 
         StopWatch stopwatch;
-        auto maybe_metrized_net = searchApproximateMetrization(net, params);
+        auto maybe_metrized_net = searchValidRealization(net, params);
         double elapsed_time = stopwatch.get();
 
         assert(maybe_metrized_net.has_value() == tc.expected_outcome);
@@ -111,5 +108,5 @@ void testingSearchApproximateMetrization(int test_num = -1) {
 }
 
 int main() {
-    testingSearchApproximateMetrization();
+    testingSearchValidRealization();
 }

@@ -14,7 +14,7 @@ data/once_derived_for_visualization.txt.
 These are lists of candidates for being once-derived nets.
 Each element of the list is a marked spherical map.
 
-c) ./embed_or_exclude_nets
+c) ./embed_or_exclude
 Requires 2 hours to be executed.
 It reads the list of once-derived nets from data/once_derived_computer.txt.
 For each of them, it tries to embed it in the sphere.

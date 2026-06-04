@@ -1,12 +1,8 @@
 #ifndef METRIZATION_CONSTRAINTS
 #define METRIZATION_CONSTRAINTS
 
-#define _USE_MATH_DEFINES
-#include <bits/stdc++.h>
-using namespace std;
-
-#include "marked_combinatorial_maps.cpp"
 #include "utils.cpp"
+#include "marked_combinatorial_maps.cpp"
 #include "interval_arithmetic.cpp"
 #include "interval_geometry.cpp"
 #include "metrized_nets.cpp"

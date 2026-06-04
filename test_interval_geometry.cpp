@@ -1,7 +1,4 @@
-#define _USE_MATH_DEFINES
-#include <bits/stdc++.h>
-using namespace std;
-
+#include "utils.cpp"
 #include "interval_geometry.cpp"
 
 

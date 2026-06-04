@@ -1,9 +1,7 @@
 #ifndef INTERVAL_ARITHMETIC
 #define INTERVAL_ARITHMETIC
 
-#define _USE_MATH_DEFINES
-#include <bits/stdc++.h>
-using namespace std;
+#include "utils.cpp"
 
 static const int INDETERMINATE = -9832521;
 

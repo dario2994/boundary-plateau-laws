@@ -1,10 +1,6 @@
 #ifndef SIMPLICIAL_COMPLEXES
 #define SIMPLICIAL_COMPLEXES
 
-#define _USE_MATH_DEFINES
-#include <bits/stdc++.h>
-using namespace std;
-
 #include "utils.cpp"
 #include "interval_geometry.cpp"
 

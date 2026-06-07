@@ -184,114 +184,9 @@ pair<pair<int,int>, CombinatorialMap> addPinsToCombinatorialMap(
     return {{pins_vec[0], pins_vec[1]}, A};
 }
 
-struct SurfaceEvolverData {
-    ImmersedSimplicialComplex X;
-    pair<int,int> pins;
-    vector<pair<int,int>> boundary_edges;
-};
 
-// TODO: This should take the sequence of commands instead.
-void saveSurfaceEvolverFormat(int net_id,
-                              string embedding_name,
-                              const SurfaceEvolverData& data,
-                              string out_file,
-                              bool print_commands,
-                              bool net827_slow_convergence=false) {
-    const auto& X = data.X;
-    Point line = X.getPoint(data.pins.first);
-
-    map<pair<int,int>, int> edge2id;
-    auto get_edge = [&](int a, int b) {
-        assert(a != b);
-        assert(0 <= a and a < X.V());
-        assert(0 <= b and b < X.V());
-
-        if (!edge2id.count({a, b})) {
-            int id = 1 + edge2id.size() / 2;
-            edge2id[{a, b}] = id;
-            edge2id[{b, a}] = -id;
-        }
-        return edge2id[{a, b}];
-    };
-
-    auto is_vertex_on_line = [&](int v) {
-        return norm(X.getPoint(v) ^ line) < 0.001;
-    };
-
-    vector<array<int, 3>> triangles;
-    for (auto triangle: X.getFaces(2)) {
-        vector<int> triangle_vec(triangle.begin(), triangle.end());
-        auto A = triangle_vec[0], B = triangle_vec[1], C = triangle_vec[2];
-        triangles.push_back({get_edge(A, B), get_edge(B, C), get_edge(C, A)});
-    }
-    vector<bool> is_vertex_fixed(X.V(), false);
-    for (auto edge: data.boundary_edges) {
-        is_vertex_fixed[edge.first] = true;
-        is_vertex_fixed[edge.second] = true;
-    }
-
-    ofstream out(out_file);
-
-    out << "boundary 1 parameters 1" << endl;
-    out << "x1:  " << line[0] << " * p1" << endl;
-    out << "x2:  " << line[1] << " * p1" << endl;
-    out << "x3:  " << line[2] << " * p1" << endl;
-    out << endl;
-
-    out << "vertices" << endl;
-    for (int i = 0; i < X.V(); i++) {
-        Point P = X.getPoint(i);
-        bool fixed = is_vertex_fixed[i];
-        bool boundary = is_vertex_on_line(i);
-        boundary &= !fixed;
-        out << i+1;
-        if (boundary) {
-            out << " " << (P * line) << " boundary 1";
-        } else {
-            out << " " << P[0] << " " << P[1] << " " << P[2];
-            if (fixed)
-                out << " fixed";
-        }
-        out << endl;
-    }
-    out << endl;
-
-    auto is_edge_fixed = [&](pair<int,int> edge) {
-        int u = edge.first, v = edge.second;
-        return is_vertex_fixed[u] and is_vertex_fixed[v];
-    };
-
-    auto is_edge_boundary = [&](pair<int,int> edge) {
-        int u = edge.first, v = edge.second;
-        return is_vertex_on_line(u) and is_vertex_on_line(v);
-    };
-
-    out << "edges" << endl;
-    for (auto pp: edge2id) {
-        if (pp.second < 0)
-            continue;
-        out << pp.second << " "
-            << pp.first.first+1 << " " << pp.first.second+1;
-        if (is_edge_fixed(pp.first))
-            out << " fixed";
-        if (is_edge_boundary(pp.first))
-            out << " boundary 1";
-        out << endl;
-    }
-    out << endl;
-
-    out << "faces" << endl;
-    for (int i = 0; i < ssize(triangles); i++) {
-        array<int, 3> T = triangles[i];
-        out << i+1 << " "
-            << T[0] << " " << T[1] << " " << T[2] << endl;
-    }
-    out << endl;
-
-    out << R"(read
-print total_area;
-)";
-
+string surfaceEvolverCommands(int net_id, bool net827_slow_convergence=false,
+                              string embedding_name) {
     const string generic_surface_evolver_commands = R"(
     r 2;
     subroutine 5;
@@ -412,8 +307,115 @@ gogo;
 
 quit;
 )";
-    if (print_commands)
-        out << format(format_str, surface_evolver_commands, embedding_name);
+    return format(format_str, surface_evolver_commands, embedding_name);
+}
+
+struct SurfaceEvolverData {
+    ImmersedSimplicialComplex X;
+    pair<int,int> pins;
+    vector<pair<int,int>> boundary_edges;
+};
+
+// TODO: This should take the sequence of commands instead.
+void saveSurfaceEvolverFormat(const SurfaceEvolverData& data,
+                              string out_file,
+                              string surface_evolver_commands) {
+    const auto& X = data.X;
+    Point line = X.getPoint(data.pins.first);
+
+    map<pair<int,int>, int> edge2id;
+    auto get_edge = [&](int a, int b) {
+        assert(a != b);
+        assert(0 <= a and a < X.V());
+        assert(0 <= b and b < X.V());
+
+        if (!edge2id.count({a, b})) {
+            int id = 1 + edge2id.size() / 2;
+            edge2id[{a, b}] = id;
+            edge2id[{b, a}] = -id;
+        }
+        return edge2id[{a, b}];
+    };
+
+    auto is_vertex_on_line = [&](int v) {
+        return norm(X.getPoint(v) ^ line) < 0.001;
+    };
+
+    vector<array<int, 3>> triangles;
+    for (auto triangle: X.getFaces(2)) {
+        vector<int> triangle_vec(triangle.begin(), triangle.end());
+        auto A = triangle_vec[0], B = triangle_vec[1], C = triangle_vec[2];
+        triangles.push_back({get_edge(A, B), get_edge(B, C), get_edge(C, A)});
+    }
+    vector<bool> is_vertex_fixed(X.V(), false);
+    for (auto edge: data.boundary_edges) {
+        is_vertex_fixed[edge.first] = true;
+        is_vertex_fixed[edge.second] = true;
+    }
+
+    ofstream out(out_file);
+
+    out << "boundary 1 parameters 1" << endl;
+    out << "x1:  " << line[0] << " * p1" << endl;
+    out << "x2:  " << line[1] << " * p1" << endl;
+    out << "x3:  " << line[2] << " * p1" << endl;
+    out << endl;
+
+    out << "vertices" << endl;
+    for (int i = 0; i < X.V(); i++) {
+        Point P = X.getPoint(i);
+        bool fixed = is_vertex_fixed[i];
+        bool boundary = is_vertex_on_line(i);
+        boundary &= !fixed;
+        out << i+1;
+        if (boundary) {
+            out << " " << (P * line) << " boundary 1";
+        } else {
+            out << " " << P[0] << " " << P[1] << " " << P[2];
+            if (fixed)
+                out << " fixed";
+        }
+        out << endl;
+    }
+    out << endl;
+
+    auto is_edge_fixed = [&](pair<int,int> edge) {
+        int u = edge.first, v = edge.second;
+        return is_vertex_fixed[u] and is_vertex_fixed[v];
+    };
+
+    auto is_edge_boundary = [&](pair<int,int> edge) {
+        int u = edge.first, v = edge.second;
+        return is_vertex_on_line(u) and is_vertex_on_line(v);
+    };
+
+    out << "edges" << endl;
+    for (auto pp: edge2id) {
+        if (pp.second < 0)
+            continue;
+        out << pp.second << " "
+            << pp.first.first+1 << " " << pp.first.second+1;
+        if (is_edge_fixed(pp.first))
+            out << " fixed";
+        if (is_edge_boundary(pp.first))
+            out << " boundary 1";
+        out << endl;
+    }
+    out << endl;
+
+    out << "faces" << endl;
+    for (int i = 0; i < ssize(triangles); i++) {
+        array<int, 3> T = triangles[i];
+        out << i+1 << " "
+            << T[0] << " " << T[1] << " " << T[2] << endl;
+    }
+    out << endl;
+
+    out << R"(read
+print total_area;
+)";
+
+    out << surface_evolver_commands;
 
     out.close();
 }
@@ -643,12 +645,21 @@ struct NetEmbeddedWithPins {
     }
 };
 
-// net is a rigid net with flexible pins.
+// Assumption: net is a rigid net with flexible pins.
 // Let I be the interval of lengths of the edge connecting concave_angles[0] to
 // its pins that generate a valid net.
 // This function returns I.
-Interval validPinEdgeLength(int net_id, ApproximatelyMetrizedNet net) {
-    assert(rigid_nets_flexible_pins.count(net_id));
+Interval validPinEdgeLength(ApproximatelyMetrizedNet net) {
+    vector<ApproximatePoint> pins_equators;
+    for (Dart d: net.A.concaveAngles())
+        pins_equators.push_back(net.getIsometryToPin(net.A.dart(0), d)({0, 0, 1}));
+    for (auto eq1: pins_equators) {
+        for (auto eq2: pins_equators) {
+            Interval I = abs(eq1 * eq2);
+            assert(isSubset(I, Interval(0.99, 1.01)));
+        }
+    }
+
     // All arcs connecting to pins belong to the same equator.
     vector<double> lens = maxDistanceToPin(net);
     vector<Dart> concave_angles = net.A.concaveAngles();
@@ -791,7 +802,7 @@ NetEmbeddedWithPins embedNetWithPins(int net_id, const vector<double>& params) {
     } else if (rigid_nets_flexible_pins.count(net_id)) {
         assert(ssize(params) == 1);
         double len = params[0];
-        Interval valid_lens = validPinEdgeLength(net_id, net);
+        Interval valid_lens = validPinEdgeLength(net);
         assert(valid_lens.contains(len));
         // clog << "Interval of valid edge-to-pin lengths: " << valid_lens << endl;
         embedding = getVertexEmbedding(net);

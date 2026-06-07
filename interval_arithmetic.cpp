@@ -129,6 +129,16 @@ Interval operator -(Interval I) {
     return Interval(-I.r, -I.l);
 }
 
+// abs(I)
+Interval abs(const Interval& I) {
+    if (I.r <= 0)
+        return -I;
+    if (I.l >= 0)
+        return I;
+    // I.l < 0 < I.r
+    return Interval(0, max(I.l, I.r));
+}
+
 // I / J
 Interval operator /(const Interval& I, const Interval& J) {
     assert(!J.containsZero());

@@ -3,6 +3,13 @@
 #include "simplicial_complexes.cpp"
 #include "generate_surface_evolver_input.cpp"
 
+
+set<int> completely_rigid_nets = {182, 250, 319, 325, 361, 421, 468, 484, 520, 614, 712, 736, 909, 938, 1122};
+// set<int> rigid_nets_flexible_pins = {28, 99, 346, 779, 1096};
+set<int> special_nets = {158, 681, 827, 920, 1029, 1100};
+int FAT_FISH_ID = 827;
+int GOGGLES_ID = 1029;
+
 struct FindCompetitorConfig {
     int net827_pop_type; // -1, 0, 1, fat fish
     int net1096_removed_face; // Default is 6, sometimes overwritten as 8
@@ -99,9 +106,10 @@ ErrorOr<double> processNet(int net_id, vector<double> net_params,
 
     if (run_surface_evolver) {
         saveSurfaceEvolverFormat(
-            net_id, embedding_name, cone, filename_prefix + "_cone.fe", false, config.net827_slow_convergence);
+            cone, filename_prefix + "_cone.fe", "");
         saveSurfaceEvolverFormat(
-            net_id, embedding_name, popped_cone, filename_prefix + "_popped.fe", true, config.net827_slow_convergence);
+            popped_cone, filename_prefix + "_popped.fe",
+            surfaceEvolverCommands(net_id, config.net827_slow_convergence, embedding_name));
 
         string surface_evolver_command = format(
             "evolver -x -Q {}_popped.fe > {}.log 2>&1",
@@ -169,25 +177,15 @@ void coverInterval(double l, double r, function<double(double)> distance_covered
 }
 
 bool proveInstabilityOneParameterNet(int net_id) {
-    Interval param_region;
-    if (rigid_nets_flexible_pins.count(net_id)) {
-        ifstream metrized_net_in("data/metrized_nets/"+ to_string(net_id) + ".txt");
-        assert(metrized_net_in.is_open());
-        ApproximatelyMetrizedNet net = parseApproximatelyMetrizedNet(metrized_net_in);
-        param_region = validPinEdgeLength(net_id, net);
-    } else if (net_id == 1029) // goggles
-        param_region = {0., acos(1.0/3) / 2};
-    else assert(0);
-
+    assert(rigid_nets_flexible_pins.count(net_id));
+    ifstream metrized_net_in("data/metrized_nets/"+ to_string(net_id) + ".txt");
+    assert(metrized_net_in.is_open());
+    ApproximatelyMetrizedNet net = parseApproximatelyMetrizedNet(metrized_net_in);
+    Interval param_region = validPinEdgeLength(net);
     clog << "Param region: " << param_region << endl;
 
     auto get_area_gap = [&](double param) {
-        if (net_id == 1029) {
-            FindCompetitorConfig config;
-            config.net1029_cube_family = false;
-            return valueOrAssert(processNet(net_id, {0., param}, true, config));
-        }
-        if (net_id == 1096 and param > 0.38) {
+        if (net_id == 1096 and param > 0.38) { // TODO: What's going on here?
             FindCompetitorConfig config;
             config.net1096_removed_face = (param > 0.38) ? 8 : 6;
             return valueOrAssert(processNet(net_id, {param}, true, config));
@@ -289,13 +287,6 @@ bool proveInstabilityFatFish() {
 }
 
 
-double uniformSample(double x) {
-    static std::mt19937 gen(42);
-
-    std::uniform_real_distribution<double> dist(0.0, x);
-    return dist(gen);
-}
-
 void proveRigidNets() {
     set<int> nets_to_ignore = {
         158, // The same net as 1029.
@@ -328,7 +319,6 @@ void proveRigidNets() {
 void proveNetWithOneFreeParameter() {
     vector<int> nets_to_process(rigid_nets_flexible_pins.begin(),
                                 rigid_nets_flexible_pins.end());
-    nets_to_process.push_back(1029);
     for (int net_id: nets_to_process) {
         cout << net_id << ": ";
         cout.flush();
@@ -337,18 +327,34 @@ void proveNetWithOneFreeParameter() {
     }
 }
 
-set<int> completely_rigid_nets = {182, 250, 319, 325, 361, 421, 468, 484, 520, 614, 712, 736, 909, 938, 1122};
-// set<int> rigid_nets_flexible_pins = {28, 99, 346, 779, 1096};
-set<int> special_nets = {158, 681, 827, 920, 1029, 1100};
-int FAT_FISH_ID = 827;
-int GOGGLES_ID = 1029;
+void proveInstabilityGoggles() {
+    Interval param_region = {0., acos(1.0/3) / 2};
+    clog << "Goggles Param region: " << param_region << endl;
+
+    auto get_area_gap = [&](double param) {
+        FindCompetitorConfig config;
+        config.net1029_cube_family = false;
+        return valueOrAssert(processNet(GOGGLES_ID, {0., param}, true, config));
+    };
+
+    auto distance_covered = [&](double param) {
+        double area_gap = get_area_gap(param);
+        clog << "area_gap(" << param << ") = " << area_gap << endl;
+        return area_gap / 10.;
+    };
+
+    coverInterval(param_region.l, param_region.r, distance_covered);
+
+    return;
+}
 
 int main() {
     // proveRigidNets();
 
-    proveNetWithOneFreeParameter();
+    // proveNetWithOneFreeParameter();
 
-    // proveInstabilityFatFish();
+    // proveInstabilityGoggles();
+    proveInstabilityFatFish();
 
     return 0;
 }

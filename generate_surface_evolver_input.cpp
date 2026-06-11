@@ -44,22 +44,6 @@ int addPin(CombinatorialMap& A, vector<Dart> connected_to) {
     return d1.to;
 }
 
-vector<Dart> getFaceDarts(const CombinatorialMap& A, vector<int> vertices) {
-    for (Dart d: A.darts()) {
-        if (d.from == vertices[0] and d.to == vertices[1]) {
-            bool works = true;
-            for (int i = 0; i < ssize(vertices); i++) {
-                works &= A.phi(d, i).from == vertices[i];
-            }
-            works &= A.phi(d, ssize(vertices)).from == vertices[0];
-            if (works)
-                return A.face(d);
-        }
-    }
-    assert(0);
-    return {};
-}
-
 vector<Dart> getConcaveAngles(const MarkedCombinatorialMap& A,
                               const vector<Dart>& face) {
     vector<Dart> res;
@@ -185,8 +169,7 @@ pair<pair<int,int>, CombinatorialMap> addPinsToCombinatorialMap(
 }
 
 
-string surfaceEvolverCommands(int net_id, bool net827_slow_convergence=false,
-                              string embedding_name) {
+string surfaceEvolverCommands(int net_id, string embedding_name, bool net827_slow_convergence) {
     const string generic_surface_evolver_commands = R"(
     r 2;
     subroutine 5;
@@ -488,16 +471,19 @@ pair<vector<Point>, pair<Point,Point>> embedCube(double q) {
 
 
 // TODO: This should be moved somewhere else?
-const set<int> possible_nets = {
-    28,     99,    158,    182,    250,
-    319,    325,    346,   361,   421,
-    468,   484,   520,   614,   681,
-    712,   736,   779,   827,   909,
-    920,   938,    1029,
-    1096,   1100,   1122};
+const set<int>& possible_nets = {
+    28,     99,     158,    182,    250,
+    319,    325,    346,    361,    421,
+    468,    484,    520,    614,    681,
+    712,    736,    779,    827,    909,
+    920,    938,    1029,   1096,   1100,
+    1122};
 
-
-const set<int> rigid_nets_flexible_pins = {28, 99, 346, 779, 1096};
+const set<int>& rigid_nets = {182, 250, 319, 325, 361, 421, 468, 484, 520, 614, 712, 736, 909, 938, 1122};
+const set<int>& rigid_nets_flexible_pins = {28, 99, 346, 779, 1096};
+const set<int>& special_nets = {158, 681, 827, 920, 1029, 1100};
+const int FAT_FISH_ID = 827;
+const int GOGGLES_ID = 1029;
 
 // AD-HOC
 // Here we describe the "pop".

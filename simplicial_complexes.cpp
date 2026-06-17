@@ -426,8 +426,8 @@ struct ImmersedSimplicialComplex {
                 stringstream ss;
                 ss   << "points[" << p << "] = " << points[p] << ", "
                      << "points[" << q << "] = " << points[q]
-                     << " are consecutive on the line segment connecting the pins "
-                     << "but are not connected by a segment.";
+                     << " are consecutive on the (spatial) segment "
+                     << "but are not connected by a (simplicial) segment.";
                 return ErrorMessage(ss);
             }
         }
@@ -444,9 +444,9 @@ struct ImmersedSimplicialComplex {
                 if (edges.count({u, v})) {
                     error_message   << "points[" << u << "] = " << points[u] << ", "
                          << "points[" << v << "] = " << points[v]
-                         << " are not consecutive on the segment connecting the pins "
-                         << "but they are connected by a segment. "
-                         << "Their positions on the segment connecting the pins are: "
+                         << " are not consecutive on the (spatial) segment "
+                         << "but they are connected by a (simplicial) segment. "
+                         << "Their positions on the (spatial) segment are: "
                          << i << " " << j << "." << endl;
                     works = false;
                 }

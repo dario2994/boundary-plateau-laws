@@ -1,0 +1,61 @@
+Surface Evolver Version 2.70a, August 27, 2013, 64-bit
+
+    10.3206598653556
+Vertices: 183  Edges: 590  Facets: 408  Bodies: 0  Facetedges: 1224
+Element memory: 174 KB, or 0 MB
+Total data memory: 994 KB, or 0 MB.
+Vertices: 773  Edges: 2404  Facets: 1632  Bodies: 0  Facetedges: 4896
+Element memory: 708 KB, or 0 MB
+Total data memory: 1277 KB, or 1 MB.
+    10.0466323020639
+Quiet OFF. (was on)
+    9.96093615468649
+Quiet OFF. (was on)
+    9.91812706203011
+Quiet OFF. (was on)
+    9.90565381481699
+Quiet OFF. (was on)
+    9.88271618137897
+Quiet OFF. (was on)
+Edges popped: 6
+Vertices popped: 3
+    9.86973970395062
+Quiet OFF. (was on)
+     9.8537492380507
+Quiet OFF. (was on)
+    9.84858865949762
+Quiet OFF. (was on)
+Edges popped: 0
+Vertices popped: 3
+    9.83640017797956
+Quiet OFF. (was on)
+     9.8265786824208
+Quiet OFF. (was on)
+    9.82547551493248
+Quiet OFF. (was on)
+Vertices: 2261  Edges: 6804  Facets: 4544  Bodies: 0  Facetedges: 13632
+Element memory: 2002 KB, or 1 MB
+Total data memory: 2767 KB, or 2 MB.
+Edges switched in equiangulation: 296
+Edges switched in equiangulation: 32
+Edges switched in equiangulation: 0
+Edges switched in equiangulation: 0
+    9.82975765048492
+Quiet OFF. (was on)
+     9.8276822001902
+Quiet OFF. (was on)
+    9.82002291641831
+Quiet OFF. (was on)
+     9.8184564125421
+Quiet OFF. (was on)
+    9.81177051763588
+Quiet OFF. (was on)
+Edges popped: 2
+Vertices popped: 0
+    9.83681844245197
+Quiet OFF. (was on)
+    9.82944485786673
+Quiet OFF. (was on)
+    9.85180428437462
+Quiet OFF. (was on)
+Dumping to data/surface_evolver/325/325_competitor.out.

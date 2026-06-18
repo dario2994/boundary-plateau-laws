@@ -1,0 +1,87 @@
+Surface Evolver Version 2.70a, August 27, 2013, 64-bit
+
+    8.66571273996075
+Vertices: 163  Edges: 522  Facets: 360  Bodies: 0  Facetedges: 1080
+Element memory: 154 KB, or 0 MB
+Total data memory: 994 KB, or 0 MB.
+Vertices: 685  Edges: 2124  Facets: 1440  Bodies: 0  Facetedges: 4320
+Element memory: 625 KB, or 0 MB
+Total data memory: 1219 KB, or 1 MB.
+    8.38271564150832
+Quiet OFF. (was on)
+    8.35838528378826
+Quiet OFF. (was on)
+    8.30691759621461
+Quiet OFF. (was on)
+    8.27328264871646
+Quiet OFF. (was on)
+    8.25387830148617
+Quiet OFF. (was on)
+Edges popped: 28
+Vertices popped: 1
+
+data/surface_evolver/468/468_popped.fe Line 305:
+WARNING 1903: Edge 1377 not deleted due to adjacent configuration involving facet 546.
+
+Called from: 
+Source file data/surface_evolver/468/468_popped.fe, line 292
+Source file data/surface_evolver/468/468_popped.fe, line 304
+
+
+data/surface_evolver/468/468_popped.fe Line 305:
+WARNING 1903: Edge 1007 not deleted due to adjacent configuration involving facet 709.
+
+Called from: 
+Source file data/surface_evolver/468/468_popped.fe, line 292
+Source file data/surface_evolver/468/468_popped.fe, line 304
+
+
+data/surface_evolver/468/468_popped.fe Line 305:
+WARNING 1903: Edge 1377 not deleted due to adjacent configuration involving facet 546.
+
+Called from: 
+Source file data/surface_evolver/468/468_popped.fe, line 292
+Source file data/surface_evolver/468/468_popped.fe, line 304
+
+    8.10782430068531
+Quiet OFF. (was on)
+     8.0434447416656
+Quiet OFF. (was on)
+    8.02387625147364
+Quiet OFF. (was on)
+Edges popped: 0
+Vertices popped: 0
+    8.01378492139901
+Quiet OFF. (was on)
+    8.01176364282143
+Quiet OFF. (was on)
+    8.00335458318695
+Quiet OFF. (was on)
+Vertices: 1874  Edges: 5605  Facets: 3732  Bodies: 0  Facetedges: 11196
+Element memory: 1649 KB, or 1 MB
+Total data memory: 2309 KB, or 2 MB.
+Edges switched in equiangulation: 310
+Edges switched in equiangulation: 42
+Edges switched in equiangulation: 1
+Edges switched in equiangulation: 1
+    8.00005525714209
+Quiet OFF. (was on)
+    7.98953615444498
+Quiet OFF. (was on)
+    7.98841760429799
+Quiet OFF. (was on)
+    7.98590256494157
+Quiet OFF. (was on)
+    7.98590504398869
+Quiet OFF. (was on)
+Edges popped: 0
+Vertices popped: 0
+    7.98612252291474
+Quiet OFF. (was on)
+    7.98508198064865
+Quiet OFF. (was on)
+    7.98483895951762
+Quiet OFF. (was on)
+Dumping to data/surface_evolver/468/468_competitor.out.
+
+NOTE: There were warning messages. To review, do "print warning_messages"

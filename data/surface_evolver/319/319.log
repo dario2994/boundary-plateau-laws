@@ -1,0 +1,71 @@
+Surface Evolver Version 2.70a, August 27, 2013, 64-bit
+
+     6.0138333954471
+Vertices: 107  Edges: 338  Facets: 232  Bodies: 0  Facetedges: 696
+Element memory: 99 KB, or 0 MB
+Total data memory: 994 KB, or 0 MB.
+Vertices: 445  Edges: 1372  Facets: 928  Bodies: 0  Facetedges: 2784
+Element memory: 404 KB, or 0 MB
+Total data memory: 1087 KB, or 1 MB.
+     5.8499948141273
+Quiet OFF. (was on)
+    5.78704623409367
+Quiet OFF. (was on)
+    5.76939271264766
+Quiet OFF. (was on)
+    5.76096837149108
+Quiet OFF. (was on)
+
+data/surface_evolver/319/319_popped.fe Line 217:
+WARNING 1903: Edge 1317 not deleted due to adjacent configuration involving facet 873.
+
+Called from: 
+Source file data/surface_evolver/319/319_popped.fe, line 202
+Source file data/surface_evolver/319/319_popped.fe, line 216
+
+    5.75871914755941
+Quiet OFF. (was on)
+Edges popped: 0
+Vertices popped: 0
+    5.75300154762596
+Quiet OFF. (was on)
+    5.75035601272391
+Quiet OFF. (was on)
+    5.74927781977552
+Quiet OFF. (was on)
+Edges popped: 1
+Vertices popped: 0
+    5.76892628855653
+Quiet OFF. (was on)
+      5.753067113639
+Quiet OFF. (was on)
+    5.75226573271837
+Quiet OFF. (was on)
+Vertices: 1218  Edges: 3637  Facets: 2420  Bodies: 0  Facetedges: 7260
+Element memory: 1070 KB, or 1 MB
+Total data memory: 1626 KB, or 1 MB.
+Edges switched in equiangulation: 186
+Edges switched in equiangulation: 35
+Edges switched in equiangulation: 3
+Edges switched in equiangulation: 0
+    5.74785124459212
+Quiet OFF. (was on)
+    5.74617130394059
+Quiet OFF. (was on)
+    5.74592218307314
+Quiet OFF. (was on)
+    5.74640409774318
+Quiet OFF. (was on)
+    5.74580983626494
+Quiet OFF. (was on)
+Edges popped: 1
+Vertices popped: 0
+    5.76516407908744
+Quiet OFF. (was on)
+    5.74609715506352
+Quiet OFF. (was on)
+     5.7463953047306
+Quiet OFF. (was on)
+Dumping to data/surface_evolver/319/319_competitor.out.
+
+NOTE: There were warning messages. To review, do "print warning_messages"

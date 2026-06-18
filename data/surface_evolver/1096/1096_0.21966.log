@@ -1,0 +1,63 @@
+Surface Evolver Version 2.70a, August 27, 2013, 64-bit
+
+    8.99887291980086
+Vertices: 177  Edges: 560  Facets: 384  Bodies: 0  Facetedges: 1152
+Element memory: 165 KB, or 0 MB
+Total data memory: 992 KB, or 0 MB.
+    8.74680775433904
+Quiet OFF. (was on)
+
+data/surface_evolver/1096/1096_0.21966_popped.fe Line 316:
+WARNING 1903: Edge 334 not deleted due to adjacent configuration involving facet 158.
+
+Called from: 
+Source file data/surface_evolver/1096/1096_0.21966_popped.fe, line 309
+Source file data/surface_evolver/1096/1096_0.21966_popped.fe, line 315
+
+    8.70846568267977
+Quiet OFF. (was on)
+    8.68070829934326
+Quiet OFF. (was on)
+    8.62925727048789
+Quiet OFF. (was on)
+    8.59455559035885
+Quiet OFF. (was on)
+Edges popped: 5
+Vertices popped: 2
+    8.54100463095019
+Quiet OFF. (was on)
+    8.50876293008779
+Quiet OFF. (was on)
+    8.49863506889896
+Quiet OFF. (was on)
+    8.49352267548853
+Quiet OFF. (was on)
+    8.48675912565372
+Quiet OFF. (was on)
+Edges popped: 0
+Vertices popped: 1
+     8.4830188780649
+Quiet OFF. (was on)
+    8.46539973052171
+Quiet OFF. (was on)
+    8.46326074988422
+Quiet OFF. (was on)
+    8.46287888334952
+Quiet OFF. (was on)
+    8.46269554949156
+Quiet OFF. (was on)
+Edges popped: 0
+Vertices popped: 0
+    8.46262710585552
+Quiet OFF. (was on)
+    8.46255824800986
+Quiet OFF. (was on)
+    8.46252335690521
+Quiet OFF. (was on)
+    8.46248755617348
+Quiet OFF. (was on)
+    8.46227538674772
+Quiet OFF. (was on)
+Dumping to data/surface_evolver/1096/1096_0.21966_competitor.out.
+
+NOTE: There were warning messages. To review, do "print warning_messages"

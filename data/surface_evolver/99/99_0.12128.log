@@ -1,0 +1,30 @@
+Surface Evolver Version 2.70a, August 27, 2013, 64-bit
+
+    7.98983426934109
+    7.80959488426299
+Quiet OFF. (was on)
+    7.80249400518165
+Quiet OFF. (was on)
+Edges popped: 4
+Vertices popped: 3
+
+data/surface_evolver/99/99_0.12128_popped.fe Line 294:
+WARNING 1903: Edge 143 not deleted due to adjacent configuration involving facet 122.
+
+Called from: 
+Source file data/surface_evolver/99/99_0.12128_popped.fe, line 285
+Source file data/surface_evolver/99/99_0.12128_popped.fe, line 293
+
+    7.76245304629203
+Quiet OFF. (was on)
+    7.75686620207214
+Quiet OFF. (was on)
+Edges popped: 0
+Vertices popped: 0
+    7.71712957129157
+Quiet OFF. (was on)
+    7.70771086755865
+Quiet OFF. (was on)
+Dumping to data/surface_evolver/99/99_0.12128_competitor.out.
+
+NOTE: There were warning messages. To review, do "print warning_messages"

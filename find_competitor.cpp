@@ -96,19 +96,20 @@ ErrorOr<double> processNet(int net_id, vector<double> net_params,
     SurfaceEvolverData popped_cone = generatePoppedConeCases(net_id, link, config);
 
     const string& embedding_name = generateEmbeddingFilename(net_id, net_params);
-    const string& filename_prefix = "data/surface_evolver/" + embedding_name;
+    const string& net_directory = format("data/surface_evolver/{}", net_id);
+    const string& filename_prefix = format("{}/{}", net_directory, embedding_name);
 
     if (run_surface_evolver) {
+        filesystem::create_directory(net_directory);
         saveSurfaceEvolverFormat(cone, filename_prefix + "_cone.fe", "");
         string surface_evolver_commands = surfaceEvolverCommands(
-            net_id, embedding_name, config.net827_slow_convergence);
+            net_id, filename_prefix, config.net827_slow_convergence);
         saveSurfaceEvolverFormat(
             popped_cone, filename_prefix + "_popped.fe", surface_evolver_commands);
 
         string bash_command = format(
             "evolver -x -Q {}_popped.fe > {}.log 2>&1",
             filename_prefix, filename_prefix);
-        // clog << "Executing the surface evolver..." << endl;
         int surface_evolver_exit_code = system(bash_command.c_str());
         // The exit code may be nonzero because of some strange interaction
         // between the surface evolver and the X window system when the
@@ -260,6 +261,8 @@ void proveInstabilityRigidNets() {
         cout << net_id << ": \t";
         cout.flush();
         auto maybe_proof = processNet(net_id, {}, true, FindCompetitorConfig());
+        if (!maybe_proof.isOk())
+            cout << maybe_proof.getError() << endl;
         assert(maybe_proof.isOk());
         double area_gap = maybe_proof.getContent();
         cout << area_gap << endl;
@@ -319,8 +322,8 @@ void proveInstabilityGoggles() {
 
 int main() {
     // proveInstabilityRigidNets();
-    // proveInstabilityRigidNetsWithFlexiblePins();
-    proveInstabilityGoggles();
+    proveInstabilityRigidNetsWithFlexiblePins();
+    // proveInstabilityGoggles();
     // proveInstabilityFatFish();
 
     return 0;

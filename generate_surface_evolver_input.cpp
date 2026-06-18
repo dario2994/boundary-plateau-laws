@@ -169,7 +169,7 @@ pair<pair<int,int>, CombinatorialMap> addPinsToCombinatorialMap(
 }
 
 
-string surfaceEvolverCommands(int net_id, string embedding_name, bool net827_slow_convergence) {
+string surfaceEvolverCommands(int net_id, string filename_prefix, bool net827_slow_convergence) {
     const string generic_surface_evolver_commands = R"(
     r 2;
     subroutine 5;
@@ -214,6 +214,20 @@ string surfaceEvolverCommands(int net_id, string embedding_name, bool net827_slo
             subroutine 3;
             o;
             subroutine 3;
+        )"},
+        {520, R"(
+            r 2;
+            subroutine 5;
+            o;
+            subroutine 5;
+            o;
+            subroutine 5;
+            o;
+            subroutine 5;
+            o;
+            subroutine 5;
+            o;
+            subroutine 5;
         )"},
         {614, R"(
             subroutine 3;
@@ -282,7 +296,7 @@ subroutinequick := {{
 gogo := {{
     /*showq;*/
 {}
-    dump "data/surface_evolver/{}_competitor.out";
+    dump "{}_competitor.out";
     /*close_show;*/ /* This raises an error if the window is not visible. */
 }}
 
@@ -290,7 +304,7 @@ gogo;
 
 quit;
 )";
-    return format(format_str, surface_evolver_commands, embedding_name);
+    return format(format_str, surface_evolver_commands, filename_prefix);
 }
 
 struct SurfaceEvolverData {

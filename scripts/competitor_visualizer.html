@@ -475,6 +475,12 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
+        // --- Automatically load preloaded data if present ---
+        if (window.preloadedData) {
+            parseFile(window.preloadedData);
+            renderScene();
+        }
+
         animate();
     </script>
 </body>

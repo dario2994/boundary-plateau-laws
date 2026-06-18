@@ -448,6 +448,12 @@ struct ImmersedSimplicialComplex {
                          << "but they are connected by a (simplicial) segment. "
                          << "Their positions on the (spatial) segment are: "
                          << i << " " << j << "." << endl;
+                    error_message << "The points in between are: ";
+                    for (int k = i+1; k < j; k++) {
+                        int w = points_on_line[k];
+                        error_message << "points[" << w << "] = " << points[w] << ", ";
+                    }
+                    error_message << endl;
                     works = false;
                 }
             }

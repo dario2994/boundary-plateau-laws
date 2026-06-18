@@ -23,6 +23,9 @@ derived_script = "scripts/visualize_once_derived_net.py"
 metrization_txt = f"data/metrized_nets/{net_id}_visualization.txt"
 output_html = f"data/images3d/{net_id}.html"
 spherical_script = "scripts/visualize_spherical_geodesics.py"
+competitor = base_dir / f"data/surface_evolver/{net_id}_competitor.txt"
+competitor_template = base_dir / "scripts/competitor_visualizer.html"
+competitor_output = base_dir / f"data/images3d/{net_id}_competitor.html"
 
 # Transforming the relative paths into absolute paths.
 derived_png = base_dir / derived_png
@@ -43,10 +46,31 @@ subprocess.run(["xdg-open", derived_png], check=False)
 if not os.path.exists(metrization_txt):
     sys.exit(f"Error: an embedding of net {net_id} was not found at {metrization_txt}")
 
-# Run the visualization script
+# Run the visualization script for the metrized net.
 try:
     subprocess.run(["python", spherical_script, metrization_txt, output_html], check=True)
 except subprocess.CalledProcessError as e:
     sys.exit(f"Error: Failed to run {spherical_script}: {e}")
 
 webbrowser.open(output_html.as_uri())
+
+# Visualize the competitor.
+if competitor.exists():
+    if competitor.exists() and competitor_template.exists():
+        with open(competitor, "r") as f:
+            raw_data = f.read()
+
+        with open(competitor_template, "r") as f:
+            html_content = f.read()
+
+        # Inject the text data directly into the global window context before the closing body tag
+        injection = f"<script>window.preloadedData = `{raw_data}`;</script>\n</body>"
+        html_content = html_content.replace("</body>", injection)
+
+        # Ensure the output directory exists and save the configured file
+        competitor_output.parent.mkdir(parents=True, exist_ok=True)
+        with open(competitor_output, "w") as f:
+            f.write(html_content)
+
+        # Open the configured HTML application
+        webbrowser.open(competitor_output.as_uri())

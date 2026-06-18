@@ -49,7 +49,8 @@ enumerate_once_derived
 enumerate_twice_derived
 embed_or_exclude
 find_competitor
-data/surface_evolver/*
+data/surface_evolver/827
+data/surface_evolver/1029
 test_simplicial_complexes
 test_interval_geometry
 test_search_approximate_metrization

@@ -28,3 +28,9 @@ data/metrization/net_id.txt.
 e) python scripts/run_visualization net_id
 It visualizes the marked combinatorial map (in the once-derived nets list)
 with net_id as well as an embedding in the sphere (if one was found).
+
+Additional files for more specific, yet important, tasks:
+
+A) ./pin-lower-bound
+Verifies the positivity of a function, used in the proof of 
+Proposition 11.2.

@@ -33,4 +33,4 @@ Additional files for more specific, yet important, tasks:
 
 A) ./pin-lower-bound
 Verifies the positivity of a function, used in the proof of 
-Proposition 11.2.
+Proposition 11.2 (cf. Appendix F.1)

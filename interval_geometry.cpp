@@ -12,6 +12,17 @@ typedef array<double, 3> Point;
 // Parallelepiped in R^3 with axis-aligned sides, i.e., the product of three intervals.
 typedef array<Interval, 3> ApproximatePoint;
 
+ApproximatePoint approximatePoint(const Point& P) {
+    return ApproximatePoint{P[0], P[1], P[2]};
+}
+
+bool canCoincide(const ApproximatePoint& A,
+                 const ApproximatePoint& B) {
+    return !intersection(A[0], B[0]).empty() and
+           !intersection(A[1], B[1]).empty() and
+           !intersection(A[2], B[2]).empty();
+}
+
 ostream& operator<<(ostream& out, Point p) {
     out << p[0] << " " << p[1] << " " << p[2];
     return out;
@@ -178,6 +189,11 @@ array<T, 3> operator^(const array<T, 3>& X, const array<T, 3>& Y) {
 template <typename T>
 T det(const array<T, 3>& A, const array<T, 3>& B, const array<T, 3>& C) {
     return A * (B ^ C);
+}
+
+template <typename T>
+T norm2(const array<T, 3>& X) {
+    return square(X[0]) + square(X[1]) + square(X[2]);
 }
 
 template <typename T>

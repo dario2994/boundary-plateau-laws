@@ -14,8 +14,9 @@ struct FindCompetitorConfig {
 
 // TODO: We should write down the correct competitor and then recheck without changing it.
 ErrorOr<bool> isCompetitorValid(ImmersedSimplicialComplex competitor, NetEmbeddedWithPins link) {
-    auto pin1 = link.embedding[link.pins.first];
-    auto pin2 = link.embedding[link.pins.second];
+    vector<Point> embedding = link.deterministicEmbedding();
+    Point pin1 = embedding[link.pins.first];
+    Point pin2 = embedding[link.pins.second];
     auto maybe_line = competitor.containsSegment(pin1, pin2);
     if (!maybe_line.isOk()) {
         return ErrorMessage("The line connecting the pins is not properly contained in the competitor.\n"
@@ -28,8 +29,8 @@ ErrorOr<bool> isCompetitorValid(ImmersedSimplicialComplex competitor, NetEmbedde
         if (d.from > d.to)
             continue;
 
-        auto U = link.embedding[d.from];
-        auto V = link.embedding[d.to];
+        Point U = embedding[d.from];
+        Point V = embedding[d.to];
         auto maybe_boundary_edge = competitor.containsSegment(U, V, false);
         if (!maybe_boundary_edge.isOk()) {
             stringstream ss;
@@ -92,6 +93,7 @@ ErrorOr<double> processNet(int net_id, vector<double> net_params,
                            bool run_surface_evolver,
                            FindCompetitorConfig config) {
     NetEmbeddedWithPins link = embedNetWithPins(net_id, net_params);
+    link.printInfo();
     SurfaceEvolverData cone = generateCone(link);
     SurfaceEvolverData popped_cone = generatePoppedConeCases(net_id, link, config);
 
@@ -322,9 +324,48 @@ void proveInstabilityGoggles() {
 
 int main() {
     // proveInstabilityRigidNets();
-    proveInstabilityRigidNetsWithFlexiblePins();
-    // proveInstabilityGoggles();
+    // proveInstabilityRigidNetsWithFlexiblePins();
+    proveInstabilityGoggles();
     // proveInstabilityFatFish();
 
     return 0;
 }
+
+// The kind of estimate we actually need is:
+
+// Sia E una rete geodetica con due pins antipodali.
+// Sia \tilde E un'altra rete geodetica con due pins antipodali.
+
+// Creiamo un competitor valido per \tilde E con un'area gap di g.
+
+// Se E è una rete valida, allora g < dist(E, \tilde E)
+
+//
+// Rigid case
+//
+// Goal: Any net compatible with the approximate embedding Q is not stable.
+// Method:
+// Take the center of each point in the approximate embedding.
+// In this way we obtain a geodesic net N.
+// We find a competitor for N with area gap g.
+// Now, assume that there is a stable net in Q, let it be \tilde N.
+// If dist(N, \tilde N) is small compared to g, then this is impossible.
+
+
+// Lemma: Let $E$ be a cone containing the line l whose link is a geodesic net with two pins.
+//        Assume that E admits a competitor with Area(F(E)) <= Area(E) - \eps.
+//        Let $\tilde E$ be another cone whose link is a geodesic net with two pins.
+//        There is a competitor for $\tilde E$ such that
+//        Area(\tilde F(\tilde E)) <= Area(\tilde E) - \eps + F(dist(E, \tilde E).
+
+//
+// Lemma: Let $E$ be a cone containing the line l whose link is a geodesic net with two pins.
+//        Assume that E admits a competitor with Area(competitor) <= Area(E) - \eps.
+//        Let $\tilde E$ be another cone whose link is a geodesic net with two pins.
+//
+//
+//
+//
+//
+//
+//

@@ -608,9 +608,11 @@ const map<int, pair<vector<int>, vector<int>>> pop_description = {
     }},
 };
 
+
 struct NetEmbeddedWithPins {
     CombinatorialMap A;
     vector<ApproximatePoint> embedding;
+    vector<ApproximatePoint> direction_from_pins_line;
     pair<int,int> pins;
 
     vector<Point> deterministicEmbedding() const {
@@ -684,6 +686,146 @@ struct NetEmbeddedWithPins {
     // }
 };
 
+vector<ApproximatePoint> computeTangentAtPins(
+        const ApproximatelyMetrizedNet& derived_once,
+        const vector<ApproximatePoint>& embedding,
+        const CombinatorialMap& full_graph,
+        const pair<int,int>& pins) {
+    const MarkedCombinatorialMap& A = derived_once.A;
+    const Dart root = A.dart(0);
+
+    vector<ApproximatePoint> direction_from_pins_line(ssize(embedding));
+    for (Dart d: A.concaveAngles()) {
+        ApproximatePoint Q = derived_once.getIsometryToPin(root, d)({0, 0, 1});
+        for (Dart d2: full_graph.darts()) {
+
+            if (d2.from == d.to and (d2.to == pins.first or d2.to == pins.second))
+                direction_from_pins_line[d.to] = embedding[d2.to] ^ Q;
+        }
+    }
+    return direction_from_pins_line;
+}
+// What gap do we have to achieve on chosen_one to rule out the stability of
+// the given family.
+double excludeFamilyViaStability(vector<Point> chosen_one, NetEmbeddedWithPins family) {
+    // Step 1: Make the pins the same.
+    int p1 = family.pins.first, p2 = family.pins.second;
+    double d1 = norm(approximatePoint(chosen_one[p1]) - family.embedding[p1]).r;
+    double d2 = norm(approximatePoint(chosen_one[p2]) - family.embedding[p2]).r;
+    double d = min(d1, d2);
+
+    for (auto& P: family.embedding) {
+        for (int i = 0; i < 3; i++) {
+            P[i].l -= d;
+            P[i].r += d;
+        }
+    }
+    for (auto& P: family.direction_from_pins_line) {
+        for (int i = 0; i < 3; i++) {
+            P[i].l -= d;
+            P[i].r += d;
+        }
+    }
+    family.embedding[p1] = approximatePoint(chosen_one[p1]);
+    family.embedding[p2] = approximatePoint(chosen_one[p2]);
+
+    Point pin_line = (chosen_one[p1] - chosen_one[p2]) * 0.5;
+    assert(abs(norm(pin_line) - 1.0) < 1e-8);
+
+    // Step 2: Compute the direction-from-pins (orthogonal to pin_line).
+    auto compute_dir = [&](int v) { // It should be ok to be sloppy.
+        ApproximatePoint ans = family.direction_from_pins_line[v];
+        Interval scal_prod = family.embedding[v] * approximatePoint(pin_line);
+        ApproximatePoint Q = family.embedding[v] - approximatePoint(pin_line) * scal_prod;
+        if (norm(Q).l > 1e-3) {
+            ApproximatePoint ans2 = Q / norm(Q);
+            assert(canCoincide(ans, ans2));
+            ans = intersection(ans, ans2);
+        }
+        return ans;
+    };
+
+    // Step 3: Verify if the lemma can be applied.
+    static default_random_engine engine(123);
+    uniform_real_distribution<double> distribution(-1.0, 1.0);
+
+    // Let vec be a realization of approx_vec made only of unit-vectors
+    // orthogonal to the line l.
+    // This function determines whether all points of vec are necessarily in
+    // one hemisphere.
+    // May return false negatives, but that is fine (and very unlikely).
+    auto same_hemisphere_wrt_line = [&](vector<ApproximatePoint> approx_vec) {
+        for (int _ = 0; _ < 1000; _++) {
+            Point A = {distribution(engine), distribution(engine), distribution(engine)};
+            double scal_prod = A * pin_line;
+            A = A - pin_line * scal_prod;
+            if (norm(A) < 0.01)
+                continue;
+            A = A / norm(A);
+
+            bool all_pos = true;
+            for (ApproximatePoint B: approx_vec) {
+                double s = (approximatePoint(A) * B).l;
+                if (s <= 0) {
+                    all_pos = false;
+                    break;
+                }
+            }
+            if (all_pos)
+                return true;
+        }
+        return false;
+    };
+
+    // Position of vertices wrt line.
+    // Undefined for the two pins.
+    vector<Point> dir_wrt_line1(ssize(chosen_one));
+    vector<ApproximatePoint> dir_wrt_line2(ssize(chosen_one));
+    for (int v = 0; v < ssize(chosen_one); v++) {
+        if (v == p1 or v == p2)
+            continue;
+        double scal_prod = pin_line * chosen_one[v];
+        assert(abs(scal_prod) < 0.999);
+        Point Q = chosen_one[v] - pin_line * scal_prod;
+        dir_wrt_line1[v] = Q / norm(Q);
+
+        dir_wrt_line2[v] = compute_dir(v);
+    }
+
+    for (Dart d: family.A.darts()) {
+        if (d.from > d.to)
+            continue;
+        int u = d.from, v = d.to;
+        if (u == p1 or u == p2 or v == p1 or v == p2)
+            continue;
+        // Slightly annoying: chosen_one is not orthogonal to \ell.
+        vector<ApproximatePoint> approx_vec = {
+            approximatePoint(dir_wrt_line1[u]), approximatePoint(dir_wrt_line1[v]),
+            dir_wrt_line2[u], dir_wrt_line2[u]
+        };
+        if (!same_hemisphere_wrt_line(approx_vec))
+            return 1000;
+    }
+
+    // Step 4: Compute the desired gap.
+    double gap = 0;
+    for (Dart d: family.A.darts()) {
+        if (d.from > d.to) continue;
+        int u = d.from, v = d.to;
+        ApproximatePoint U1 = approximatePoint(chosen_one[u]), V1 = approximatePoint(chosen_one[v]);
+        ApproximatePoint U2 = family.embedding[u], V2 = family.embedding[v];
+        Interval homotopy_area1 = 0.5 * norm((U2-U1)^(V1-U1));
+        Interval homotopy_area2 = 0.5 * norm((V2-V1)^(U2-V1));
+        gap += (homotopy_area1 + homotopy_area2).r;
+
+        Interval cone_area1 = 0.5 * norm(U1^V1);
+        Interval cone_area2 = 0.5 * norm(U2^V2);
+        gap += (cone_area2 - cone_area1).r;
+
+    }
+    return gap;
+}
+
 // Assumption: net is a rigid net with flexible pins.
 // Let I be the interval of lengths of the edge connecting concave_angles[0] to
 // its pins that generate a valid net.
@@ -734,7 +876,7 @@ Interval validPinEdgeLength(ApproximatelyMetrizedNet net) {
     assert(l <= r);
     assert(0 <= r and r <= M_PI);
 
-    return intersection({0, len1}, {l, r});
+    return intersection(Interval(0, len1), Interval(l, r));
 }
 
 // We print some info which is useful for humans to come up with a reasonable pop.
@@ -805,9 +947,12 @@ NetEmbeddedWithPins embed827WithPins(const vector<double>& params) {
     embedding[8] = {s0, 0, c0};
     embedding[9] = {-s0, 0, -c0};
 
+    ApproximatePoint no_info = {Interval(-2, 2), Interval(-2, 2), Interval(-2, 2)};
+
     return {
         .A = A,
         .embedding = embedding,
+        .direction_from_pins_line = vector<ApproximatePoint>(ssize(embedding), no_info),
         .pins = pins,
     };
 }
@@ -858,9 +1003,12 @@ NetEmbeddedWithPins embedNetWithPins(int net_id, const vector<double>& params) {
 
     auto [pins, A] = addPinsToCombinatorialMap(net, embedding, pins_coord);
 
+    vector<ApproximatePoint> direction_from_pins_line = computeTangentAtPins(net, embedding, A, pins);
+
     return {
         .A = A,
         .embedding = embedding,
+        .direction_from_pins_line = direction_from_pins_line,
         .pins = pins,
     };
 }

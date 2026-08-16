@@ -23,6 +23,13 @@ bool canCoincide(const ApproximatePoint& A,
            !intersection(A[2], B[2]).empty();
 }
 
+ApproximatePoint intersection(const ApproximatePoint& A,
+                 const ApproximatePoint& B) {
+    return {intersection(A[0], B[0]),
+            intersection(A[1], B[1]),
+            intersection(A[2], B[2])};
+}
+
 ostream& operator<<(ostream& out, Point p) {
     out << p[0] << " " << p[1] << " " << p[2];
     return out;

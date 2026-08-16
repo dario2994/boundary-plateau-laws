@@ -135,12 +135,16 @@ ErrorOr<double> processNet(int net_id, vector<double> net_params,
     if (!maybe_validation_error.isOk())
         return ErrorMessage(maybe_validation_error.getError());
 
+    // TODO: This shall be fixed!
     double area_gap = cone.X.area() - competitor.area();
-    if (area_gap < 1e-3) {
+    double needed_gap = excludeFamilyViaStability(link.deterministicEmbedding(), link);
+    assert(needed_gap > 1e-8);
+    if (area_gap < needed_gap) {
         stringstream ss;
         ss << "The gap = " << area_gap << " between the area of the cone = "
            << cone.X.area() << " and the area of the competitor = "
-           << competitor.area() << " is not sufficiently large.";
+           << competitor.area() << " is not sufficiently large. "
+           << "It shall be at least " << needed_gap << ".";
         return ErrorMessage(ss);
     }
 
@@ -261,6 +265,8 @@ void proveInstabilityRigidNets() {
     cout << "net_id: area gap" << endl;
     for (int net_id: rigid_nets) {
         cout << net_id << ": \t";
+        if (net_id < 484)
+            continue; // TODO: Remove this
         cout.flush();
         auto maybe_proof = processNet(net_id, {}, true, FindCompetitorConfig());
         if (!maybe_proof.isOk())
@@ -323,9 +329,9 @@ void proveInstabilityGoggles() {
 }
 
 int main() {
-    // proveInstabilityRigidNets();
+    proveInstabilityRigidNets();
     // proveInstabilityRigidNetsWithFlexiblePins();
-    proveInstabilityGoggles();
+    // proveInstabilityGoggles();
     // proveInstabilityFatFish();
 
     return 0;

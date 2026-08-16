@@ -305,10 +305,12 @@ class ApproximatelyMetrizedNet {
         return isometryFromPath(getPath(from, to));
     }
 
+    // to is a concave angle (as in A.concaveAngles())
     ApproximateIsometry getIsometryToPin(const Dart& from, const Dart& to) const {
         return isometryFromPath(getPathToPin(from, to));
     }
 
+    // from, to are concave angles (as in A.concaveAngles())
     ApproximateIsometry getIsometryFromPinToPin(const Dart& from, const Dart& to) const {
         return isometryFromPath(getPathFromPinToPin(from, to));
     }

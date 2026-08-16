@@ -8,12 +8,12 @@
 #include "simplicial_complexes.cpp"
 
 
-string generateEmbeddingFilename(int net_id, vector<double> params) {
+string generateEmbeddingFilename(int net_id, vector<Interval> params) {
     std::ostringstream oss;
     oss << net_id;
     oss << fixed << setprecision(5);
-    for (double param: params)
-        oss << "_" << param;
+    for (Interval param: params)
+        oss << "_" << param.l << "_" << param.r;
     return oss.str();
 }
 
@@ -105,7 +105,8 @@ pair<ApproximatePoint, ApproximatePoint> findPinsEmbedding(const ApproximatelyMe
 // net.A.concaveAngles()[0].
 //
 // The pins are antipodal points on the unit sphere.
-pair<ApproximatePoint, ApproximatePoint> choosePinsEmbedding(const ApproximatelyMetrizedNet& net, double dist) {
+pair<ApproximatePoint, ApproximatePoint> choosePinsEmbedding(
+        const ApproximatelyMetrizedNet& net, Interval dist) {
     assert(!net.A.concaveAngles().empty());
 
     const Dart root = net.A.dart(0);
@@ -623,29 +624,29 @@ struct NetEmbeddedWithPins {
         return deterministic_embedding;
     }
 
-    void printInfo() {
-        double max_point_error = 0;
-        for (auto P: embedding) {
-            double error_bound = P[0].len() + P[1].len() + P[2].len();
-            max_point_error += error_bound / 2;
-        }
-        double delta = 2 * max_point_error; // Boring approximation
-        double max_edge = 0;
-        double total_edges = 0;
-        double max_gap = 0;
-        for (Dart d: A.darts()) {
-            if (d.from > d.to)
-                continue;
-            double edge_len = norm(embedding[d.from] - embedding[d.to]).r;
-            max_edge = max(max_edge, edge_len);
-            total_edges += edge_len;
-            max_gap += 4 * delta* (edge_len + 2 * delta);
-        }
-        cout << "max_point_error = " << max_point_error
-             << ", max_edge = " << max_edge
-             << ", total_edges = " << total_edges
-             << ", max_gap = " << max_gap << endl;
-    }
+    // void printInfo() {
+    //     double max_point_error = 0;
+    //     for (auto P: embedding) {
+    //         double error_bound = P[0].len() + P[1].len() + P[2].len();
+    //         max_point_error += error_bound / 2;
+    //     }
+    //     double delta = 2 * max_point_error; // Boring approximation
+    //     double max_edge = 0;
+    //     double total_edges = 0;
+    //     double max_gap = 0;
+    //     for (Dart d: A.darts()) {
+    //         if (d.from > d.to)
+    //             continue;
+    //         double edge_len = norm(embedding[d.from] - embedding[d.to]).r;
+    //         max_edge = max(max_edge, edge_len);
+    //         total_edges += edge_len;
+    //         max_gap += 4 * delta* (edge_len + 2 * delta);
+    //     }
+    //     cout << "max_point_error = " << max_point_error
+    //          << ", max_edge = " << max_edge
+    //          << ", total_edges = " << total_edges
+    //          << ", max_gap = " << max_gap << endl;
+    // }
 
     // double totalLen() {
     //     double len = 0;
@@ -785,8 +786,9 @@ double excludeFamilyViaStability(vector<Point> chosen_one, NetEmbeddedWithPins f
         if (v == p1 or v == p2)
             continue;
         double scal_prod = pin_line * chosen_one[v];
-        assert(abs(scal_prod) < 0.999);
+        // assert(abs(scal_prod) < 0.999);
         Point Q = chosen_one[v] - pin_line * scal_prod;
+        assert(norm(Q) > 1e-4);
         dir_wrt_line1[v] = Q / norm(Q);
 
         dir_wrt_line2[v] = compute_dir(v);
@@ -958,11 +960,13 @@ NetEmbeddedWithPins embed827WithPins(const vector<double>& params) {
 }
 
 
-NetEmbeddedWithPins embedNetWithPins(int net_id, const vector<double>& params) {
+NetEmbeddedWithPins embedNetWithPins(int net_id, const vector<Interval>& params) {
     assert(possible_nets.count(net_id));
 
-    if (net_id == 827)
-        return embed827WithPins(params);
+    assert(net_id != 827 and net_id != 1029);
+
+    // if (net_id == 827)
+    //     return embed827WithPins(params);
 
     ifstream metrized_net_in("data/metrized_nets/"+ to_string(net_id) + ".txt");
     assert(metrized_net_in.is_open());
@@ -972,22 +976,23 @@ NetEmbeddedWithPins embedNetWithPins(int net_id, const vector<double>& params) {
     vector<ApproximatePoint> embedding;
     pair<ApproximatePoint, ApproximatePoint> pins_coord;
 
-    if (net_id == 1029) {
-        assert(ssize(params) == 2);
-        assert(params[0] == 0 or params[0] == 1);
-        if (params[0] == 0) {
-            assert(0 <= params[1] and params[1] <= acos(1.0/3) / 2);
-            tie(embedding, pins_coord) = embedGoggles(params[1]);
-        }
-        if (params[0] == 1) {
-            assert(0 <= params[1] and params[1] <= acos(1.0/3) / 2); // TODO: Check this!
-            tie(embedding, pins_coord) = embedCube(params[1]);
-        }
-    } else if (rigid_nets_flexible_pins.count(net_id)) {
+    // if (net_id == 1029) {
+    //     assert(ssize(params) == 2);
+    //     assert(params[0] == 0 or params[0] == 1);
+    //     if (params[0] == 0) {
+    //         assert(0 <= params[1] and params[1] <= acos(1.0/3) / 2);
+    //         tie(embedding, pins_coord) = embedGoggles(params[1]);
+    //     }
+    //     if (params[0] == 1) {
+    //         assert(0 <= params[1] and params[1] <= acos(1.0/3) / 2); // TODO: Check this!
+    //         tie(embedding, pins_coord) = embedCube(params[1]);
+    //     }
+    // } else
+    if (rigid_nets_flexible_pins.count(net_id)) {
         assert(ssize(params) == 1);
-        double len = params[0];
+        Interval len = params[0];
         Interval valid_lens = validPinEdgeLength(net);
-        assert(valid_lens.contains(len));
+        assert(isSubset(len, valid_lens));
         // clog << "Interval of valid edge-to-pin lengths: " << valid_lens << endl;
         embedding = getVertexEmbedding(net);
         pins_coord = choosePinsEmbedding(net, len);

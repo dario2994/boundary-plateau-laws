@@ -62,15 +62,14 @@ bool isShorterThanPi(const MarkedCombinatorialMap& A, const Dart& d) {
 struct PathStep {
     char type;
     int deg;
-    double len;
+    Interval len;
     Dart d;
 
     static PathStep rot(int _deg) {
         PathStep step; step.type = 'R'; step.deg = _deg; return step;
     }
-    // TODO: Sarebbe ideale cancellare questo del tutto!
-    // Viene usato soltanto una volta.
-    static PathStep exp(double _len) {
+
+    static PathStep exp(Interval _len) {
         PathStep step; step.type = 'E'; step.len = _len; step.d = Dart();
         return step;
     }

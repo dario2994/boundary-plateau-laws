@@ -56,8 +56,6 @@ ErrorOr<bool> isCompetitorValid(ImmersedSimplicialComplex competitor, NetEmbedde
 
 bool containsErrorMessage(const string& log_file, const string& error_string) {
     ifstream infile(log_file);
-    // const string& pattern = "X Error of failed request";
-
     assert(infile.is_open());
 
     string line;
@@ -89,11 +87,11 @@ SurfaceEvolverData generatePoppedConeCases(int net_id, NetEmbeddedWithPins link,
 // If the function finds a valid competitor, it saves it and returns the (positive)
 // difference between the cone and the competitor.
 // Otherwise, it returns an error.
-ErrorOr<double> processNet(int net_id, vector<double> net_params,
+ErrorOr<double> processNet(int net_id, vector<Interval> net_params,
                            bool run_surface_evolver,
                            FindCompetitorConfig config) {
     NetEmbeddedWithPins link = embedNetWithPins(net_id, net_params);
-    link.printInfo();
+    // link.printInfo();
     SurfaceEvolverData cone = generateCone(link);
     SurfaceEvolverData popped_cone = generatePoppedConeCases(net_id, link, config);
 
@@ -207,57 +205,57 @@ double processFatFish(double theta0, double theta1) {
     return area_gap;
 }
 
-double area_processed = 0;
-// theta0 controls the position of the pins
-// theta1 controls the derived-once net
-double proveInstabilityFatFishRecursive(Interval theta0, Interval theta1) {
-    if (theta0.len() + theta1.len() < 1e-4)
-        return -1.0;
+// double area_processed = 0;
+// // theta0 controls the position of the pins
+// // theta1 controls the derived-once net
+// double proveInstabilityFatFishRecursive(Interval theta0, Interval theta1) {
+//     if (theta0.len() + theta1.len() < 1e-4)
+//         return -1.0;
 
-    double upperbound_theta0 = atan(1.0 / (sqrt(3.) * cos(theta1.r)));
-    theta0.intersect(Interval(-1000, upperbound_theta0 - 0.01));
-    if (theta0.empty())
-        return true;
-    cout << theta0 << " " << theta1 << ", " << (100*area_processed / 0.36) << "%, ";
+//     double upperbound_theta0 = atan(1.0 / (sqrt(3.) * cos(theta1.r)));
+//     theta0.intersect(Interval(-1000, upperbound_theta0 - 0.01));
+//     if (theta0.empty())
+//         return true;
+//     cout << theta0 << " " << theta1 << ", " << (100*area_processed / 0.36) << "%, ";
 
-    double desired_area_gap =
-        8 * theta0.len() + 2*sqrt(3) * theta1.len() + 1e-3;
-    double p0 = theta0.mid();
-    double p1 = theta1.mid();
+//     double desired_area_gap =
+//         8 * theta0.len() + 2*sqrt(3) * theta1.len() + 1e-3;
+//     double p0 = theta0.mid();
+//     double p1 = theta1.mid();
 
-    if (theta0.len() + theta1.len() < 0.01) {
-        double area_gap = processFatFish(p0, p1);
-        if (desired_area_gap / 2 < area_gap) {
-            cout << " OK" << endl;
-            area_processed += theta0.len() * theta1.len();
-            return area_gap;
-        }
-    }
-    cout << endl;
+//     if (theta0.len() + theta1.len() < 0.01) {
+//         double area_gap = processFatFish(p0, p1);
+//         if (desired_area_gap / 2 < area_gap) {
+//             cout << " OK" << endl;
+//             area_processed += theta0.len() * theta1.len();
+//             return area_gap;
+//         }
+//     }
+//     cout << endl;
 
-    bool children_are_solved = true;
-    double res = -1;
-    for (Interval theta0_child: vector<Interval>{{theta0.l, p0}, {p0, theta0.r}}) {
-        for (Interval theta1_child: vector<Interval>{{theta1.l, p1}, {p1, theta1.r}}) {
-            double child_res = proveInstabilityFatFishRecursive(theta0_child, theta1_child);
-            res = max(res, child_res);
-            children_are_solved &= child_res > 0;
-            if (desired_area_gap < child_res)
-                return child_res;
-        }
-    }
-    if (children_are_solved)
-        return res;
-    return -1.0;
-}
+//     bool children_are_solved = true;
+//     double res = -1;
+//     for (Interval theta0_child: vector<Interval>{{theta0.l, p0}, {p0, theta0.r}}) {
+//         for (Interval theta1_child: vector<Interval>{{theta1.l, p1}, {p1, theta1.r}}) {
+//             double child_res = proveInstabilityFatFishRecursive(theta0_child, theta1_child);
+//             res = max(res, child_res);
+//             children_are_solved &= child_res > 0;
+//             if (desired_area_gap < child_res)
+//                 return child_res;
+//         }
+//     }
+//     if (children_are_solved)
+//         return res;
+//     return -1.0;
+// }
 
-bool proveInstabilityFatFish() {
-    const double sigma = sqrt(2. / 3);
-    double upperbound_theta1 = acos(sigma);
-    return proveInstabilityFatFishRecursive(
-        Interval(0, 1000),
-        Interval(0, upperbound_theta1-0.01)) > 0;
-}
+// bool proveInstabilityFatFish() {
+//     const double sigma = sqrt(2. / 3);
+//     double upperbound_theta1 = acos(sigma);
+//     return proveInstabilityFatFishRecursive(
+//         Interval(0, 1000),
+//         Interval(0, upperbound_theta1-0.01)) > 0;
+// }
 
 
 void proveInstabilityRigidNets() {
@@ -289,89 +287,64 @@ void proveInstabilityRigidNetsWithFlexiblePins() {
         Interval param_region = validPinEdgeLength(net);
         clog << "Param region: " << param_region << endl;
 
-        auto get_area_gap = [&](double param) {
+        // Returns true or false.
+        auto try_interval = [&](Interval param) {
+            if (param.len() > 0.01) // No matter what, we split at least this much.
+                return false;
+            clog << "Processing " << param << endl;
             FindCompetitorConfig config;
-            config.net1096_removed_face = (net_id == 1096 and param > 0.38) ? 8 : 6;
-            return valueOrAssert(processNet(net_id, {param}, true, config));
+            config.net1096_removed_face = (net_id == 1096 and param.mid() > 0.38) ? 8 : 6;
+            return processNet(net_id, {param}, true, config).isOk();
         };
 
-        auto distance_covered = [&](double param) {
-            double area_gap = get_area_gap(param);
-            clog << "area_gap(" << param << ") = " << area_gap << endl;
-            return area_gap / 10.;
+        function<void(Interval)> solve_recursive = [&](Interval param) {
+            if (try_interval(param))
+                return;
+            assert(param.len() > 1e-5); // Avoid going too deep.
+            Interval left = {param.l, param.mid()};
+            Interval right = {param.mid(), param.r};
+            left.intersect(param);
+            right.intersect(param);
+            solve_recursive(left);
+            solve_recursive(right);
         };
 
-        coverInterval(param_region.l, param_region.r, distance_covered);
+        // TODO: Remove
+        param_region.l += 0.01;
+        param_region.r -= 0.01;
+        solve_recursive(param_region);
+
         cout << "OK" << endl << endl;
     }
 }
 
-void proveInstabilityGoggles() {
-    cout << "Processing goggles." << endl;
-    Interval param_region = {0., acos(1.0/3) / 2};
-    clog << "Param region: " << param_region << endl;
+// void proveInstabilityGoggles() {
+//     cout << "Processing goggles." << endl;
+//     Interval param_region = {0., acos(1.0/3) / 2};
+//     clog << "Param region: " << param_region << endl;
 
-    auto get_area_gap = [&](double param) {
-        FindCompetitorConfig config;
-        config.net1029_cube_family = false;
-        return valueOrAssert(processNet(GOGGLES_ID, {0., param}, true, config));
-    };
+//     auto get_area_gap = [&](double param) {
+//         FindCompetitorConfig config;
+//         config.net1029_cube_family = false;
+//         return valueOrAssert(processNet(GOGGLES_ID, {0., param}, true, config));
+//     };
 
-    auto distance_covered = [&](double param) {
-        double area_gap = get_area_gap(param);
-        clog << "area_gap(" << param << ") = " << area_gap << endl;
-        return area_gap / 10.;
-    };
+//     auto distance_covered = [&](double param) {
+//         double area_gap = get_area_gap(param);
+//         clog << "area_gap(" << param << ") = " << area_gap << endl;
+//         return area_gap / 10.;
+//     };
 
-    coverInterval(param_region.l, param_region.r, distance_covered);
+//     coverInterval(param_region.l, param_region.r, distance_covered);
 
-    return;
-}
+//     return;
+// }
 
 int main() {
-    proveInstabilityRigidNets();
-    // proveInstabilityRigidNetsWithFlexiblePins();
+    // proveInstabilityRigidNets();
+    proveInstabilityRigidNetsWithFlexiblePins();
     // proveInstabilityGoggles();
     // proveInstabilityFatFish();
 
     return 0;
 }
-
-// The kind of estimate we actually need is:
-
-// Sia E una rete geodetica con due pins antipodali.
-// Sia \tilde E un'altra rete geodetica con due pins antipodali.
-
-// Creiamo un competitor valido per \tilde E con un'area gap di g.
-
-// Se E è una rete valida, allora g < dist(E, \tilde E)
-
-//
-// Rigid case
-//
-// Goal: Any net compatible with the approximate embedding Q is not stable.
-// Method:
-// Take the center of each point in the approximate embedding.
-// In this way we obtain a geodesic net N.
-// We find a competitor for N with area gap g.
-// Now, assume that there is a stable net in Q, let it be \tilde N.
-// If dist(N, \tilde N) is small compared to g, then this is impossible.
-
-
-// Lemma: Let $E$ be a cone containing the line l whose link is a geodesic net with two pins.
-//        Assume that E admits a competitor with Area(F(E)) <= Area(E) - \eps.
-//        Let $\tilde E$ be another cone whose link is a geodesic net with two pins.
-//        There is a competitor for $\tilde E$ such that
-//        Area(\tilde F(\tilde E)) <= Area(\tilde E) - \eps + F(dist(E, \tilde E).
-
-//
-// Lemma: Let $E$ be a cone containing the line l whose link is a geodesic net with two pins.
-//        Assume that E admits a competitor with Area(competitor) <= Area(E) - \eps.
-//        Let $\tilde E$ be another cone whose link is a geodesic net with two pins.
-//
-//
-//
-//
-//
-//
-//

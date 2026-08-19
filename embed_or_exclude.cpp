@@ -30,12 +30,12 @@ pair<vector<pair<Point, string>>, vector<tuple<Point, Point, double>>>
     for (Dart d: A.darts()) {
         ApproximateIsometry q = net.getIsometry(root, d);
         vertex_embedding[d.from] = {
-            make_deterministic(q({1, 0, 0})),
+            makeDeterministic(q({1, 0, 0})),
             to_string(d.from)
         };
         dart_embedding[d.id] = {
-            make_deterministic(q({1, 0, 0})),
-            make_deterministic(q({0, 1, 0})),
+            makeDeterministic(q({1, 0, 0})),
+            makeDeterministic(q({0, 1, 0})),
             net.length(d).mid()
         };
     }

@@ -8,13 +8,14 @@ struct FindCompetitorConfig {
     int net827_pop_type; // -1, 0, 1, fat fish
     int net1096_removed_face; // Default is 6, sometimes overwritten as 8
     bool net827_slow_convergence; // whether we want to run for a longer time the surface evolver, fat fish
-    bool net1029_cube_family; // Whether we should treat the net 1029 as the cube family. The net 1029 admits two 1-parameter families of metrization, one of them is the cube family, the other is the goggles.
+    // TODO
+    // bool net1029_cube_family; // Whether we should treat the net 1029 as the cube family. The net 1029 admits two 1-parameter families of metrization, one of them is the cube family, the other is the goggles.
 };
 
 
 // TODO: We should write down the correct competitor and then recheck without changing it.
-ErrorOr<bool> isCompetitorValid(ImmersedSimplicialComplex competitor, NetEmbeddedWithPins link) {
-    vector<Point> embedding = link.deterministicEmbedding();
+ErrorOr<bool> isCompetitorValid(GeodesicNetAntipodalPins link, ImmersedSimplicialComplex competitor) {
+    vector<Point> embedding = link.embedding;
     Point pin1 = embedding[link.pins.first];
     Point pin2 = embedding[link.pins.second];
     auto maybe_line = competitor.containsSegment(pin1, pin2);
@@ -66,9 +67,9 @@ bool containsErrorMessage(const string& log_file, const string& error_string) {
     return false;
 }
 
-SurfaceEvolverData generatePoppedConeCases(int net_id, NetEmbeddedWithPins link, FindCompetitorConfig config) {
-    if (net_id == 1029 and config.net1029_cube_family)
-        return generateCubeCompetitor(link); // TODO
+SurfaceEvolverData generatePoppedConeCases(int net_id, const GeodesicNetAntipodalPins& link, FindCompetitorConfig config) {
+    // if (net_id == 1029 and config.net1029_cube_family)
+    //     return generateCubeCompetitor(link); // TODO
     if (net_id == 1096)
         return generatePoppedCone(link, {config.net1096_removed_face}, pop_description.at(net_id).second);
     if (net_id == 827) {// Fat fish family
@@ -78,26 +79,16 @@ SurfaceEvolverData generatePoppedConeCases(int net_id, NetEmbeddedWithPins link,
                                     pop_description.at(net_id).second);
 }
 
-// Tries to find a valid competitor for the given net.
-// The net is specified via net_id and, if the net is not rigid, via some real
-// parameters net_params.
-// One can decide to skip running the surface evolver and used the cached
-// competitors. Even in this case, this function checks whether the cached
-// competitors are valid.
-// If the function finds a valid competitor, it saves it and returns the (positive)
-// difference between the cone and the competitor.
-// Otherwise, it returns an error.
-ErrorOr<double> processNet(int net_id, vector<Interval> net_params,
-                           bool run_surface_evolver,
-                           FindCompetitorConfig config) {
-    NetEmbeddedWithPins link = embedNetWithPins(net_id, net_params);
-    // link.printInfo();
+
+ErrorOr<double> findCompetitor(int net_id, string name,
+                               const GeodesicNetAntipodalPins& link,
+                               bool run_surface_evolver,
+                               FindCompetitorConfig config) {
     SurfaceEvolverData cone = generateCone(link);
     SurfaceEvolverData popped_cone = generatePoppedConeCases(net_id, link, config);
 
-    const string& embedding_name = generateEmbeddingFilename(net_id, net_params);
     const string& net_directory = format("data/surface_evolver/{}", net_id);
-    const string& filename_prefix = format("{}/{}", net_directory, embedding_name);
+    const string& filename_prefix = format("{}/{}", net_directory, name);
 
     if (run_surface_evolver) {
         filesystem::create_directory(net_directory);
@@ -129,51 +120,105 @@ ErrorOr<double> processNet(int net_id, vector<Interval> net_params,
     assert(competitor_in.is_open());
     ImmersedSimplicialComplex competitor = parseImmersedSimplicialComplex(competitor_in);
 
-    auto maybe_validation_error = isCompetitorValid(competitor, link);
+    auto maybe_validation_error = isCompetitorValid(link, competitor);
     if (!maybe_validation_error.isOk())
         return ErrorMessage(maybe_validation_error.getError());
 
     // TODO: This shall be fixed!
     double area_gap = cone.X.area() - competitor.area();
-    double needed_gap = excludeFamilyViaStability(link.deterministicEmbedding(), link);
-    assert(needed_gap > 1e-8);
-    if (area_gap < needed_gap) {
+    if (area_gap < 1e-5) {
         stringstream ss;
         ss << "The gap = " << area_gap << " between the area of the cone = "
            << cone.X.area() << " and the area of the competitor = "
-           << competitor.area() << " is not sufficiently large. "
-           << "It shall be at least " << needed_gap << ".";
+           << competitor.area() << " is not sufficiently large. ";
         return ErrorMessage(ss);
     }
 
     return area_gap;
 }
 
+// Tries to find a valid competitor for the given net.
+// The net is specified via net_id and, if the net is not rigid, via some real
+// parameters net_params.
+// One can decide to skip running the surface evolver and used the cached
+// competitors. Even in this case, this function checks whether the cached
+// competitors are valid.
+// If the function finds a valid competitor, it saves it and returns the (positive)
+// difference between the cone and the competitor.
+// Otherwise, it returns an error.
+ErrorOr<double> excludeFamilyOfNets(int net_id, vector<Interval> net_params,
+                                    bool run_surface_evolver,
+                                    FindCompetitorConfig config) {
+    NetEmbeddedWithPins family = embedNetWithPins(net_id, net_params, false);
+    GeodesicNetAntipodalPins link =
+            embedNetWithPins(net_id, net_params, true).deterministicEmbedding();
+    const string& name = generateEmbeddingFilename(net_id, net_params);
+
+    ErrorOr<double> res = findCompetitor(net_id, name, link, run_surface_evolver, config);
+
+    if (!res.isOk())
+        return res;
+
+    double area_gap = res.getContent();
+    double needed_gap = excludeFamilyViaStability(link, family);
+
+    cout.precision(7);
+    cout << fixed << area_gap << "\t(" << needed_gap << ")" << endl;
+
+    assert(needed_gap > 1e-8);
+    if (area_gap < needed_gap) {
+        stringstream ss;
+        ss << "The area gap = " << area_gap << " found for the selected link "
+           << "is not sufficient to exclude the family. "
+           << "A gap of " << needed_gap << " would be required.";
+        return ErrorMessage(ss);
+    }
+
+    return area_gap;
+}
+
+// If this function terminates, it is guaranteed that there is a finite set family
+// of subintervals I_1, .., I_k such that:
+// - They cover I, that is I \subseteq \bigcup_j I_j
+// - It holds f(I_j) = true for all j.
+void coverInterval(Interval I, function<bool(Interval)> f) {
+    if (f(I))
+        return;
+    assert(I.len() > 1e-5); // TODO: Avoid going too deep.
+    Interval left = {I.l, I.mid()};
+    Interval right = {I.mid(), I.r};
+    left.intersect(I);
+    right.intersect(I);
+    coverInterval(left, f);
+    coverInterval(right, f);
+};
+
+// TODO: Erase this
 // If this function terminates, it is guaranteed that there is a finite set S of
 // points strictly inside (l, r) such that:
 //  [l, r] \subseteq \bigcup_{s\in S} interval_covered(s)
 // where interval_covered(s) = [s-distance_covered(s), s+distance_covered(s)].
-void coverInterval(double l, double r, function<double(double)> distance_covered) {
-    // We try to avoid to call distance_covered(s) with values of s very close
-    // to l or r (because it can lead to failures in our problem).
-    // This is the reason why the code is a bit involved.
-    double new_l  = (l + r) / 2;
-    while (distance_covered(new_l) < new_l - l)
-        new_l = (new_l + l) / 2;
+// void coverInterval(double l, double r, function<double(double)> distance_covered) {
+//     // We try to avoid to call distance_covered(s) with values of s very close
+//     // to l or r (because it can lead to failures in our problem).
+//     // This is the reason why the code is a bit involved.
+//     double new_l  = (l + r) / 2;
+//     while (distance_covered(new_l) < new_l - l)
+//         new_l = (new_l + l) / 2;
 
-    double new_r  = (l + r) / 2;
-    while (distance_covered(new_r) < r - new_r)
-        new_r = (new_r + r) / 2;
+//     double new_r  = (l + r) / 2;
+//     while (distance_covered(new_r) < r - new_r)
+//         new_r = (new_r + r) / 2;
 
-    clog << "new_l = " << new_l << ", new_r = " << new_r << endl;
+//     clog << "new_l = " << new_l << ", new_r = " << new_r << endl;
 
-    // We have covered [l, new_l] and [new_r, r].
-    // Now we focus on the interval [new_l, new_r].
-    double param = new_l;
-    while (param < new_r) {
-        param += distance_covered(param);
-    }
-}
+//     // We have covered [l, new_l] and [new_r, r].
+//     // Now we focus on the interval [new_l, new_r].
+//     double param = new_l;
+//     while (param < new_r) {
+//         param += distance_covered(param);
+//     }
+// }
 
 double processFatFish(double theta0, double theta1) {
     const static vector<tuple<int, bool>> config_options = {
@@ -186,7 +231,7 @@ double processFatFish(double theta0, double theta1) {
         FindCompetitorConfig config;
         config.net827_pop_type = get<0>(config_data);
         config.net827_slow_convergence = get<1>(config_data);
-        auto maybe_proof = processNet(827, {theta0, theta1}, true, config);
+        auto maybe_proof = excludeFamilyOfNets(827, {theta0, theta1}, true, config);
         if (!maybe_proof.isOk()) {
             error_messages.push_back(maybe_proof.getError());
         } else {
@@ -262,16 +307,17 @@ void proveInstabilityRigidNets() {
     cout << "Processing rigid nets." << endl;
     cout << "net_id: area gap" << endl;
     for (int net_id: rigid_nets) {
+        // if (net_id ! 325)
+        //     continue; // TODO: Remove
         cout << net_id << ": \t";
-        if (net_id < 484)
-            continue; // TODO: Remove this
         cout.flush();
-        auto maybe_proof = processNet(net_id, {}, true, FindCompetitorConfig());
+        // TODO: Fix
+        auto maybe_proof = excludeFamilyOfNets(net_id, {}, false, FindCompetitorConfig());
         if (!maybe_proof.isOk())
             cout << maybe_proof.getError() << endl;
         assert(maybe_proof.isOk());
-        double area_gap = maybe_proof.getContent();
-        cout << area_gap << endl;
+        // double area_gap = maybe_proof.getContent();
+        cout << endl;
     }
     cout << endl;
 }
@@ -285,6 +331,10 @@ void proveInstabilityRigidNetsWithFlexiblePins() {
         assert(metrized_net_in.is_open());
         ApproximatelyMetrizedNet net = parseApproximatelyMetrizedNet(metrized_net_in);
         Interval param_region = validPinEdgeLength(net);
+        if (net_id == 1096) {
+            param_region.l += 0.005;
+            param_region.r -= 0.005; // TODO
+        }
         clog << "Param region: " << param_region << endl;
 
         // Returns true or false.
@@ -294,56 +344,37 @@ void proveInstabilityRigidNetsWithFlexiblePins() {
             clog << "Processing " << param << endl;
             FindCompetitorConfig config;
             config.net1096_removed_face = (net_id == 1096 and param.mid() > 0.38) ? 8 : 6;
-            return processNet(net_id, {param}, true, config).isOk();
+            return excludeFamilyOfNets(net_id, {param}, true, config).isOk();
         };
 
-        function<void(Interval)> solve_recursive = [&](Interval param) {
-            if (try_interval(param))
-                return;
-            assert(param.len() > 1e-5); // Avoid going too deep.
-            Interval left = {param.l, param.mid()};
-            Interval right = {param.mid(), param.r};
-            left.intersect(param);
-            right.intersect(param);
-            solve_recursive(left);
-            solve_recursive(right);
-        };
-
-        // TODO: Remove
-        param_region.l += 0.01;
-        param_region.r -= 0.01;
-        solve_recursive(param_region);
+        coverInterval(param_region, try_interval);
 
         cout << "OK" << endl << endl;
     }
 }
 
-// void proveInstabilityGoggles() {
-//     cout << "Processing goggles." << endl;
-//     Interval param_region = {0., acos(1.0/3) / 2};
-//     clog << "Param region: " << param_region << endl;
+void proveInstabilityGoggles() {
+    cout << "Processing goggles." << endl;
+    Interval param_region = {0., acos(1.0/3) / 2 - 0.005}; // TODO: Justify
+    clog << "Param region: " << param_region << endl;
 
-//     auto get_area_gap = [&](double param) {
-//         FindCompetitorConfig config;
-//         config.net1029_cube_family = false;
-//         return valueOrAssert(processNet(GOGGLES_ID, {0., param}, true, config));
-//     };
+    // Returns true or false.
+    auto try_interval = [&](Interval param) {
+        if (param.len() > 0.01) // No matter what, we split at least this much.
+            return false;
+        clog << "Processing " << param << endl;
+        return excludeFamilyOfNets(GOGGLES_ID, {param}, true, FindCompetitorConfig()).isOk();
+    };
 
-//     auto distance_covered = [&](double param) {
-//         double area_gap = get_area_gap(param);
-//         clog << "area_gap(" << param << ") = " << area_gap << endl;
-//         return area_gap / 10.;
-//     };
+    coverInterval(param_region, try_interval);
 
-//     coverInterval(param_region.l, param_region.r, distance_covered);
-
-//     return;
-// }
+    cout << "OK" << endl << endl;
+}
 
 int main() {
     // proveInstabilityRigidNets();
-    proveInstabilityRigidNetsWithFlexiblePins();
-    // proveInstabilityGoggles();
+    // proveInstabilityRigidNetsWithFlexiblePins();
+    proveInstabilityGoggles();
     // proveInstabilityFatFish();
 
     return 0;

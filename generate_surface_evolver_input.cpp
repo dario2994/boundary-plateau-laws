@@ -126,7 +126,8 @@ pair<ApproximatePoint, ApproximatePoint> choosePinsEmbedding(
 pair<pair<int,int>, CombinatorialMap> addPinsToCombinatorialMap(
         const ApproximatelyMetrizedNet& net,
         vector<ApproximatePoint>& embedding, const pair<ApproximatePoint,
-        ApproximatePoint>& pins_coord) {
+        ApproximatePoint>& pins_coord,
+        bool collapse_pin_on_vertex) {
     vector<vector<Dart>> concave_faces;
     for (auto face: net.A.faces()) {
         if (!net.A.isConvexFace(face))
@@ -137,6 +138,8 @@ pair<pair<int,int>, CombinatorialMap> addPinsToCombinatorialMap(
     auto find_vertex = [&](ApproximatePoint p) {
         for (int v = 0; v < ssize(embedding); v++) {
             if (canCoincide(p, embedding[v]))
+                return v;
+            if (norm(p-embedding[v]).l < 0.01) // TODO
                 return v;
         }
         return -1;
@@ -155,9 +158,11 @@ pair<pair<int,int>, CombinatorialMap> addPinsToCombinatorialMap(
         if (ssize(concave_angles) == 2)
             concave_angles[1] = net.A.phi(concave_angles[1]);
 
-        if (find_vertex(pin) != -1) {
-            A.addEdge(concave_angles[0], concave_angles[1]);
+        if (collapse_pin_on_vertex and find_vertex(pin) != -1) {
+            if (ssize(concave_angles) == 2)
+                A.addEdge(concave_angles[0], concave_angles[1]);
             pins_vec.push_back(find_vertex(pin));
+            embedding[find_vertex(pin)] = pin;
         } else {
             int pin_id = addPin(A, concave_angles);
             assert(ssize(embedding) == pin_id);
@@ -420,21 +425,22 @@ print total_area;
 
 
 // This is one of the two 1-parameter families corresponding to 1029.
-pair<vector<ApproximatePoint>, pair<ApproximatePoint,ApproximatePoint>> embedGoggles(double q) {
-    auto rotate = [&](Point U) {
-        return Point{U[0]*cos(q)-U[1]*sin(q), U[1]*cos(q)+U[0]*sin(q), U[2]};
+pair<vector<ApproximatePoint>, pair<ApproximatePoint,ApproximatePoint>>
+        embedGoggles(Interval q) {
+    auto rotate = [&](ApproximatePoint U) {
+        return ApproximatePoint{U[0]*cos(q)-U[1]*sin(q), U[1]*cos(q)+U[0]*sin(q), U[2]};
     };
-    auto sym_x = [&](Point U) { return Point{-U[0], U[1], U[2]}; };
+    auto sym_x = [&](ApproximatePoint U) { return ApproximatePoint{-U[0], U[1], U[2]}; };
 
-    Point pin0 = {0, 0, 1};
-    Point pin1 = -pin0;
+    ApproximatePoint pin0 = {0, 0, 1};
+    ApproximatePoint pin1 = -pin0;
 
-    vector<Point> P(8);
+    vector<ApproximatePoint> P(8);
     // Face of the cube
-    P[1] = Point{1, sqrt(2), 0};
-    P[4] = Point{1, 0, sqrt(2)};
-    P[6] = Point{1, 0, -sqrt(2)};
-    P[0] = Point{1, -sqrt(2), 0};
+    P[1] = ApproximatePoint{1, sqrt(2), 0};
+    P[4] = ApproximatePoint{1, 0, sqrt(2)};
+    P[6] = ApproximatePoint{1, 0, -sqrt(2)};
+    P[0] = ApproximatePoint{1, -sqrt(2), 0};
 
     for (int i: {1, 4, 6, 0})
         P[i] = rotate(P[i]);
@@ -444,17 +450,10 @@ pair<vector<ApproximatePoint>, pair<ApproximatePoint,ApproximatePoint>> embedGog
     P[7] = sym_x(P[6]);
     P[2] = sym_x(P[1]);
 
-    pin0 = pin0 / norm(pin0);
-    pin1 = pin1 / norm(pin1);
-
-    for (Point& U: P)
+    for (ApproximatePoint& U: P)
         U = U / norm(U);
 
-    vector<ApproximatePoint> approximate_P;
-    for (Point& U: P)
-        approximate_P.push_back(approximatePoint(U));
-
-    return {approximate_P, {approximatePoint(pin0), approximatePoint(pin1)}};
+    return {P, {pin0, pin1}};
 }
 
 // This is one of the two 1-parameter families corresponding to 1029.
@@ -609,6 +608,33 @@ const map<int, pair<vector<int>, vector<int>>> pop_description = {
     }},
 };
 
+// Template this over Interval or double.
+struct GeodesicNetAntipodalPins {
+    CombinatorialMap A;
+    vector<Point> embedding;
+    pair<int,int> pins;
+
+    GeodesicNetAntipodalPins(const CombinatorialMap& _A,
+                             const vector<Point>& _embedding,
+                             pair<int,int> _pins): A(_A), embedding(_embedding), pins(_pins) {
+        assert(embedding[pins.first] == -embedding[pins.second]);
+    }
+
+    bool isPin(int v) const {
+        return v == pins.first or v == pins.second;
+    }
+
+    double area() const {
+        double res = 0;
+        for (Dart d: A.darts()) {
+            if (d.from > d.to)
+                continue;
+            res += 0.5 * norm(embedding[d.from] ^ embedding[d.to]);
+        }
+        return res;
+    }
+};
+
 
 struct NetEmbeddedWithPins {
     CombinatorialMap A;
@@ -616,75 +642,23 @@ struct NetEmbeddedWithPins {
     vector<ApproximatePoint> direction_from_pins_line;
     pair<int,int> pins;
 
-    vector<Point> deterministicEmbedding() const {
+    GeodesicNetAntipodalPins deterministicEmbedding() const {
         vector<Point> deterministic_embedding;
         for (auto& P: embedding)
-            deterministic_embedding.push_back(make_deterministic(P));
+            deterministic_embedding.push_back(makeDeterministic(P));
         deterministic_embedding[pins.second] = -deterministic_embedding[pins.first];
-        return deterministic_embedding;
+        return GeodesicNetAntipodalPins(A, deterministic_embedding, pins);
     }
 
-    // void printInfo() {
-    //     double max_point_error = 0;
-    //     for (auto P: embedding) {
-    //         double error_bound = P[0].len() + P[1].len() + P[2].len();
-    //         max_point_error += error_bound / 2;
-    //     }
-    //     double delta = 2 * max_point_error; // Boring approximation
-    //     double max_edge = 0;
-    //     double total_edges = 0;
-    //     double max_gap = 0;
-    //     for (Dart d: A.darts()) {
-    //         if (d.from > d.to)
-    //             continue;
-    //         double edge_len = norm(embedding[d.from] - embedding[d.to]).r;
-    //         max_edge = max(max_edge, edge_len);
-    //         total_edges += edge_len;
-    //         max_gap += 4 * delta* (edge_len + 2 * delta);
-    //     }
-    //     cout << "max_point_error = " << max_point_error
-    //          << ", max_edge = " << max_edge
-    //          << ", total_edges = " << total_edges
-    //          << ", max_gap = " << max_gap << endl;
-    // }
-
-    // double totalLen() {
-    //     double len = 0;
-    //     for (Dart d: A.darts()) {
-    //         int x = d.from, y = d.to;
-    //         if (x > y)
-    //             continue;
-    //         len += norm(embedding[x] - embedding[y]).r;
-    //     }
-    //     return len;
-    // }
-    // double totalInterestingLen() {
-    //     auto f = [&](int x, int y) { return embedding[x] - embedding[y]; };
-    //     Point line = f(pins.first, pins.second);
-    //     pair<Point, Point> edge_to_pins;
-    //     for (Dart d: A.darts()) {
-    //         if (d.from == pins.first)
-    //             edge_to_pins.first = f(d.from, d.to);
-    //         if (d.from == pins.second)
-    //             edge_to_pins.second = f(d.from, d.to);
-    //     }
-    //     Point edge_to_pin = edge_to_pins.first;
-    //     if (norm(edge_to_pins.second) > norm(edge_to_pins.first))
-    //         edge_to_pin = edge_to_pins.second;
-    //     Point rotation_axis = edge_to_pin ^ line;
-    //     rotation_axis = rotation_axis / norm(rotation_axis);
-
-    //     double len = 0;
-    //     for (Dart d: A.darts()) {
-    //         int x = d.from, y = d.to;
-    //         if (x > y)
-    //             continue;
-    //         double a = embedding[x] * rotation_axis, b = embedding[y] * rotation_axis;
-    //         if (a > b) swap(a, b);
-    //         len += b-a;
-    //     }
-    //     return len;
-    // }
+    Interval area() const {
+        Interval res = 0;
+        for (Dart d: A.darts()) {
+            if (d.from > d.to)
+                continue;
+            res += 0.5 * norm(embedding[d.from] ^ embedding[d.to]);
+        }
+        return res;
+    }
 };
 
 vector<ApproximatePoint> computeTangentAtPins(
@@ -708,12 +682,22 @@ vector<ApproximatePoint> computeTangentAtPins(
 }
 // What gap do we have to achieve on chosen_one to rule out the stability of
 // the given family.
-double excludeFamilyViaStability(vector<Point> chosen_one, NetEmbeddedWithPins family) {
-    // Step 1: Make the pins the same.
-    int p1 = family.pins.first, p2 = family.pins.second;
-    double d1 = norm(approximatePoint(chosen_one[p1]) - family.embedding[p1]).r;
-    double d2 = norm(approximatePoint(chosen_one[p2]) - family.embedding[p2]).r;
+double excludeFamilyViaStability(GeodesicNetAntipodalPins link, NetEmbeddedWithPins family) {
+    int p1_link = link.pins.first, p2_link = link.pins.second;
+    int p1_family = family.pins.first, p2_family = family.pins.second;
+    auto replace_pin = [&](int v) {
+        if (v == p1_link)
+            return p1_family;
+        if (v == p2_link)
+            return p2_family;
+        return v;
+    };
+
+    // Step 1: Rotate the family to make the pins the same.
+    double d1 = norm(approximatePoint(link.embedding[p1_link]) - family.embedding[p1_family]).r;
+    double d2 = norm(approximatePoint(link.embedding[p2_link]) - family.embedding[p2_family]).r;
     double d = min(d1, d2);
+
 
     for (auto& P: family.embedding) {
         for (int i = 0; i < 3; i++) {
@@ -721,32 +705,51 @@ double excludeFamilyViaStability(vector<Point> chosen_one, NetEmbeddedWithPins f
             P[i].r += d;
         }
     }
-    for (auto& P: family.direction_from_pins_line) {
-        for (int i = 0; i < 3; i++) {
-            P[i].l -= d;
-            P[i].r += d;
-        }
-    }
-    family.embedding[p1] = approximatePoint(chosen_one[p1]);
-    family.embedding[p2] = approximatePoint(chosen_one[p2]);
+    family.embedding[p1_family] = approximatePoint(link.embedding[p1_link]);
+    family.embedding[p2_family] = approximatePoint(link.embedding[p2_link]);
 
-    Point pin_line = (chosen_one[p1] - chosen_one[p2]) * 0.5;
+    Point pin_line = (link.embedding[p1_link] - link.embedding[p2_link]) * 0.5;
     assert(abs(norm(pin_line) - 1.0) < 1e-8);
 
-    // Step 2: Compute the direction-from-pins (orthogonal to pin_line).
-    auto compute_dir = [&](int v) { // It should be ok to be sloppy.
-        ApproximatePoint ans = family.direction_from_pins_line[v];
-        Interval scal_prod = family.embedding[v] * approximatePoint(pin_line);
-        ApproximatePoint Q = family.embedding[v] - approximatePoint(pin_line) * scal_prod;
-        if (norm(Q).l > 1e-3) {
-            ApproximatePoint ans2 = Q / norm(Q);
-            assert(canCoincide(ans, ans2));
-            ans = intersection(ans, ans2);
+    // Step 2: Verify if the lemma can be applied.
+
+    // First, we verify that the topology is matching.
+    // This is only a sanity check. We don't check all the properties that
+    // shall be checked, as the checks shall be valid by construction.
+    // int additional_vertices = 0;
+    // additional_vertices += p1_link != p1_family;
+    // additional_vertices += p2_link != p2_family;
+    // cout << "Additional vertices: " << additional_vertices << endl;
+    // cout << link.A.V() << " " << family.A.V() << endl;
+    assert(link.A.V() <= family.A.V());
+    assert(family.A.V() - link.A.V() == family.A.E() - link.A.E());
+
+    auto is_family_dart = [&](Dart d) {
+        for (Dart d2: family.A.darts()) {
+            if (d2.from == d.from and d2.to == d.to)
+                return true;
         }
-        return ans;
+        return false;
     };
 
-    // Step 3: Verify if the lemma can be applied.
+    auto replace_pins = [&](Dart d) {
+        d.from = replace_pin(d.from);
+        d.to = replace_pin(d.to);
+        return d;
+    };
+
+    // int cnt_unmatched_darts = 0;
+    for (Dart d: link.A.darts()) {
+        if (!is_family_dart(d)) {
+            // Exactly one vertex is a pin.
+            assert(link.isPin(d.from) or link.isPin(d.to));
+            assert(!link.isPin(d.from) or !link.isPin(d.to));
+            assert(is_family_dart(replace_pins(d)));
+            // cnt_unmatched_darts++;
+        }
+    }
+    // assert(cnt_unmatched_darts == 2 * additional_vertices);
+
     static default_random_engine engine(123);
     uniform_real_distribution<double> distribution(-1.0, 1.0);
 
@@ -754,12 +757,11 @@ double excludeFamilyViaStability(vector<Point> chosen_one, NetEmbeddedWithPins f
     // orthogonal to the line l.
     // This function determines whether all points of vec are necessarily in
     // one hemisphere.
-    // May return false negatives, but that is fine (and very unlikely).
+    // May return false negatives.
     auto same_hemisphere_wrt_line = [&](vector<ApproximatePoint> approx_vec) {
         for (int _ = 0; _ < 1000; _++) {
             Point A = {distribution(engine), distribution(engine), distribution(engine)};
-            double scal_prod = A * pin_line;
-            A = A - pin_line * scal_prod;
+            A = makeOrthogonal(A, pin_line);
             if (norm(A) < 0.01)
                 continue;
             A = A / norm(A);
@@ -779,28 +781,31 @@ double excludeFamilyViaStability(vector<Point> chosen_one, NetEmbeddedWithPins f
     };
 
     // Position of vertices wrt line.
-    // Undefined for the two pins.
-    vector<Point> dir_wrt_line1(ssize(chosen_one));
-    vector<ApproximatePoint> dir_wrt_line2(ssize(chosen_one));
-    for (int v = 0; v < ssize(chosen_one); v++) {
-        if (v == p1 or v == p2)
+    // Undefined for the two pins and for the vertices of family that are
+    // very close to the pins (and don't exist in link).
+    vector<Point> dir_wrt_line1(link.A.V());
+    vector<ApproximatePoint> dir_wrt_line2(family.A.V());
+    for (int v = 0; v < ssize(link.embedding); v++) {
+        if (link.isPin(v))
             continue;
-        double scal_prod = pin_line * chosen_one[v];
-        // assert(abs(scal_prod) < 0.999);
-        Point Q = chosen_one[v] - pin_line * scal_prod;
+        Point Q = makeOrthogonal(link.embedding[v], pin_line);
         assert(norm(Q) > 1e-4);
         dir_wrt_line1[v] = Q / norm(Q);
 
-        dir_wrt_line2[v] = compute_dir(v);
+        ApproximatePoint Q2 = makeOrthogonal(family.embedding[v], approximatePoint(pin_line));
+        assert(norm(Q2).l > 1e-3);
+        dir_wrt_line2[v] = Q2 / norm(Q2);
     }
 
-    for (Dart d: family.A.darts()) {
+    // Check that any edge (in link and family) away from the pins is contained
+    // in a hemisphere.
+    for (Dart d: link.A.darts()) {
         if (d.from > d.to)
             continue;
         int u = d.from, v = d.to;
-        if (u == p1 or u == p2 or v == p1 or v == p2)
+        if (link.isPin(u) or link.isPin(v))
             continue;
-        // Slightly annoying: chosen_one is not orthogonal to \ell.
+
         vector<ApproximatePoint> approx_vec = {
             approximatePoint(dir_wrt_line1[u]), approximatePoint(dir_wrt_line1[v]),
             dir_wrt_line2[u], dir_wrt_line2[u]
@@ -809,23 +814,27 @@ double excludeFamilyViaStability(vector<Point> chosen_one, NetEmbeddedWithPins f
             return 1000;
     }
 
-    // Step 4: Compute the desired gap.
-    double gap = 0;
-    for (Dart d: family.A.darts()) {
+    // Step 3: Compute the desired gap.
+    double additional_cost = 0;
+    for (Dart d: link.A.darts()) {
         if (d.from > d.to) continue;
         int u = d.from, v = d.to;
-        ApproximatePoint U1 = approximatePoint(chosen_one[u]), V1 = approximatePoint(chosen_one[v]);
-        ApproximatePoint U2 = family.embedding[u], V2 = family.embedding[v];
+        ApproximatePoint U1 = approximatePoint(link.embedding[u]), V1 = approximatePoint(link.embedding[v]);
+        int u2 = u, v2 = v;
+        if (!is_family_dart(d)) {
+            u2 = replace_pin(u2);
+            v2 = replace_pin(v2);
+        }
+        ApproximatePoint U2 = family.embedding[u2], V2 = family.embedding[v2];
         Interval homotopy_area1 = 0.5 * norm((U2-U1)^(V1-U1));
         Interval homotopy_area2 = 0.5 * norm((V2-V1)^(U2-V1));
-        gap += (homotopy_area1 + homotopy_area2).r;
-
-        Interval cone_area1 = 0.5 * norm(U1^V1);
-        Interval cone_area2 = 0.5 * norm(U2^V2);
-        gap += (cone_area2 - cone_area1).r;
-
+        additional_cost += (homotopy_area1 + homotopy_area2).r;
     }
-    return gap;
+
+    double area_diff = family.area().r - link.area();
+    assert(area_diff >= 1e-10);
+
+    return additional_cost + area_diff;
 }
 
 // Assumption: net is a rigid net with flexible pins.
@@ -960,10 +969,11 @@ NetEmbeddedWithPins embed827WithPins(const vector<double>& params) {
 }
 
 
-NetEmbeddedWithPins embedNetWithPins(int net_id, const vector<Interval>& params) {
+NetEmbeddedWithPins embedNetWithPins(
+        int net_id, const vector<Interval>& params, bool collapse_pin_on_vertex) {
     assert(possible_nets.count(net_id));
 
-    assert(net_id != 827 and net_id != 1029);
+    assert(net_id != 827);
 
     // if (net_id == 827)
     //     return embed827WithPins(params);
@@ -976,27 +986,25 @@ NetEmbeddedWithPins embedNetWithPins(int net_id, const vector<Interval>& params)
     vector<ApproximatePoint> embedding;
     pair<ApproximatePoint, ApproximatePoint> pins_coord;
 
-    // if (net_id == 1029) {
-    //     assert(ssize(params) == 2);
-    //     assert(params[0] == 0 or params[0] == 1);
-    //     if (params[0] == 0) {
-    //         assert(0 <= params[1] and params[1] <= acos(1.0/3) / 2);
-    //         tie(embedding, pins_coord) = embedGoggles(params[1]);
-    //     }
-    //     if (params[0] == 1) {
-    //         assert(0 <= params[1] and params[1] <= acos(1.0/3) / 2); // TODO: Check this!
-    //         tie(embedding, pins_coord) = embedCube(params[1]);
-    //     }
-    // } else
-    if (rigid_nets_flexible_pins.count(net_id)) {
+    // TODO:
+    // Cubes have
+    // net_id = 1029
+    // param region [0, acos(1.0/3) / 2]
+    // embedCube(param)
+
+    if (net_id == GOGGLES_ID) {
+        assert(ssize(params) == 1);
+        Interval len = params[0];
+        // assert(isSubset(len, Interval(0, acos(1.0 / 3) / 2)));
+        tie(embedding, pins_coord) = embedGoggles(len);
+    } else if (rigid_nets_flexible_pins.count(net_id)) {
         assert(ssize(params) == 1);
         Interval len = params[0];
         Interval valid_lens = validPinEdgeLength(net);
         assert(isSubset(len, valid_lens));
-        // clog << "Interval of valid edge-to-pin lengths: " << valid_lens << endl;
         embedding = getVertexEmbedding(net);
         pins_coord = choosePinsEmbedding(net, len);
-    } else if (net_id == 736) {
+    } else if (net_id == 736) { // TODO: What's going on here? Why can't we intersect?
         assert(params.empty());
         embedding = getVertexEmbedding(net);
         pins_coord = {embedding[11], embedding[12]};
@@ -1006,7 +1014,8 @@ NetEmbeddedWithPins embedNetWithPins(int net_id, const vector<Interval>& params)
         pins_coord = findPinsEmbedding(net);
     }
 
-    auto [pins, A] = addPinsToCombinatorialMap(net, embedding, pins_coord);
+    auto [pins, A] = addPinsToCombinatorialMap(
+            net, embedding, pins_coord, collapse_pin_on_vertex);
 
     vector<ApproximatePoint> direction_from_pins_line = computeTangentAtPins(net, embedding, A, pins);
 
@@ -1020,8 +1029,8 @@ NetEmbeddedWithPins embedNetWithPins(int net_id, const vector<Interval>& params)
 
 
 
-SurfaceEvolverData generateCone(const NetEmbeddedWithPins& link) {
-    auto embedding = link.deterministicEmbedding();
+SurfaceEvolverData generateCone(const GeodesicNetAntipodalPins& link) {
+    auto embedding = link.embedding;
     int n = ssize(embedding);
     int origin = n;
     embedding.push_back({0, 0, 0});
@@ -1043,85 +1052,85 @@ SurfaceEvolverData generateCone(const NetEmbeddedWithPins& link) {
 
 
 
-SurfaceEvolverData generateCubeCompetitor(const NetEmbeddedWithPins& link) {
-    vector<int> up_face = {4, 1, 6, 0};
-    vector<int> down_face = {5, 2, 7, 3};
-    vector<int> small_square = {10, 11, 12, 13};
-    auto embedding = link.deterministicEmbedding();
+// SurfaceEvolverData generateCubeCompetitor(const NetEmbeddedWithPins& link) {
+//     vector<int> up_face = {4, 1, 6, 0};
+//     vector<int> down_face = {5, 2, 7, 3};
+//     vector<int> small_square = {10, 11, 12, 13};
+//     auto embedding = link.deterministicEmbedding();
 
-    // up_face[0] - down_face[0] contains link.pins.first
-    Point A = embedding[link.pins.first];
-    Point B = embedding[up_face[1]] + embedding[down_face[1]];
-    Point C = -A;
-    Point D = -B;
-    vector<Point> small_square_pts = {A, B, C, D};
-    for (Point& P: small_square_pts)
-        P = P / (5 * norm(P));
-    for (Point P: small_square_pts)
-        embedding.push_back(P);
+//     // up_face[0] - down_face[0] contains link.pins.first
+//     Point A = embedding[link.pins.first];
+//     Point B = embedding[up_face[1]] + embedding[down_face[1]];
+//     Point C = -A;
+//     Point D = -B;
+//     vector<Point> small_square_pts = {A, B, C, D};
+//     for (Point& P: small_square_pts)
+//         P = P / (5 * norm(P));
+//     for (Point P: small_square_pts)
+//         embedding.push_back(P);
 
 
-    vector<pair<int,int>> boundary_edges;
-    for (Dart d: link.A.darts()) {
-        assert(d.from != d.to);
-        if (d.from > d.to)
-            continue;
-        boundary_edges.push_back({d.from, d.to});
-    }
+//     vector<pair<int,int>> boundary_edges;
+//     for (Dart d: link.A.darts()) {
+//         assert(d.from != d.to);
+//         if (d.from > d.to)
+//             continue;
+//         boundary_edges.push_back({d.from, d.to});
+//     }
 
-    vector<set<int>> triangles;
+//     vector<set<int>> triangles;
 
-    // Whether v belongs to the line connecting the pins.
-    auto is_pin = [&](int v) {
-        return set<int>{link.pins.first, link.pins.second, 10, 12}.count(v);
-    };
+//     // Whether v belongs to the line connecting the pins.
+//     auto is_pin = [&](int v) {
+//         return set<int>{link.pins.first, link.pins.second, 10, 12}.count(v);
+//     };
 
-    auto add_face = [&](vector<int> face) {
-        assert(ssize(face) >= 3);
-        int f = ssize(face);
-        // If a face contains a pin, then the triangulation shall be pivoted
-        // there to avoid issues due to the fact that the face is not convex
-        // and not contained in a plane.
-        int pivot = 0;
-        for (int i = 1; i < f; i++)
-            if (is_pin(face[i]))
-                pivot = i;
-        rotate(face.begin(), face.begin() + pivot, face.end());
-        for (int i = 1; i < f-1; i++) {
-            int j = (i+1) % f;
-            triangles.push_back({face[0], face[i], face[j]});
-        }
-    };
+//     auto add_face = [&](vector<int> face) {
+//         assert(ssize(face) >= 3);
+//         int f = ssize(face);
+//         // If a face contains a pin, then the triangulation shall be pivoted
+//         // there to avoid issues due to the fact that the face is not convex
+//         // and not contained in a plane.
+//         int pivot = 0;
+//         for (int i = 1; i < f; i++)
+//             if (is_pin(face[i]))
+//                 pivot = i;
+//         rotate(face.begin(), face.begin() + pivot, face.end());
+//         for (int i = 1; i < f-1; i++) {
+//             int j = (i+1) % f;
+//             triangles.push_back({face[0], face[i], face[j]});
+//         }
+//     };
 
-    for (int i = 0; i < 4; i++) {
-        int j = (i + 1) % 4;
-        add_face({up_face[i], up_face[j], small_square[j], small_square[i]});
-        add_face({down_face[i], down_face[j], small_square[j], small_square[i]});
-        vector<int> side_triangle = {up_face[i], small_square[i], down_face[i]};
-        if (i == 0) side_triangle.push_back(link.pins.first);
-        if (i == 2) side_triangle.push_back(link.pins.second);
-        add_face(side_triangle);
-    }
-    add_face(small_square);
+//     for (int i = 0; i < 4; i++) {
+//         int j = (i + 1) % 4;
+//         add_face({up_face[i], up_face[j], small_square[j], small_square[i]});
+//         add_face({down_face[i], down_face[j], small_square[j], small_square[i]});
+//         vector<int> side_triangle = {up_face[i], small_square[i], down_face[i]};
+//         if (i == 0) side_triangle.push_back(link.pins.first);
+//         if (i == 2) side_triangle.push_back(link.pins.second);
+//         add_face(side_triangle);
+//     }
+//     add_face(small_square);
 
-    return {.X = ImmersedSimplicialComplex(embedding, triangles),
-            .pins = link.pins,
-            .boundary_edges = boundary_edges};
-}
+//     return {.X = ImmersedSimplicialComplex(embedding, triangles),
+//             .pins = link.pins,
+//             .boundary_edges = boundary_edges};
+// }
 
 
 // Net 827 = Fat fish.
 // This is the hardest case because it is a 2-parameter family.
 // Depending on the region where the parameters belong, different pop are
 // necessary.
-SurfaceEvolverData generateFatFishCompetitor(const NetEmbeddedWithPins& link,
+SurfaceEvolverData generateFatFishCompetitor(const GeodesicNetAntipodalPins& link,
                                              int pop_type) {
     assert(set<int>({-1, 0, 1}).count(pop_type));
 
     vector<int> square = {0, 1, 2, 3};
     vector<int> biangle = {6, 5, 7, 4};
     vector<int> internal_square = {10, 11, 12, 13};
-    auto embedding = link.deterministicEmbedding();
+    vector<Point> embedding = link.embedding;
 
     vector<Point> internal_square_pts = {
         embedding[link.pins.first],
@@ -1199,10 +1208,10 @@ SurfaceEvolverData generateFatFishCompetitor(const NetEmbeddedWithPins& link,
             .boundary_edges = boundary_edges};
 }
 
-SurfaceEvolverData generatePoppedCone(const NetEmbeddedWithPins& link,
+SurfaceEvolverData generatePoppedCone(const GeodesicNetAntipodalPins& link,
                                       const vector<int>& excluded_faces,
                                       vector<int> path_to_add) {
-    auto embedding = link.deterministicEmbedding();
+    auto embedding = link.embedding;
     auto faces = link.A.faces();
     int n = ssize(embedding);
     for (int i = 0; i < n; i++) {
@@ -1271,8 +1280,11 @@ SurfaceEvolverData generatePoppedCone(const NetEmbeddedWithPins& link,
         bool existing_dart = false;
         for (Dart d: link.A.darts())
             existing_dart |= d.from == u and d.to == v;
-        assert(existing_dart);
-        add_face({u+n, v+n, origin});
+        if (!existing_dart) {
+            // One pin was collapsed onto a vertex.
+            assert(norm(link.embedding[u]-link.embedding[v]) < 0.01);
+            assert(link.isPin(u) or link.isPin(v));
+        } else add_face({u+n, v+n, origin});
     }
 
     return {.X = ImmersedSimplicialComplex(embedding, triangles),

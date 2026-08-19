@@ -212,9 +212,19 @@ double norm(const Point& X) {
     return sqrt(X[0]*X[0] + X[1]*X[1] + X[2]*X[2]);
 }
 
-Point make_deterministic(ApproximatePoint p) {
+// Project X on the subspace orthogonal to Y.
+template <typename T>
+array<T, 3> makeOrthogonal(const array<T, 3>& X, array<T, 3> Y) {
+    Y = Y / norm(Y);
+    T scal_prod = X * Y;
+    return X - (Y * scal_prod);
+}
+
+Point makeDeterministic(ApproximatePoint p) {
     return {p[0].mid(), p[1].mid(), p[2].mid()};
 }
+
+
 
 
 // T is an approximate isometry.

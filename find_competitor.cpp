@@ -193,33 +193,6 @@ void coverInterval(Interval I, function<bool(Interval)> f) {
     coverInterval(right, f);
 };
 
-// TODO: Erase this
-// If this function terminates, it is guaranteed that there is a finite set S of
-// points strictly inside (l, r) such that:
-//  [l, r] \subseteq \bigcup_{s\in S} interval_covered(s)
-// where interval_covered(s) = [s-distance_covered(s), s+distance_covered(s)].
-// void coverInterval(double l, double r, function<double(double)> distance_covered) {
-//     // We try to avoid to call distance_covered(s) with values of s very close
-//     // to l or r (because it can lead to failures in our problem).
-//     // This is the reason why the code is a bit involved.
-//     double new_l  = (l + r) / 2;
-//     while (distance_covered(new_l) < new_l - l)
-//         new_l = (new_l + l) / 2;
-
-//     double new_r  = (l + r) / 2;
-//     while (distance_covered(new_r) < r - new_r)
-//         new_r = (new_r + r) / 2;
-
-//     clog << "new_l = " << new_l << ", new_r = " << new_r << endl;
-
-//     // We have covered [l, new_l] and [new_r, r].
-//     // Now we focus on the interval [new_l, new_r].
-//     double param = new_l;
-//     while (param < new_r) {
-//         param += distance_covered(param);
-//     }
-// }
-
 double processFatFish(double theta0, double theta1) {
     const static vector<tuple<int, bool>> config_options = {
         {0, false}, {1, false}, {1, true}, {0, true}, {-1, false}, {-1, true}
@@ -231,7 +204,7 @@ double processFatFish(double theta0, double theta1) {
         FindCompetitorConfig config;
         config.net827_pop_type = get<0>(config_data);
         config.net827_slow_convergence = get<1>(config_data);
-        auto maybe_proof = excludeFamilyOfNets(827, {theta0, theta1}, true, config);
+        auto maybe_proof = excludeFamilyOfNets(827, {Interval(theta0), Interval(theta1)}, true, config);
         if (!maybe_proof.isOk()) {
             error_messages.push_back(maybe_proof.getError());
         } else {
@@ -250,57 +223,59 @@ double processFatFish(double theta0, double theta1) {
     return area_gap;
 }
 
-// double area_processed = 0;
-// // theta0 controls the position of the pins
-// // theta1 controls the derived-once net
-// double proveInstabilityFatFishRecursive(Interval theta0, Interval theta1) {
-//     if (theta0.len() + theta1.len() < 1e-4)
-//         return -1.0;
+// theta0 controls the position of the pins
+// theta1 controls the derived-once net
+double proveInstabilityFatFishRecursive(Interval theta0, Interval theta1) {
+    static double area_processed = 0;
 
-//     double upperbound_theta0 = atan(1.0 / (sqrt(3.) * cos(theta1.r)));
-//     theta0.intersect(Interval(-1000, upperbound_theta0 - 0.01));
-//     if (theta0.empty())
-//         return true;
-//     cout << theta0 << " " << theta1 << ", " << (100*area_processed / 0.36) << "%, ";
+    if (theta0.len() + theta1.len() < 1e-4)
+        return -1.0;
 
-//     double desired_area_gap =
-//         8 * theta0.len() + 2*sqrt(3) * theta1.len() + 1e-3;
-//     double p0 = theta0.mid();
-//     double p1 = theta1.mid();
+    double upperbound_theta0 = atan(1.0 / (sqrt(3.) * cos(theta1.r)));
+    theta0.intersect(Interval(-1000, upperbound_theta0 - 0.01));
+    if (theta0.empty())
+        return true;
+    cout << theta0 << " " << theta1 << ", " << (100*area_processed / 0.36) << "%, ";
 
-//     if (theta0.len() + theta1.len() < 0.01) {
-//         double area_gap = processFatFish(p0, p1);
-//         if (desired_area_gap / 2 < area_gap) {
-//             cout << " OK" << endl;
-//             area_processed += theta0.len() * theta1.len();
-//             return area_gap;
-//         }
-//     }
-//     cout << endl;
+    double desired_area_gap =
+        // 8 * theta0.len() + 2*sqrt(3) * theta1.len() + 1e-3;
+        10 * theta0.len() + 4 * theta1.len() + 1e-4;
+    double p0 = theta0.mid();
+    double p1 = theta1.mid();
 
-//     bool children_are_solved = true;
-//     double res = -1;
-//     for (Interval theta0_child: vector<Interval>{{theta0.l, p0}, {p0, theta0.r}}) {
-//         for (Interval theta1_child: vector<Interval>{{theta1.l, p1}, {p1, theta1.r}}) {
-//             double child_res = proveInstabilityFatFishRecursive(theta0_child, theta1_child);
-//             res = max(res, child_res);
-//             children_are_solved &= child_res > 0;
-//             if (desired_area_gap < child_res)
-//                 return child_res;
-//         }
-//     }
-//     if (children_are_solved)
-//         return res;
-//     return -1.0;
-// }
+    if (theta0.len() + theta1.len() < 0.01) {
+        double area_gap = processFatFish(p0, p1);
+        if (desired_area_gap / 2 < area_gap) {
+            cout << " OK" << endl;
+            area_processed += theta0.len() * theta1.len();
+            return area_gap;
+        }
+    }
+    cout << endl;
 
-// bool proveInstabilityFatFish() {
-//     const double sigma = sqrt(2. / 3);
-//     double upperbound_theta1 = acos(sigma);
-//     return proveInstabilityFatFishRecursive(
-//         Interval(0, 1000),
-//         Interval(0, upperbound_theta1-0.01)) > 0;
-// }
+    bool children_are_solved = true;
+    double res = -1;
+    for (Interval theta0_child: vector<Interval>{{theta0.l, p0}, {p0, theta0.r}}) {
+        for (Interval theta1_child: vector<Interval>{{theta1.l, p1}, {p1, theta1.r}}) {
+            double child_res = proveInstabilityFatFishRecursive(theta0_child, theta1_child);
+            res = max(res, child_res);
+            children_are_solved &= child_res > 0;
+            if (desired_area_gap < child_res)
+                return child_res;
+        }
+    }
+    if (children_are_solved)
+        return res;
+    return -1.0;
+}
+
+bool proveInstabilityFatFish() {
+    const double sigma = sqrt(2. / 3);
+    double upperbound_theta1 = acos(sigma);
+    return proveInstabilityFatFishRecursive(
+        Interval(0, 1000),
+        Interval(0, upperbound_theta1-0.01)) > 0;
+}
 
 
 void proveInstabilityRigidNets() {
@@ -374,8 +349,8 @@ void proveInstabilityGoggles() {
 int main() {
     // proveInstabilityRigidNets();
     // proveInstabilityRigidNetsWithFlexiblePins();
-    proveInstabilityGoggles();
-    // proveInstabilityFatFish();
+    // proveInstabilityGoggles();
+    proveInstabilityFatFish();
 
     return 0;
 }

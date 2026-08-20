@@ -904,15 +904,11 @@ void printInfoForHumanPopping(const NetEmbeddedWithPins& link) {
                                    << link.pins.second << endl;
 }
 
-// Fat fish
-NetEmbeddedWithPins embed827WithPins(const vector<double>& params) {
-    assert(ssize(params) == 2);
-
+// theta0 represents the position of the pins (relative to the square).
+// theta1 represents the position of the biangle (relative to the square).
+// (theta0, theta1) =  (0, 0) corresponds to the most symmetric configuration.
+NetEmbeddedWithPins embedFatFish(double theta0, double theta1) {
     // Checking the validity of the parameters.
-    // theta0 represents the position of the pins (relative to the square).
-    // theta1 represents the position of the biangle (relative to the square).
-    // (theta0, theta1) =  (0, 0) corresponds to the most symmetric configuration.
-    double theta0 = params[0], theta1 = params[1];
     double c0 = cos(theta0), s0 = sin(theta0);
     double c1 = cos(theta1), s1 = sin(theta1);
 
@@ -973,10 +969,8 @@ NetEmbeddedWithPins embedNetWithPins(
         int net_id, const vector<Interval>& params, bool collapse_pin_on_vertex) {
     assert(possible_nets.count(net_id));
 
-    assert(net_id != 827);
-
-    // if (net_id == 827)
-    //     return embed827WithPins(params);
+    if (net_id == FAT_FISH_ID)
+        return embedFatFish(params[0].mid(), params[1].mid());
 
     ifstream metrized_net_in("data/metrized_nets/"+ to_string(net_id) + ".txt");
     assert(metrized_net_in.is_open());

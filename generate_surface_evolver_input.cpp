@@ -300,12 +300,12 @@ subroutinequick := {{
 }}
 
 gogo := {{
-    /*showq;*/
 {}
     dump "{}_competitor.out";
     /*close_show;*/ /* This raises an error if the window is not visible. */
 }}
 
+/* showq; */
 gogo;
 
 quit;
@@ -457,20 +457,20 @@ pair<vector<ApproximatePoint>, pair<ApproximatePoint,ApproximatePoint>>
 }
 
 // This is one of the two 1-parameter families corresponding to 1029.
-pair<vector<ApproximatePoint>, pair<ApproximatePoint,ApproximatePoint>> embedCube(double q) {
-    auto sym_x = [&](Point U) {
-        return Point{-U[0], U[1], U[2]};
+pair<vector<ApproximatePoint>, pair<ApproximatePoint,ApproximatePoint>> embedCube(Interval q) {
+    auto sym_x = [&](ApproximatePoint U) {
+        return ApproximatePoint{-U[0], U[1], U[2]};
     };
 
-    Point pin0 = {sin(q), 0, cos(q)};
-    Point pin1 = -pin0;
+    ApproximatePoint pin0 = {sin(q), 0, cos(q)};
+    ApproximatePoint pin1 = -pin0;
 
-    vector<Point> P(8);
+    vector<ApproximatePoint> P(8);
     // Face of the cube
-    P[1] = Point{1, sqrt(2), 0};
-    P[4] = Point{1, 0, sqrt(2)};
-    P[6] = Point{1, 0, -sqrt(2)};
-    P[0] = Point{1, -sqrt(2), 0};
+    P[1] = ApproximatePoint{1, sqrt(2), 0};
+    P[4] = ApproximatePoint{1, 0, sqrt(2)};
+    P[6] = ApproximatePoint{1, 0, -sqrt(2)};
+    P[0] = ApproximatePoint{1, -sqrt(2), 0};
 
     P[5] = sym_x(P[4]);
     P[3] = sym_x(P[0]);
@@ -480,14 +480,11 @@ pair<vector<ApproximatePoint>, pair<ApproximatePoint,ApproximatePoint>> embedCub
     pin0 = pin0 / norm(pin0);
     pin1 = pin1 / norm(pin1);
 
-    for (Point& U: P)
+    for (ApproximatePoint& U: P)
         U = U / norm(U);
 
-    vector<ApproximatePoint> approximate_P;
-    for (Point& U: P)
-        approximate_P.push_back(approximatePoint(U));
 
-    return {approximate_P, {approximatePoint(pin0), approximatePoint(pin1)}};
+    return {P, {pin0, pin1}};
 }
 
 
@@ -987,10 +984,14 @@ NetEmbeddedWithPins embedNetWithPins(
     // embedCube(param)
 
     if (net_id == GOGGLES_ID) {
-        assert(ssize(params) == 1);
+        assert(ssize(params) == 2);
         Interval len = params[0];
+        bool is_cube = params[1].mid() > 0.5;
         // assert(isSubset(len, Interval(0, acos(1.0 / 3) / 2)));
-        tie(embedding, pins_coord) = embedGoggles(len);
+        if (is_cube)
+            tie(embedding, pins_coord) = embedCube(len);
+        else
+            tie(embedding, pins_coord) = embedGoggles(len);
     } else if (rigid_nets_flexible_pins.count(net_id)) {
         assert(ssize(params) == 1);
         Interval len = params[0];
@@ -1046,71 +1047,71 @@ SurfaceEvolverData generateCone(const GeodesicNetAntipodalPins& link) {
 
 
 
-// SurfaceEvolverData generateCubeCompetitor(const NetEmbeddedWithPins& link) {
-//     vector<int> up_face = {4, 1, 6, 0};
-//     vector<int> down_face = {5, 2, 7, 3};
-//     vector<int> small_square = {10, 11, 12, 13};
-//     auto embedding = link.deterministicEmbedding();
+SurfaceEvolverData generateCubeCompetitor(const GeodesicNetAntipodalPins& link) {
+    vector<int> up_face = {4, 1, 6, 0};
+    vector<int> down_face = {5, 2, 7, 3};
+    vector<int> small_square = {10, 11, 12, 13};
+    auto embedding = link.embedding;
 
-//     // up_face[0] - down_face[0] contains link.pins.first
-//     Point A = embedding[link.pins.first];
-//     Point B = embedding[up_face[1]] + embedding[down_face[1]];
-//     Point C = -A;
-//     Point D = -B;
-//     vector<Point> small_square_pts = {A, B, C, D};
-//     for (Point& P: small_square_pts)
-//         P = P / (5 * norm(P));
-//     for (Point P: small_square_pts)
-//         embedding.push_back(P);
+    // up_face[0] - down_face[0] contains link.pins.first
+    Point A = embedding[link.pins.first];
+    Point B = embedding[up_face[1]] + embedding[down_face[1]];
+    Point C = -A;
+    Point D = -B;
+    vector<Point> small_square_pts = {A, B, C, D};
+    for (Point& P: small_square_pts)
+        P = P / (5 * norm(P));
+    for (Point P: small_square_pts)
+        embedding.push_back(P);
 
 
-//     vector<pair<int,int>> boundary_edges;
-//     for (Dart d: link.A.darts()) {
-//         assert(d.from != d.to);
-//         if (d.from > d.to)
-//             continue;
-//         boundary_edges.push_back({d.from, d.to});
-//     }
+    vector<pair<int,int>> boundary_edges;
+    for (Dart d: link.A.darts()) {
+        assert(d.from != d.to);
+        if (d.from > d.to)
+            continue;
+        boundary_edges.push_back({d.from, d.to});
+    }
 
-//     vector<set<int>> triangles;
+    vector<set<int>> triangles;
 
-//     // Whether v belongs to the line connecting the pins.
-//     auto is_pin = [&](int v) {
-//         return set<int>{link.pins.first, link.pins.second, 10, 12}.count(v);
-//     };
+    // Whether v belongs to the line connecting the pins.
+    auto is_pin = [&](int v) {
+        return set<int>{link.pins.first, link.pins.second, 10, 12}.count(v);
+    };
 
-//     auto add_face = [&](vector<int> face) {
-//         assert(ssize(face) >= 3);
-//         int f = ssize(face);
-//         // If a face contains a pin, then the triangulation shall be pivoted
-//         // there to avoid issues due to the fact that the face is not convex
-//         // and not contained in a plane.
-//         int pivot = 0;
-//         for (int i = 1; i < f; i++)
-//             if (is_pin(face[i]))
-//                 pivot = i;
-//         rotate(face.begin(), face.begin() + pivot, face.end());
-//         for (int i = 1; i < f-1; i++) {
-//             int j = (i+1) % f;
-//             triangles.push_back({face[0], face[i], face[j]});
-//         }
-//     };
+    auto add_face = [&](vector<int> face) {
+        assert(ssize(face) >= 3);
+        int f = ssize(face);
+        // If a face contains a pin, then the triangulation shall be pivoted
+        // there to avoid issues due to the fact that the face is not convex
+        // and not contained in a plane.
+        int pivot = 0;
+        for (int i = 1; i < f; i++)
+            if (is_pin(face[i]))
+                pivot = i;
+        rotate(face.begin(), face.begin() + pivot, face.end());
+        for (int i = 1; i < f-1; i++) {
+            int j = (i+1) % f;
+            triangles.push_back({face[0], face[i], face[j]});
+        }
+    };
 
-//     for (int i = 0; i < 4; i++) {
-//         int j = (i + 1) % 4;
-//         add_face({up_face[i], up_face[j], small_square[j], small_square[i]});
-//         add_face({down_face[i], down_face[j], small_square[j], small_square[i]});
-//         vector<int> side_triangle = {up_face[i], small_square[i], down_face[i]};
-//         if (i == 0) side_triangle.push_back(link.pins.first);
-//         if (i == 2) side_triangle.push_back(link.pins.second);
-//         add_face(side_triangle);
-//     }
-//     add_face(small_square);
+    for (int i = 0; i < 4; i++) {
+        int j = (i + 1) % 4;
+        add_face({up_face[i], up_face[j], small_square[j], small_square[i]});
+        add_face({down_face[i], down_face[j], small_square[j], small_square[i]});
+        vector<int> side_triangle = {up_face[i], small_square[i], down_face[i]};
+        if (i == 0) side_triangle.push_back(link.pins.first);
+        if (i == 2) side_triangle.push_back(link.pins.second);
+        add_face(side_triangle);
+    }
+    add_face(small_square);
 
-//     return {.X = ImmersedSimplicialComplex(embedding, triangles),
-//             .pins = link.pins,
-//             .boundary_edges = boundary_edges};
-// }
+    return {.X = ImmersedSimplicialComplex(embedding, triangles),
+            .pins = link.pins,
+            .boundary_edges = boundary_edges};
+}
 
 
 // Net 827 = Fat fish.

@@ -9,7 +9,7 @@ struct FindCompetitorConfig {
     int net1096_removed_face; // Default is 6, sometimes overwritten as 8
     bool net827_slow_convergence; // whether we want to run for a longer time the surface evolver, fat fish
     // TODO
-    // bool net1029_cube_family; // Whether we should treat the net 1029 as the cube family. The net 1029 admits two 1-parameter families of metrization, one of them is the cube family, the other is the goggles.
+    bool net1029_cube_family; // Whether we should treat the net 1029 as the cube family.
 };
 
 
@@ -68,8 +68,8 @@ bool containsErrorMessage(const string& log_file, const string& error_string) {
 }
 
 SurfaceEvolverData generatePoppedConeCases(int net_id, const GeodesicNetAntipodalPins& link, FindCompetitorConfig config) {
-    // if (net_id == 1029 and config.net1029_cube_family)
-    //     return generateCubeCompetitor(link); // TODO
+    if (net_id == GOGGLES_ID and config.net1029_cube_family)
+        return generateCubeCompetitor(link);
     if (net_id == 1096)
         return generatePoppedCone(link, {config.net1096_removed_face}, pop_description.at(net_id).second);
     if (net_id == 827) {// Fat fish family
@@ -338,7 +338,9 @@ void proveInstabilityGoggles() {
         if (param.len() > 0.01) // No matter what, we split at least this much.
             return false;
         clog << "Processing " << param << endl;
-        return excludeFamilyOfNets(GOGGLES_ID, {param}, true, FindCompetitorConfig()).isOk();
+        FindCompetitorConfig config;
+        config.net1029_cube_family = false;
+        return excludeFamilyOfNets(GOGGLES_ID, {param, Interval(0, 0)}, true, config).isOk();
     };
 
     coverInterval(param_region, try_interval);
@@ -346,11 +348,21 @@ void proveInstabilityGoggles() {
     cout << "OK" << endl << endl;
 }
 
+void analyzeCubes(double q) {
+    FindCompetitorConfig config;
+    config.net1029_cube_family = false;
+    vector<Interval> params = {Interval(q), Interval(1, 1)};
+    string name = generateEmbeddingFilename(1029, params);
+    cout << name << endl;
+    cout << excludeFamilyOfNets(GOGGLES_ID, params, true, config) << endl;
+}
+
 int main() {
+    analyzeCubes(0.1);
     // proveInstabilityRigidNets();
     // proveInstabilityRigidNetsWithFlexiblePins();
     // proveInstabilityGoggles();
-    proveInstabilityFatFish();
+    // proveInstabilityFatFish();
 
     return 0;
 }

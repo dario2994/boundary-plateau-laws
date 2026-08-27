@@ -69,11 +69,10 @@ bool containsErrorMessage(const string& log_file, const string& error_string) {
 SurfaceEvolverData generatePoppedConeCases(int net_id, const GeodesicNetAntipodalPins& link, FindCompetitorConfig config) {
     if (net_id == GOGGLES_ID and config.net1029_cube_family)
         return generateCubeCompetitor(link);
+    if (net_id == 827) // Fat fish family
+        return generateFatFishCompetitor(link, config.net827_pop_type);
     if (net_id == 1096)
         return generatePoppedCone(link, {config.net1096_removed_face}, pop_description.at(net_id).second);
-    if (net_id == 827) {// Fat fish family
-        return generateFatFishCompetitor(link, config.net827_pop_type);
-    }
     return generatePoppedCone(link, pop_description.at(net_id).first,
                                     pop_description.at(net_id).second);
 }
@@ -123,7 +122,6 @@ ErrorOr<double> findCompetitor(int net_id, string name,
     if (!maybe_validation_error.isOk())
         return ErrorMessage(maybe_validation_error.getError());
 
-    // TODO: This shall be fixed!
     double area_gap = cone.X.area() - competitor.area();
     if (area_gap < 1e-5) {
         stringstream ss;

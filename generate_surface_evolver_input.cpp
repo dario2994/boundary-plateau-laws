@@ -823,9 +823,14 @@ double excludeFamilyViaStability(GeodesicNetAntipodalPins link, NetEmbeddedWithP
             v2 = replace_pin(v2);
         }
         ApproximatePoint U2 = family.embedding[u2], V2 = family.embedding[v2];
-        Interval homotopy_area1 = 0.5 * norm((U2-U1)^(V1-U1));
-        Interval homotopy_area2 = 0.5 * norm((V2-V1)^(U2-V1));
-        additional_cost += (homotopy_area1 + homotopy_area2).r;
+        Interval homotopy_areaX1 = 0.5 * norm((U2-U1)^(V1-U1));
+        Interval homotopy_areaX2 = 0.5 * norm((U2-V2)^(V1-V2));
+        double homotopy_areaX = (homotopy_areaX1 + homotopy_areaX2).r;
+
+        Interval homotopy_areaY1 = 0.5 * norm((U1-U2)^(V2-U2));
+        Interval homotopy_areaY2 = 0.5 * norm((U1-V1)^(V2-V1));
+        double homotopy_areaY = (homotopy_areaY1 + homotopy_areaY2).r;
+        additional_cost += max(homotopy_areaX, homotopy_areaY);
     }
 
     double area_diff = family.area().r - link.area();

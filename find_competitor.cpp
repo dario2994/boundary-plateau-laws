@@ -8,7 +8,6 @@ struct FindCompetitorConfig {
     int net827_pop_type; // -1, 0, 1, fat fish
     int net1096_removed_face; // Default is 6, sometimes overwritten as 8
     bool net827_slow_convergence; // whether we want to run for a longer time the surface evolver, fat fish
-    // TODO
     bool net1029_cube_family; // Whether we should treat the net 1029 as the cube family.
 };
 
@@ -141,8 +140,8 @@ ErrorOr<double> findCompetitor(int net_id, string name,
 // The net is specified via net_id and, if the net is not rigid, via some real
 // parameters net_params.
 // One can decide to skip running the surface evolver and used the cached
-// competitors. Even in this case, this function checks whether the cached
-// competitors are valid.
+// competitors.
+// In any case, this function checks whether the competitors are valid.
 // If the function finds a valid competitor, it saves it and returns the (positive)
 // difference between the cone and the competitor.
 // Otherwise, it returns an error.
@@ -177,23 +176,17 @@ ErrorOr<double> excludeFamilyOfNets(int net_id, vector<Interval> net_params,
     return area_gap;
 }
 
-// If this function terminates, it is guaranteed that there is a finite set family
-// of subintervals I_1, .., I_k such that:
-// - They cover I, that is I \subseteq \bigcup_j I_j
-// - It holds f(I_j) = true for all j.
-void coverInterval(Interval I, function<bool(Interval)> f) {
-    if (f(I))
-        return;
-    assert(I.len() > 1e-5); // TODO: Avoid going too deep.
-    Interval left = {I.l, I.mid()};
-    Interval right = {I.mid(), I.r};
-    left.intersect(I);
-    right.intersect(I);
-    coverInterval(left, f);
-    coverInterval(right, f);
-};
-
+// Returns gap and guarantees that the given fat fish net admits a competitor
+// (in B_1) which improves the area at least by gap.
+// If gap = -1, it means that no gap was found.
 double processFatFish(double theta0, double theta1) {
+    // These configurations determine the popped cone to use and the
+    // surface evolver settings to use.
+    // The first parameters (in {-1, 0, 1}) determines the popped cone, while
+    // the second determines whether we should execute a "quick and shallow" run
+    // of the surface evolver or a "slow and deep" run.
+    // We run six different configurations in order and we stop as soon as
+    // we find a satisfactory competitor.
     const static vector<tuple<int, bool>> config_options = {
         {0, false}, {1, false}, {1, true}, {0, true}, {-1, false}, {-1, true}
     };
@@ -213,18 +206,25 @@ double processFatFish(double theta0, double theta1) {
                 break;
         }
     }
-    // if (ssize(error_messages) == 6) {
-    //     for (string msg: error_messages)
-    //         cout << msg << endl << endl;
-    //     assert(0);
-    // }
-    cout << " " << area_gap << " (" << ssize(error_messages) << ")";
+    cout << " gap = " << area_gap;
 
     return area_gap;
 }
 
-// theta0 controls the position of the pins
-// theta1 controls the derived-once net
+// Consider the family of fat fish corresponding to the interval of parameters
+// theta0 and theta1.
+//  - theta0 controls the position of the pins (geodesic length of an edge to a pin)
+//  - theta1 controls the derived-once net (geodesic length of an edge of the net)
+//
+// This function returns:
+//  - eps > 0 (= 1e-10) if there is no minimizing fat fish in the
+//    family (i.e., the parameters are out of bound) but we don't have
+//    produced any competitor to prove it.
+//  - gap > 0 (a positive number) if one of the nets in the family admits a
+//    competitor that improves the area by gap and these competitor is sufficient,
+//    employing the stability results, to conclude that no net in the family
+//    is minimizing.
+//  - -1.0 if the function proves nothing.
 double proveInstabilityFatFishRecursive(Interval theta0, Interval theta1) {
     static double area_processed = 0;
 
@@ -232,17 +232,24 @@ double proveInstabilityFatFishRecursive(Interval theta0, Interval theta1) {
         return -1.0;
 
     double upperbound_theta0 = atan(1.0 / (sqrt(3.) * cos(theta1.r)));
+    // Here we are using the a-priori estimate on the distance of a pin
+    // from an edge that is not adjacent to an edge adjacent to the pin itself.
+    // This allows us to enforce the -0.01 restriction.
     theta0.intersect(Interval(-1000, upperbound_theta0 - 0.01));
-    if (theta0.empty())
-        return true;
+    if (theta0.empty() or theta1.empty())
+        return 1e-10;
+
     cout << theta0 << " " << theta1 << ", " << (100*area_processed / 0.36) << "%, ";
 
-    double desired_area_gap =
-        // 8 * theta0.len() + 2*sqrt(3) * theta1.len() + 1e-3;
-        10 * theta0.len() + 4 * theta1.len() + 1e-4;
+    // If any net in the family admits a competitor with gap > desired_area_gap,
+    // then automatically no net in the family can be minimizing.
+    // If the net admitting the competitor has parameter corresponding exactly
+    // to the midpoints of theta0 and theta1, then desired_area_gap/2 is
+    // sufficient.
+    double desired_area_gap = 10 * theta0.len() + 4 * theta1.len() + 1e-4;
+
     double p0 = theta0.mid();
     double p1 = theta1.mid();
-
     if (theta0.len() + theta1.len() < 0.01) {
         double area_gap = processFatFish(p0, p1);
         if (desired_area_gap / 2 < area_gap) {
@@ -253,6 +260,13 @@ double proveInstabilityFatFishRecursive(Interval theta0, Interval theta1) {
     }
     cout << endl;
 
+    // We recur on four subrectangles.
+    // If the competitor produced while solving any of these subrectangles
+    // has gap > desired_area_gap, we can immediately terminate.
+    // This observation, as well as many others in processFatFish
+    // is necessary to show the non-minimality of all fat fish. Many of these
+    // cheap tricks are due to some strange behaviors of the surface evolver
+    // in pathological cases of fat fish.
     bool children_are_solved = true;
     double res = -1;
     for (Interval theta0_child: vector<Interval>{{theta0.l, p0}, {p0, theta0.r}}) {
@@ -269,12 +283,15 @@ double proveInstabilityFatFishRecursive(Interval theta0, Interval theta1) {
     return -1.0;
 }
 
-bool proveInstabilityFatFish() {
+void proveInstabilityFatFish() {
+    cout << "Processing fat fish." << endl;
     const double sigma = sqrt(2. / 3);
     double upperbound_theta1 = acos(sigma);
-    return proveInstabilityFatFishRecursive(
-        Interval(0, 1000),
-        Interval(0, upperbound_theta1-0.01)) > 0;
+    double res = proveInstabilityFatFishRecursive(
+            Interval(0, 1000),
+            Interval(0, upperbound_theta1-0.01));
+    assert(res > 0);
+    cout << "OK" << endl << endl;
 }
 
 
@@ -282,20 +299,33 @@ void proveInstabilityRigidNets() {
     cout << "Processing rigid nets." << endl;
     cout << "net_id: area gap" << endl;
     for (int net_id: rigid_nets) {
-        // if (net_id ! 325)
-        //     continue; // TODO: Remove
         cout << net_id << ": \t";
         cout.flush();
-        // TODO: Fix
+
         auto maybe_proof = excludeFamilyOfNets(net_id, {}, false, FindCompetitorConfig());
         if (!maybe_proof.isOk())
             cout << maybe_proof.getError() << endl;
         assert(maybe_proof.isOk());
-        // double area_gap = maybe_proof.getContent();
         cout << endl;
     }
     cout << endl;
 }
+
+// If this function terminates, it is guaranteed that there is a finite set family
+// of subintervals I_1, .., I_k such that:
+// - They cover I, that is I \subseteq \bigcup_j I_j
+// - It holds f(I_j) = true for all j.
+void coverInterval(Interval I, function<bool(Interval)> f) {
+    if (f(I))
+        return;
+    assert(I.len() > 1e-5);
+    Interval left = {I.l, I.mid()};
+    Interval right = {I.mid(), I.r};
+    left.intersect(I);
+    right.intersect(I);
+    coverInterval(left, f);
+    coverInterval(right, f);
+};
 
 void proveInstabilityRigidNetsWithFlexiblePins() {
     cout << "Processing rigid nets with flexible pins." << endl;
@@ -305,19 +335,29 @@ void proveInstabilityRigidNetsWithFlexiblePins() {
         ifstream metrized_net_in("data/metrized_nets/"+ to_string(net_id) + ".txt");
         assert(metrized_net_in.is_open());
         ApproximatelyMetrizedNet net = parseApproximatelyMetrizedNet(metrized_net_in);
+        // param denotes the length of an edge to a pin.
         Interval param_region = validPinEdgeLength(net);
         if (net_id == 1096) {
+            // We use the fact that, under suitable assumptions, the pins
+            // cannot be too close to an edge that is not adjacent to an
+            // edge adjacent to the pin itself.
+            // This condition is non-empty only in the case of net 1096 and
+            // it is necessary to succesfully employ the stability results that
+            // allow us to discretize the problem.
             param_region.l += 0.005;
-            param_region.r -= 0.005; // TODO
+            param_region.r -= 0.005;
         }
         clog << "Param region: " << param_region << endl;
 
-        // Returns true or false.
+        // Returns whether the given interval of parameters contain only
+        // non minimal cones.
         auto try_interval = [&](Interval param) {
-            if (param.len() > 0.01) // No matter what, we split at least this much.
+            if (param.len() > 0.01)
                 return false;
             clog << "Processing " << param << endl;
             FindCompetitorConfig config;
+            // For net 1096, we need to use two different popped cones depending
+            // on param.
             config.net1096_removed_face = (net_id == 1096 and param.mid() > 0.38) ? 8 : 6;
             return excludeFamilyOfNets(net_id, {param}, true, config).isOk();
         };
@@ -330,16 +370,21 @@ void proveInstabilityRigidNetsWithFlexiblePins() {
 
 void proveInstabilityGoggles() {
     cout << "Processing goggles." << endl;
-    Interval param_region = {0., acos(1.0/3) / 2 - 0.005}; // TODO: Justify
+    // Here we are using the a-priori lower bound on the length of edges.
+    Interval param_region = {0., acos(1.0/3) / 2 - 0.005};
     clog << "Param region: " << param_region << endl;
 
-    // Returns true or false.
+    // Returns whether the given interval of parameters contain only
+        // non minimal cones.
     auto try_interval = [&](Interval param) {
-        if (param.len() > 0.01) // No matter what, we split at least this much.
+        if (param.len() > 0.01)
             return false;
         clog << "Processing " << param << endl;
         FindCompetitorConfig config;
         config.net1029_cube_family = false;
+        // The second parameter Interval(0, 0) is necessary to transmit the
+        // information that we are interested in the GOGGLES instead of the
+        // cube. Indeed these two families have the same once-derived net (1029).
         return excludeFamilyOfNets(GOGGLES_ID, {param, Interval(0, 0)}, true, config).isOk();
     };
 
@@ -348,6 +393,9 @@ void proveInstabilityGoggles() {
     cout << "OK" << endl << endl;
 }
 
+// This function can be used to check whether the surface evolver manages
+// to produce a better competitor for the cube.
+// For 0 <= q < 0.1 it seems to work, for q > 0.1 it does not.
 void analyzeCubes(double q) {
     FindCompetitorConfig config;
     config.net1029_cube_family = false;
@@ -358,11 +406,10 @@ void analyzeCubes(double q) {
 }
 
 int main() {
-    analyzeCubes(0.1);
-    // proveInstabilityRigidNets();
-    // proveInstabilityRigidNetsWithFlexiblePins();
-    // proveInstabilityGoggles();
-    // proveInstabilityFatFish();
+    proveInstabilityRigidNets();
+    proveInstabilityRigidNetsWithFlexiblePins();
+    proveInstabilityGoggles();
+    proveInstabilityFatFish();
 
     return 0;
 }

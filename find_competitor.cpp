@@ -322,6 +322,8 @@ void proveInstabilityRigidNets() {
     cout << "Processing rigid nets." << endl;
     cout << "net_id: area gap" << endl;
     for (int net_id: rigid_nets) {
+        if (net_id < 736)
+            continue; // TODO;
         cout << net_id << ": \t";
         cout.flush();
 

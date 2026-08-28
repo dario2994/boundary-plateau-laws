@@ -8,6 +8,122 @@
 #include "simplicial_complexes.cpp"
 
 
+const set<int>& possible_nets = {
+    28,     99,     158,    182,    250,
+    319,    325,    346,    361,    421,
+    468,    484,    520,    614,    681,
+    712,    736,    779,    827,    909,
+    920,    938,    1029,   1096,   1100,
+    1122};
+
+const set<int>& rigid_nets = {182, 250, 319, 325, 361, 421, 468, 484, 520, 614, 712, 736, 909, 938, 1122};
+const set<int>& rigid_nets_flexible_pins = {28, 99, 346, 779, 1096};
+const set<int>& special_nets = {158, 681, 827, 920, 1029, 1100};
+const int FAT_FISH_ID = 827;
+const int GOGGLES_ID = 1029;
+
+// Here we describe the "pop".
+// Use python run_visualization net_id as well as the faces' list
+// (printed by this program) to come up with a reasonable choice.
+// This choice, which is crucial, can be informed by experiments.
+// The description of one pop consists of:
+//   - a list of the faces to remove.
+//   - a path to add (for each edge in the path, we add the triangle that it
+//   forms with the origin).
+const int PIN_ZERO = -1;
+const int PIN_ONE = -2;
+const map<int, pair<vector<int>, vector<int>>> pop_description = {
+    {28, {
+        {3, 5},
+        {PIN_ZERO, 17, 6, 14, 13, 18, PIN_ONE, 19, 9, 0, 1, 16, PIN_ZERO}
+    }},
+    {99, {
+        {1},
+        {PIN_ZERO, 14, 7, 13, 11, 10, 15, PIN_ONE}
+    }},
+    {182, {
+        {1, 11},
+        {PIN_ZERO, 21, 4, 3, 2, 18, PIN_ONE, 19, 6, 9, 13, 20, PIN_ZERO}
+    }},
+    {250, {
+        {6, 8},
+        {PIN_ZERO, 7, 6, 13, PIN_ONE, 0, 1, 4, 11, PIN_ZERO}
+    }},
+    {319, {
+        {5, 2},
+        {PIN_ZERO, 6, 1, 2, 8, PIN_ONE, 9, 5, 7, PIN_ZERO}
+    }},
+    {325, {
+        {3, 1, 9},
+        {PIN_ZERO, 4, 3, 2, 6, PIN_ONE, 19, 9, 12, 17 , PIN_ZERO, 14, 13, 7, 5, PIN_ONE}
+    }},
+    {346, {
+        {1},
+        {PIN_ZERO, 12, 0, 4, 3, 13, PIN_ONE}
+    }},
+    {361, {
+        {7, 1},
+        {PIN_ONE, 10, 5, 1, 9, PIN_ZERO, 8, 4, 7, 11, PIN_ONE}
+    }},
+    {421, {
+        {2, 8},
+        {PIN_ONE, 13, 9, 0, 10, PIN_ZERO, 11, 3, 7, 12, PIN_ONE}
+    }},
+    {468, {
+        {3, 5},
+        {PIN_ZERO, 12, 1, 0, 14, PIN_ONE, 15, 7, 6, 13, PIN_ZERO}
+    }},
+    {484, {
+        {2, 4},
+        {PIN_ONE, 3, 1, 5, PIN_ZERO, 4, 2, PIN_ONE}
+    }},
+    {520, {
+        {6},
+        {PIN_ZERO, 12, 1, 0, 13, PIN_ONE}
+    }},
+    {614, {
+        {1, 7},
+        {PIN_ZERO, 12, 5, 6, 15, PIN_ONE, 14, 10, 11, 9, 13, PIN_ZERO}
+    }},
+    {712, {
+        {6, 7},
+        {PIN_ZERO, 9, 5, 7, 10, PIN_ONE, 11, 2, 1, 8, PIN_ZERO}
+    }},
+    {736, {
+        {0, 6, 8},
+        {PIN_ZERO, 1, 2, 3, PIN_ONE, 13, 6, 10, PIN_ZERO, 4, 8, 9, PIN_ONE}
+    }},
+    {779, {
+        {1},
+        {PIN_ZERO, 10, 1, 2, 3, 11, PIN_ONE}
+    }},
+    {827, {
+        {3},
+        {PIN_ZERO, 0, 1, 2, PIN_ONE}
+    }},
+    {909, {
+        {1},
+        {PIN_ZERO, 8, 1, 2, 10, PIN_ONE}
+    }},
+    {938, {
+        {1, 5},
+        {PIN_ZERO, 8, 1, 2, 11, PIN_ONE, 10, 7, 6, 9, PIN_ZERO}
+    }},
+    {1029, {
+        {5, 0},
+        {PIN_ZERO, 5, 2, 7, PIN_ONE,6, 0, 4, PIN_ZERO}
+    }},
+    {1096, {
+        {6},
+        {PIN_ZERO, 16, 2, 3, 10, 17, PIN_ONE}
+    }},
+    {1122, {
+        {0},
+        {PIN_ZERO, 10, 1, 5, 11, PIN_ONE}
+    }},
+};
+
+
 string generateEmbeddingFilename(int net_id, vector<Interval> params) {
     std::ostringstream oss;
     oss << net_id;
@@ -16,6 +132,7 @@ string generateEmbeddingFilename(int net_id, vector<Interval> params) {
         oss << "_" << param.l << "_" << param.r;
     return oss.str();
 }
+
 
 vector<ApproximatePoint> getVertexEmbedding(const ApproximatelyMetrizedNet& net) {
     const MarkedCombinatorialMap& A = net.A;
@@ -105,7 +222,7 @@ pair<ApproximatePoint, ApproximatePoint> findPinsEmbedding(const ApproximatelyMe
 // net.A.concaveAngles()[0].
 //
 // The pins are antipodal points on the unit sphere.
-pair<ApproximatePoint, ApproximatePoint> choosePinsEmbedding(
+pair<ApproximatePoint, ApproximatePoint> computePinsEmbedding(
         const ApproximatelyMetrizedNet& net, Interval dist) {
     assert(!net.A.concaveAngles().empty());
 
@@ -139,7 +256,7 @@ pair<pair<int,int>, CombinatorialMap> addPinsToCombinatorialMap(
         for (int v = 0; v < ssize(embedding); v++) {
             if (canCoincide(p, embedding[v]))
                 return v;
-            if (norm(p-embedding[v]).l < 0.01) // TODO
+            if (norm(p-embedding[v]).l < 0.01)
                 return v;
         }
         return -1;
@@ -319,7 +436,6 @@ struct SurfaceEvolverData {
     vector<pair<int,int>> boundary_edges;
 };
 
-// TODO: This should take the sequence of commands instead.
 void saveSurfaceEvolverFormat(const SurfaceEvolverData& data,
                               string out_file,
                               string surface_evolver_commands) {
@@ -488,123 +604,6 @@ pair<vector<ApproximatePoint>, pair<ApproximatePoint,ApproximatePoint>> embedCub
 }
 
 
-// TODO: This should be moved somewhere else?
-const set<int>& possible_nets = {
-    28,     99,     158,    182,    250,
-    319,    325,    346,    361,    421,
-    468,    484,    520,    614,    681,
-    712,    736,    779,    827,    909,
-    920,    938,    1029,   1096,   1100,
-    1122};
-
-const set<int>& rigid_nets = {182, 250, 319, 325, 361, 421, 468, 484, 520, 614, 712, 736, 909, 938, 1122};
-const set<int>& rigid_nets_flexible_pins = {28, 99, 346, 779, 1096};
-const set<int>& special_nets = {158, 681, 827, 920, 1029, 1100};
-const int FAT_FISH_ID = 827;
-const int GOGGLES_ID = 1029;
-
-// AD-HOC
-// Here we describe the "pop".
-// Use python run_visualization net_id as well as the faces' list
-// (printed by this program) to come up with a reasonable choice.
-// This choice, which is crucial, can be informed by experiments.
-// The description of one pop consists of:
-//   - a list of the faces to remove.
-//   - a path to add (for each edge in the path, we add the triangle that it
-//   forms with the origin).
-const int PIN_ZERO = -1;
-const int PIN_ONE = -2;
-const map<int, pair<vector<int>, vector<int>>> pop_description = {
-    {28, {
-        {3, 5},
-        {PIN_ZERO, 17, 6, 14, 13, 18, PIN_ONE, 19, 9, 0, 1, 16, PIN_ZERO}
-    }},
-    {99, {
-        {1},
-        {PIN_ZERO, 14, 7, 13, 11, 10, 15, PIN_ONE}
-    }},
-    {182, {
-        {1, 11},
-        {PIN_ZERO, 21, 4, 3, 2, 18, PIN_ONE, 19, 6, 9, 13, 20, PIN_ZERO}
-    }},
-    {250, {
-        {6, 8},
-        {PIN_ZERO, 7, 6, 13, PIN_ONE, 0, 1, 4, 11, PIN_ZERO}
-    }},
-    {319, {
-        {5, 2},
-        {PIN_ZERO, 6, 1, 2, 8, PIN_ONE, 9, 5, 7, PIN_ZERO}
-    }},
-    {325, {
-        {3, 1, 9},
-        {PIN_ZERO, 4, 3, 2, 6, PIN_ONE, 19, 9, 12, 17 , PIN_ZERO, 14, 13, 7, 5, PIN_ONE}
-    }},
-    {346, {
-        {1},
-        {PIN_ZERO, 12, 0, 4, 3, 13, PIN_ONE}
-    }},
-    {361, {
-        {7, 1},
-        {PIN_ONE, 10, 5, 1, 9, PIN_ZERO, 8, 4, 7, 11, PIN_ONE}
-    }},
-    {421, {
-        {2, 8},
-        {PIN_ONE, 13, 9, 0, 10, PIN_ZERO, 11, 3, 7, 12, PIN_ONE}
-    }},
-    {468, {
-        {3, 5},
-        {PIN_ZERO, 12, 1, 0, 14, PIN_ONE, 15, 7, 6, 13, PIN_ZERO}
-    }},
-    {484, {
-        {2, 4},
-        {PIN_ONE, 3, 1, 5, PIN_ZERO, 4, 2, PIN_ONE}
-    }},
-    {520, {
-        {6},
-        {PIN_ZERO, 12, 1, 0, 13, PIN_ONE}
-    }},
-    {614, {
-        {1, 7},
-        {PIN_ZERO, 12, 5, 6, 15, PIN_ONE, 14, 10, 11, 9, 13, PIN_ZERO}
-    }},
-    {712, {
-        {6, 7},
-        {PIN_ZERO, 9, 5, 7, 10, PIN_ONE, 11, 2, 1, 8, PIN_ZERO}
-    }},
-    {736, {
-        {0, 6, 8},
-        {PIN_ZERO, 1, 2, 3, PIN_ONE, 13, 6, 10, PIN_ZERO, 4, 8, 9, PIN_ONE}
-    }},
-    {779, {
-        {1},
-        {PIN_ZERO, 10, 1, 2, 3, 11, PIN_ONE}
-    }},
-    {827, {
-        {3},
-        {PIN_ZERO, 0, 1, 2, PIN_ONE}
-    }},
-    {909, {
-        {1},
-        {PIN_ZERO, 8, 1, 2, 10, PIN_ONE}
-    }},
-    {938, {
-        {1, 5},
-        {PIN_ZERO, 8, 1, 2, 11, PIN_ONE, 10, 7, 6, 9, PIN_ZERO}
-    }},
-    {1029, {
-        {5, 0},
-        {PIN_ZERO, 5, 2, 7, PIN_ONE,6, 0, 4, PIN_ZERO}
-    }},
-    {1096, {
-        {6},
-        {PIN_ZERO, 16, 2, 3, 10, 17, PIN_ONE}
-    }},
-    {1122, {
-        {0},
-        {PIN_ZERO, 10, 1, 5, 11, PIN_ONE}
-    }},
-};
-
 // Struct representing either one geodesic net with antipodal pins or a family
 // of geodesic nets with antipodal pins.
 // It is exact if T = double, and approximate if T = Interval.
@@ -651,8 +650,14 @@ GeodesicNetAntipodalPins makeNetDeterministic(
 
 
 
-// What gap do we have to achieve on chosen_one to rule out the stability of
-// the given family.
+// This function returns gap and guarantees that if we can find a competitor
+// for link which decreases the area by at least gap, then no element of the
+// family is minimizing.
+// Some implicit assumptions on the topologies of link and family are taken
+// for granted and not checked (because they would be painful to check).
+// It boils down to: the topology can differ only because in link a pin falls
+// exactly on a vertex while in family it falls near there and is connected to
+// the vertex with an edge.
 double excludeFamilyViaStability(GeodesicNetAntipodalPins link,
                                  ApproximateGeodesicNetAntipodalPins family) {
     int p1_link = link.pins.first, p2_link = link.pins.second;
@@ -688,11 +693,6 @@ double excludeFamilyViaStability(GeodesicNetAntipodalPins link,
     // First, we verify that the topology is matching.
     // This is only a sanity check. We don't check all the properties that
     // shall be checked, as the checks shall be valid by construction.
-    // int additional_vertices = 0;
-    // additional_vertices += p1_link != p1_family;
-    // additional_vertices += p2_link != p2_family;
-    // cout << "Additional vertices: " << additional_vertices << endl;
-    // cout << link.A.V() << " " << family.A.V() << endl;
     assert(link.A.V() <= family.A.V());
     assert(family.A.V() - link.A.V() == family.A.E() - link.A.E());
 
@@ -710,17 +710,14 @@ double excludeFamilyViaStability(GeodesicNetAntipodalPins link,
         return d;
     };
 
-    // int cnt_unmatched_darts = 0;
     for (Dart d: link.A.darts()) {
         if (!is_family_dart(d)) {
             // Exactly one vertex is a pin.
             assert(link.isPin(d.from) or link.isPin(d.to));
             assert(!link.isPin(d.from) or !link.isPin(d.to));
             assert(is_family_dart(replace_pins(d)));
-            // cnt_unmatched_darts++;
         }
     }
-    // assert(cnt_unmatched_darts == 2 * additional_vertices);
 
     static default_random_engine engine(123);
     uniform_real_distribution<double> distribution(-1.0, 1.0);
@@ -846,6 +843,7 @@ Interval validPinEdgeLength(ApproximatelyMetrizedNet net) {
     assert(len1 > 0.01 and len2 > 0.01);
     assert(len1 < M_PI and len2 < M_PI);
 
+    // TODO: Qui sto barando e questo rompe la 736
     double pos_x = iso({1, 0, 0})[0].mid();
     double pos_y = iso({1, 0, 0})[1].mid();
     double dist = atan2(pos_y, pos_x);
@@ -867,8 +865,8 @@ Interval validPinEdgeLength(ApproximatelyMetrizedNet net) {
     return intersection(Interval(0, len1), Interval(l, r));
 }
 
-// TODO: Remove?
 // We print some info which is useful for humans to come up with a reasonable pop.
+// This was used when constructing the pops and it is not relevant anymore.
 void printInfoForHumanPopping(const ApproximateGeodesicNetAntipodalPins& net) {
     auto faces = net.A.faces();
     cout << "Faces: " << endl;
@@ -951,12 +949,6 @@ ApproximateGeodesicNetAntipodalPins embedNetWithPins(
     vector<ApproximatePoint> embedding;
     pair<ApproximatePoint, ApproximatePoint> pins_coord;
 
-    // TODO:
-    // Cubes have
-    // net_id = 1029
-    // param region [0, acos(1.0/3) / 2]
-    // embedCube(param)
-
     if (net_id == GOGGLES_ID) {
         assert(ssize(params) == 2);
         Interval len = params[0];
@@ -972,10 +964,17 @@ ApproximateGeodesicNetAntipodalPins embedNetWithPins(
         Interval valid_lens = validPinEdgeLength(net);
         assert(isSubset(len, valid_lens));
         embedding = getVertexEmbedding(net);
-        pins_coord = choosePinsEmbedding(net, len);
-    } else if (net_id == 736) { // TODO: What's going on here? Why can't we intersect?
+        pins_coord = computePinsEmbedding(net, len);
+    } else if (net_id == 736) {
+        // As a consequence of what we have proven in the paper the two
+        // pins must fall extremely close to
+        // TODO: Prove this.
         assert(params.empty());
         embedding = getVertexEmbedding(net);
+        Interval I = validPinEdgeLength(net);
+        cout << I << " " << I.empty() << endl;
+        cout << net.A.concaveAngles()[0] << endl;
+        assert(0);
         pins_coord = {embedding[11], embedding[12]};
     } else {
         assert(params.empty());
@@ -1083,7 +1082,7 @@ SurfaceEvolverData generateCubeCompetitor(const GeodesicNetAntipodalPins& link) 
 
 // Net 827 = Fat fish.
 // This is the hardest case because it is a 2-parameter family.
-// Depending on the region where the parameters belong, different pop are
+// Depending on the region where the parameters belong, different pops are
 // necessary.
 SurfaceEvolverData generateFatFishCompetitor(const GeodesicNetAntipodalPins& link,
                                              int pop_type) {

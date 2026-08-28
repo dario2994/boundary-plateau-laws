@@ -60,6 +60,12 @@ ostream& operator <<(ostream& out, const Interval& I) {
     return out;
 }
 
+// This equality is not very meaningful, but it is convenient to make certain
+// templated functions compile.
+bool operator==(const Interval& I, const Interval& J) {
+    return I.l == J.l and I.r == J.r;
+}
+
 // Returns whether I \subseteq J.
 bool isSubset(const Interval& I, const Interval& J) {
     if (I.empty())

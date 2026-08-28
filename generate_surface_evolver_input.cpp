@@ -605,14 +605,17 @@ const map<int, pair<vector<int>, vector<int>>> pop_description = {
     }},
 };
 
-// Template this over Interval or double.
-struct GeodesicNetAntipodalPins {
+// Struct representing either one geodesic net with antipodal pins or a family
+// of geodesic nets with antipodal pins.
+// It is exact if T = double, and approximate if T = Interval.
+template<typename T>
+struct InternalGeodesicNetAntipodalPins {
     CombinatorialMap A;
-    vector<Point> embedding;
+    vector<array<T, 3>> embedding;
     pair<int,int> pins;
 
-    GeodesicNetAntipodalPins(const CombinatorialMap& _A,
-                             const vector<Point>& _embedding,
+    InternalGeodesicNetAntipodalPins(const CombinatorialMap& _A,
+                             const vector<array<T, 3>>& _embedding,
                              pair<int,int> _pins): A(_A), embedding(_embedding), pins(_pins) {
         assert(embedding[pins.first] == -embedding[pins.second]);
     }
@@ -621,8 +624,8 @@ struct GeodesicNetAntipodalPins {
         return v == pins.first or v == pins.second;
     }
 
-    double area() const {
-        double res = 0;
+    T area() const {
+        T res = 0;
         for (Dart d: A.darts()) {
             if (d.from > d.to)
                 continue;
@@ -632,54 +635,26 @@ struct GeodesicNetAntipodalPins {
     }
 };
 
+typedef InternalGeodesicNetAntipodalPins<double> GeodesicNetAntipodalPins;
+typedef InternalGeodesicNetAntipodalPins<Interval> ApproximateGeodesicNetAntipodalPins;
 
-struct NetEmbeddedWithPins {
-    CombinatorialMap A;
-    vector<ApproximatePoint> embedding;
-    vector<ApproximatePoint> direction_from_pins_line;
-    pair<int,int> pins;
 
-    GeodesicNetAntipodalPins deterministicEmbedding() const {
-        vector<Point> deterministic_embedding;
-        for (auto& P: embedding)
-            deterministic_embedding.push_back(makeDeterministic(P));
-        deterministic_embedding[pins.second] = -deterministic_embedding[pins.first];
-        return GeodesicNetAntipodalPins(A, deterministic_embedding, pins);
-    }
 
-    Interval area() const {
-        Interval res = 0;
-        for (Dart d: A.darts()) {
-            if (d.from > d.to)
-                continue;
-            res += 0.5 * norm(embedding[d.from] ^ embedding[d.to]);
-        }
-        return res;
-    }
-};
-
-vector<ApproximatePoint> computeTangentAtPins(
-        const ApproximatelyMetrizedNet& derived_once,
-        const vector<ApproximatePoint>& embedding,
-        const CombinatorialMap& full_graph,
-        const pair<int,int>& pins) {
-    const MarkedCombinatorialMap& A = derived_once.A;
-    const Dart root = A.dart(0);
-
-    vector<ApproximatePoint> direction_from_pins_line(ssize(embedding));
-    for (Dart d: A.concaveAngles()) {
-        ApproximatePoint Q = derived_once.getIsometryToPin(root, d)({0, 0, 1});
-        for (Dart d2: full_graph.darts()) {
-
-            if (d2.from == d.to and (d2.to == pins.first or d2.to == pins.second))
-                direction_from_pins_line[d.to] = embedding[d2.to] ^ Q;
-        }
-    }
-    return direction_from_pins_line;
+GeodesicNetAntipodalPins makeNetDeterministic(
+            const ApproximateGeodesicNetAntipodalPins& net) {
+    vector<Point> deterministic_embedding;
+    for (auto& P: net.embedding)
+        deterministic_embedding.push_back(makeDeterministic(P));
+    deterministic_embedding[net.pins.second] = -deterministic_embedding[net.pins.first];
+    return GeodesicNetAntipodalPins(net.A, deterministic_embedding, net.pins);
 }
+
+
+
 // What gap do we have to achieve on chosen_one to rule out the stability of
 // the given family.
-double excludeFamilyViaStability(GeodesicNetAntipodalPins link, NetEmbeddedWithPins family) {
+double excludeFamilyViaStability(GeodesicNetAntipodalPins link,
+                                 ApproximateGeodesicNetAntipodalPins family) {
     int p1_link = link.pins.first, p2_link = link.pins.second;
     int p1_family = family.pins.first, p2_family = family.pins.second;
     auto replace_pin = [&](int v) {
@@ -892,9 +867,10 @@ Interval validPinEdgeLength(ApproximatelyMetrizedNet net) {
     return intersection(Interval(0, len1), Interval(l, r));
 }
 
+// TODO: Remove?
 // We print some info which is useful for humans to come up with a reasonable pop.
-void printInfoForHumanPopping(const NetEmbeddedWithPins& link) {
-    auto faces = link.A.faces();
+void printInfoForHumanPopping(const ApproximateGeodesicNetAntipodalPins& net) {
+    auto faces = net.A.faces();
     cout << "Faces: " << endl;
     for (int i = 0; i < ssize(faces); i++) {
         cout << "Face " << i << ": ";
@@ -902,14 +878,14 @@ void printInfoForHumanPopping(const NetEmbeddedWithPins& link) {
             cout << d.from << ", ";
         cout << endl;
     }
-    cout << "Pin ids (in order): " << link.pins.first << ", "
-                                   << link.pins.second << endl;
+    cout << "Pin ids (in order): " << net.pins.first << ", "
+                                   << net.pins.second << endl;
 }
 
 // theta0 represents the position of the pins (relative to the square).
 // theta1 represents the position of the biangle (relative to the square).
 // (theta0, theta1) =  (0, 0) corresponds to the most symmetric configuration.
-NetEmbeddedWithPins embedFatFish(double theta0, double theta1) {
+ApproximateGeodesicNetAntipodalPins embedFatFish(double theta0, double theta1) {
     // Checking the validity of the parameters.
     double c0 = cos(theta0), s0 = sin(theta0);
     double c1 = cos(theta1), s1 = sin(theta1);
@@ -956,18 +932,11 @@ NetEmbeddedWithPins embedFatFish(double theta0, double theta1) {
     embedding[8] = {s0, 0, c0};
     embedding[9] = {-s0, 0, -c0};
 
-    ApproximatePoint no_info = {Interval(-2, 2), Interval(-2, 2), Interval(-2, 2)};
-
-    return {
-        .A = A,
-        .embedding = embedding,
-        .direction_from_pins_line = vector<ApproximatePoint>(ssize(embedding), no_info),
-        .pins = pins,
-    };
+    return ApproximateGeodesicNetAntipodalPins(A, embedding, pins);
 }
 
 
-NetEmbeddedWithPins embedNetWithPins(
+ApproximateGeodesicNetAntipodalPins embedNetWithPins(
         int net_id, const vector<Interval>& params, bool collapse_pin_on_vertex) {
     assert(possible_nets.count(net_id));
 
@@ -1017,14 +986,7 @@ NetEmbeddedWithPins embedNetWithPins(
     auto [pins, A] = addPinsToCombinatorialMap(
             net, embedding, pins_coord, collapse_pin_on_vertex);
 
-    vector<ApproximatePoint> direction_from_pins_line = computeTangentAtPins(net, embedding, A, pins);
-
-    return {
-        .A = A,
-        .embedding = embedding,
-        .direction_from_pins_line = direction_from_pins_line,
-        .pins = pins,
-    };
+    return ApproximateGeodesicNetAntipodalPins(A, embedding, pins);
 }
 
 

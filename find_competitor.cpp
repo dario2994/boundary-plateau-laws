@@ -134,10 +134,11 @@ ErrorOr<double> findCompetitor(int net_id, string name,
     return area_gap;
 }
 
-// Tries to find a valid competitor for the given net.
-// The net is specified via net_id and, if the net is not rigid, via some real
-// parameters net_params.
-// One can decide to skip running the surface evolver and used the cached
+// Tries to find a competitor sufficient to show that all nets in the family
+// passed are not minimizing.
+// The net is specified via net_id and, if the net is not (almost) rigid, via
+// some additional real parameters.
+// One can decide to skip running the surface evolver and use the cached
 // competitors.
 // In any case, this function checks whether the competitors are valid.
 // If the function finds a valid competitor, it saves it and returns the (positive)
@@ -146,9 +147,11 @@ ErrorOr<double> findCompetitor(int net_id, string name,
 ErrorOr<double> excludeFamilyOfNets(int net_id, vector<Interval> net_params,
                                     bool run_surface_evolver,
                                     FindCompetitorConfig config) {
-    NetEmbeddedWithPins family = embedNetWithPins(net_id, net_params, false);
+    // Returns a NetEmbeddedWithPins representing the whole family.
+    ApproximateGeodesicNetAntipodalPins family = embedNetWithPins(net_id, net_params, false);
+    // Chooses a specific net (usually "in the middle of" the family).
     GeodesicNetAntipodalPins link =
-            embedNetWithPins(net_id, net_params, true).deterministicEmbedding();
+            makeNetDeterministic(embedNetWithPins(net_id, net_params, true));
     const string& name = generateEmbeddingFilename(net_id, net_params);
 
     ErrorOr<double> res = findCompetitor(net_id, name, link, run_surface_evolver, config);

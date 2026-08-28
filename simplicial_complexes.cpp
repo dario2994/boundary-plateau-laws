@@ -269,8 +269,8 @@ struct ImmersedSimplicialComplex {
     //    {v_1, v_2, ..., v_k}.
     //
     // If allow_changes = true, then this function is allowed to modify
-    // the complex to satisfy the above assumptions satisfied (but sometimes
-    // it may fail in any case).
+    // the complex to satisfy the above assumptions (but sometimes it may fail
+    // in any case).
     ErrorOr<ImmersedSimplicialComplex> containsSegment(
                          const Point& A,
                          const Point& B,
@@ -357,7 +357,6 @@ struct ImmersedSimplicialComplex {
         // nicely contained. This may, a priori, change the topology.
         // Hopefully, in the relevant cases, it does not.
         if (allow_changes) {
-            // TODO: Should we collapse identical points on the line? Maybe removing one singleton is enough?
             vector<int> vertex2ord(V(), -1);
             for (int i = 0; i < ssize(points_on_line); i++)
                 vertex2ord[points_on_line[i]] = i;

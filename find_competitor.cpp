@@ -4,24 +4,21 @@
 #include "generate_surface_evolver_input.cpp"
 
 
-struct FindCompetitorConfig {
-    int net827_pop_type; // -1, 0, 1, fat fish
-    int net1096_removed_face; // Default is 6, sometimes overwritten as 8
-    bool net827_slow_convergence; // whether we want to run for a longer time the surface evolver, fat fish
-    bool net1029_cube_family; // Whether we should treat the net 1029 as the cube family.
-};
 
 
-// TODO: We should write down the correct competitor and then recheck without changing it.
-ErrorOr<bool> isCompetitorValid(GeodesicNetAntipodalPins link, ImmersedSimplicialComplex competitor) {
+// Checks whether the competitor is a valid competitor for the given link.
+// This function may (slightly) modify the competitor.
+ErrorOr<bool> isCompetitorValid(GeodesicNetAntipodalPins link, ImmersedSimplicialComplex& competitor) {
     vector<Point> embedding = link.embedding;
     Point pin1 = embedding[link.pins.first];
     Point pin2 = embedding[link.pins.second];
+    // The following line can modify competitor.
     auto maybe_line = competitor.containsSegment(pin1, pin2);
     if (!maybe_line.isOk()) {
         return ErrorMessage("The line connecting the pins is not properly contained in the competitor.\n"
                             + maybe_line.getError());
     }
+    assert(competitor.containsSegment(pin1, pin2, false).isOk());
     auto line = maybe_line.getContent();
 
     for (Dart d: link.A.darts()) {
@@ -66,7 +63,18 @@ bool containsErrorMessage(const string& log_file, const string& error_string) {
     return false;
 }
 
-SurfaceEvolverData generatePoppedConeCases(int net_id, const GeodesicNetAntipodalPins& link, FindCompetitorConfig config) {
+
+struct FindCompetitorConfig {
+    int net827_pop_type; // -1, 0, 1, fat fish
+    int net1096_removed_face; // Default is 6, sometimes overwritten as 8
+    bool net827_slow_convergence; // whether we want to run for a longer time the surface evolver, fat fish
+    bool net1029_cube_family; // Whether we should treat the net 1029 as the cube family.
+};
+
+
+// Some unimportant case-work to generate the right popped cones in all cases.
+SurfaceEvolverData generatePoppedConeCases(
+        int net_id, const GeodesicNetAntipodalPins& link, FindCompetitorConfig config) {
     if (net_id == GOGGLES_ID and config.net1029_cube_family)
         return generateCubeCompetitor(link);
     if (net_id == 827) // Fat fish family
@@ -78,6 +86,20 @@ SurfaceEvolverData generatePoppedConeCases(int net_id, const GeodesicNetAntipoda
 }
 
 
+// Either returns an error, or returns gap and guarantees that the given
+// net admits a competitor (in B_1) improving the area by at least gap.
+//
+// It constructs the competitor by creating a "popped cone" (a simplicial
+// complex that is a valid competitor for the cone but has a different
+// topology) and then evolving it with Brakke's surface evolver.
+//
+// The surface evolver part can be skipped if one already has access to the
+// output of the Evolver.
+// There is a lot of unimportant plumbing necessary to transform the data
+// from our format to the format used by the surface evolver and back.
+//
+// The correctness of the proof does not depend on Brakke's surface evolver
+// as we verify at the end whether the competitor is valid.
 ErrorOr<double> findCompetitor(int net_id, string name,
                                const GeodesicNetAntipodalPins& link,
                                bool run_surface_evolver,

@@ -7,15 +7,15 @@ Total data memory: 994 KB, or 0 MB.
 Vertices: 685  Edges: 2124  Facets: 1440  Bodies: 0  Facetedges: 4320
 Element memory: 625 KB, or 0 MB
 Total data memory: 1219 KB, or 1 MB.
-    8.38271564150832
+    8.38271564152339
 Quiet OFF. (was on)
-    8.35838528378826
+    8.35838528380313
 Quiet OFF. (was on)
-    8.30691759621461
+    8.30676103554046
 Quiet OFF. (was on)
-    8.27328264871646
+    8.27317212511086
 Quiet OFF. (was on)
-    8.25387830148617
+    8.25387083216894
 Quiet OFF. (was on)
 Edges popped: 28
 Vertices popped: 1
@@ -24,7 +24,7 @@ data/surface_evolver/468/468_popped.fe Line 305:
 WARNING 1903: Edge 1377 not deleted due to adjacent configuration involving facet 546.
 
 Called from: 
-Source file data/surface_evolver/468/468_popped.fe, line 292
+Source file data/surface_evolver/468/468_popped.fe, line 291
 Source file data/surface_evolver/468/468_popped.fe, line 304
 
 
@@ -32,55 +32,55 @@ data/surface_evolver/468/468_popped.fe Line 305:
 WARNING 1903: Edge 1007 not deleted due to adjacent configuration involving facet 709.
 
 Called from: 
-Source file data/surface_evolver/468/468_popped.fe, line 292
+Source file data/surface_evolver/468/468_popped.fe, line 291
 Source file data/surface_evolver/468/468_popped.fe, line 304
 
 
 data/surface_evolver/468/468_popped.fe Line 305:
-WARNING 1903: Edge 1377 not deleted due to adjacent configuration involving facet 546.
+WARNING 1903: Edge 901 not deleted due to adjacent configuration involving facet 546.
 
 Called from: 
-Source file data/surface_evolver/468/468_popped.fe, line 292
+Source file data/surface_evolver/468/468_popped.fe, line 291
 Source file data/surface_evolver/468/468_popped.fe, line 304
 
-    8.10782430068531
+    8.11290055647144
 Quiet OFF. (was on)
-     8.0434447416656
+    8.04421736239282
 Quiet OFF. (was on)
-    8.02387625147364
-Quiet OFF. (was on)
-Edges popped: 0
-Vertices popped: 0
-    8.01378492139901
-Quiet OFF. (was on)
-    8.01176364282143
-Quiet OFF. (was on)
-    8.00335458318695
-Quiet OFF. (was on)
-Vertices: 1874  Edges: 5605  Facets: 3732  Bodies: 0  Facetedges: 11196
-Element memory: 1649 KB, or 1 MB
-Total data memory: 2309 KB, or 2 MB.
-Edges switched in equiangulation: 310
-Edges switched in equiangulation: 42
-Edges switched in equiangulation: 1
-Edges switched in equiangulation: 1
-    8.00005525714209
-Quiet OFF. (was on)
-    7.98953615444498
-Quiet OFF. (was on)
-    7.98841760429799
-Quiet OFF. (was on)
-    7.98590256494157
-Quiet OFF. (was on)
-    7.98590504398869
+    8.02197816096217
 Quiet OFF. (was on)
 Edges popped: 0
 Vertices popped: 0
-    7.98612252291474
+    8.01275726061943
 Quiet OFF. (was on)
-    7.98508198064865
+    8.00580916573666
 Quiet OFF. (was on)
-    7.98483895951762
+    7.99663291825661
+Quiet OFF. (was on)
+Vertices: 1853  Edges: 5540  Facets: 3688  Bodies: 0  Facetedges: 11064
+Element memory: 1630 KB, or 1 MB
+Total data memory: 2355 KB, or 2 MB.
+Edges switched in equiangulation: 286
+Edges switched in equiangulation: 36
+Edges switched in equiangulation: 3
+Edges switched in equiangulation: 1
+    7.99406211304261
+Quiet OFF. (was on)
+     7.9881396566951
+Quiet OFF. (was on)
+    7.98665529484499
+Quiet OFF. (was on)
+    7.98518012709841
+Quiet OFF. (was on)
+    7.98511391042205
+Quiet OFF. (was on)
+Edges popped: 0
+Vertices popped: 0
+    7.98543732343111
+Quiet OFF. (was on)
+    7.98435606901134
+Quiet OFF. (was on)
+    7.98491882238922
 Quiet OFF. (was on)
 Dumping to data/surface_evolver/468/468_competitor.out.
 

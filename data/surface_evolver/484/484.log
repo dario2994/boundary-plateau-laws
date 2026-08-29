@@ -1,37 +1,37 @@
 Surface Evolver Version 2.70a, August 27, 2013, 64-bit
 
-    4.52625355490616
+    4.52625338867717
 Vertices: 70  Edges: 217  Facets: 148  Bodies: 0  Facetedges: 444
 Element memory: 64 KB, or 0 MB
 Total data memory: 994 KB, or 0 MB.
 Vertices: 287  Edges: 878  Facets: 592  Bodies: 0  Facetedges: 1776
 Element memory: 258 KB, or 0 MB
 Total data memory: 1018 KB, or 0 MB.
-    4.32838874838437
+    4.32838057633393
 Quiet OFF. (was on)
-     4.3007352204928
+    4.30068358910668
 Quiet OFF. (was on)
-    4.29144863436713
+     4.2914462617045
 Quiet OFF. (was on)
-    4.28841451910672
+    4.28841422038264
 Quiet OFF. (was on)
-    4.28691187668361
-Quiet OFF. (was on)
-Edges popped: 0
-Vertices popped: 0
-    4.28654593325289
-Quiet OFF. (was on)
-    4.28611236707286
-Quiet OFF. (was on)
-    4.28631512641707
+    4.28691141842099
 Quiet OFF. (was on)
 Edges popped: 0
 Vertices popped: 0
-    4.28613386857178
+    4.28654547448742
 Quiet OFF. (was on)
-     4.2860798653346
+     4.2861119024698
 Quiet OFF. (was on)
-    4.28604660556768
+    4.28631466328152
+Quiet OFF. (was on)
+Edges popped: 0
+Vertices popped: 0
+    4.28613340421668
+Quiet OFF. (was on)
+    4.28607940036363
+Quiet OFF. (was on)
+    4.28604614133799
 Quiet OFF. (was on)
 Vertices: 883  Edges: 2642  Facets: 1760  Bodies: 0  Facetedges: 5280
 Element memory: 777 KB, or 0 MB
@@ -45,7 +45,7 @@ data/surface_evolver/484/484_popped.fe Line 159:
 WARNING 1903: Edge 1884 not deleted due to adjacent configuration involving facet 992.
 
 Called from: 
-Source file data/surface_evolver/484/484_popped.fe, line 151
+Source file data/surface_evolver/484/484_popped.fe, line 150
 Source file data/surface_evolver/484/484_popped.fe, line 158
 
 
@@ -53,7 +53,7 @@ data/surface_evolver/484/484_popped.fe Line 159:
 WARNING 1903: Edge 1942 not deleted due to adjacent configuration involving facet 1050.
 
 Called from: 
-Source file data/surface_evolver/484/484_popped.fe, line 151
+Source file data/surface_evolver/484/484_popped.fe, line 150
 Source file data/surface_evolver/484/484_popped.fe, line 158
 
 
@@ -61,7 +61,7 @@ data/surface_evolver/484/484_popped.fe Line 159:
 WARNING 1903: Edge 2664 not deleted due to adjacent configuration involving facet 1772.
 
 Called from: 
-Source file data/surface_evolver/484/484_popped.fe, line 151
+Source file data/surface_evolver/484/484_popped.fe, line 150
 Source file data/surface_evolver/484/484_popped.fe, line 158
 
 
@@ -69,7 +69,7 @@ data/surface_evolver/484/484_popped.fe Line 159:
 WARNING 1903: Edge 2669 not deleted due to adjacent configuration involving facet 1777.
 
 Called from: 
-Source file data/surface_evolver/484/484_popped.fe, line 151
+Source file data/surface_evolver/484/484_popped.fe, line 150
 Source file data/surface_evolver/484/484_popped.fe, line 158
 
 
@@ -77,26 +77,26 @@ data/surface_evolver/484/484_popped.fe Line 159:
 WARNING 1903: Edge 1883 not deleted due to adjacent configuration involving facet 992.
 
 Called from: 
-Source file data/surface_evolver/484/484_popped.fe, line 151
+Source file data/surface_evolver/484/484_popped.fe, line 150
 Source file data/surface_evolver/484/484_popped.fe, line 158
 
-    4.28486986808524
+    4.28486940502787
 Quiet OFF. (was on)
-    4.28446522289396
+    4.28446475649253
 Quiet OFF. (was on)
-    4.28489556970149
+    4.28489509468476
 Quiet OFF. (was on)
-    4.28573092563237
+    4.28573046379681
 Quiet OFF. (was on)
-    4.28459777002367
+    4.28459730071798
 Quiet OFF. (was on)
 Edges popped: 0
 Vertices popped: 0
-    4.28466436124799
+    4.28466388840847
 Quiet OFF. (was on)
-    4.28430213848815
+    4.28430166553161
 Quiet OFF. (was on)
-    4.28452384270817
+    4.28452337198057
 Quiet OFF. (was on)
 Dumping to data/surface_evolver/484/484_competitor.out.
 

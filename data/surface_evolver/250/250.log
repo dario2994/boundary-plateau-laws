@@ -3,59 +3,39 @@ Surface Evolver Version 2.70a, August 27, 2013, 64-bit
     7.84952213011306
 Vertices: 128  Edges: 411  Facets: 284  Bodies: 0  Facetedges: 852
 Element memory: 121 KB, or 0 MB
-Total data memory: 994 KB, or 0 MB.
-Vertices: 539  Edges: 1674  Facets: 1136  Bodies: 0  Facetedges: 3408
-Element memory: 493 KB, or 0 MB
-Total data memory: 1138 KB, or 1 MB.
-     7.6575638821397
+Total data memory: 990 KB, or 0 MB.
+      7.630614845708
 Quiet OFF. (was on)
-    7.56390057062974
+    7.52011659212258
 Quiet OFF. (was on)
-    7.50385868080186
+    7.44302151197832
 Quiet OFF. (was on)
-    7.42774172299011
+    7.41145233933806
 Quiet OFF. (was on)
-     7.3682357523498
+    7.35282038679143
 Quiet OFF. (was on)
-Edges popped: 5
+Edges popped: 3
 Vertices popped: 1
-    7.32064660248552
+    7.21205522794354
 Quiet OFF. (was on)
-    7.27525379274221
+    7.15070055318133
 Quiet OFF. (was on)
-    7.20981308372851
+    7.14802043432614
 Quiet OFF. (was on)
-Edges popped: 0
-Vertices popped: 0
-    7.22116178568271
+    7.13982349376702
 Quiet OFF. (was on)
-    7.15243578361496
+    7.13367677424846
 Quiet OFF. (was on)
-    7.13296246464469
+Edges popped: 2
+Vertices popped: 2
+    7.14282181344358
 Quiet OFF. (was on)
-Vertices: 1100  Edges: 3271  Facets: 2172  Bodies: 0  Facetedges: 6516
-Element memory: 962 KB, or 0 MB
-Total data memory: 1540 KB, or 1 MB.
-Edges switched in equiangulation: 228
-Edges switched in equiangulation: 54
-Edges switched in equiangulation: 1
-Edges switched in equiangulation: 0
-    7.14057136667224
+     7.1329973071208
 Quiet OFF. (was on)
-    7.12744228757237
+    7.13220725717646
 Quiet OFF. (was on)
-    7.13918116142225
+    7.13085475132719
 Quiet OFF. (was on)
-      7.125868414034
-Quiet OFF. (was on)
-    7.12028387674428
-Quiet OFF. (was on)
-Edges popped: 0
-Vertices popped: 0
-     7.1179049449825
-Quiet OFF. (was on)
-    7.11714155560211
-Quiet OFF. (was on)
-    7.11696033279912
+    7.13071739721329
 Quiet OFF. (was on)
 Dumping to data/surface_evolver/250/250_competitor.out.

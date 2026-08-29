@@ -11,7 +11,7 @@ vertices
 5 0.507572 -0.745404 0.432139 fixed
 6 0.283782 0.716418 0.637348 fixed
 7 -0.416753 0.891044 -0.179884 fixed
-8 -0.722617 -0.345625 -0.598638 fixed
+8 -0.722617 -0.345624 -0.598639 fixed
 9 -0.416752 -0.601306 0.681725 fixed
 10 0.283782 0.193751 0.93911 fixed
 11 1 0 0 fixed
@@ -226,7 +226,6 @@ subroutinequick := {
 }
 
 gogo := {
-    /*showq;*/
 
     r 2;
     subroutine 5;
@@ -243,6 +242,7 @@ gogo := {
     /*close_show;*/ /* This raises an error if the window is not visible. */
 }
 
+/* showq; */
 gogo;
 
 quit;

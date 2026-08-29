@@ -20,7 +20,7 @@ data/surface_evolver/319/319_popped.fe Line 217:
 WARNING 1903: Edge 1317 not deleted due to adjacent configuration involving facet 873.
 
 Called from: 
-Source file data/surface_evolver/319/319_popped.fe, line 202
+Source file data/surface_evolver/319/319_popped.fe, line 201
 Source file data/surface_evolver/319/319_popped.fe, line 216
 
     5.75871914755941

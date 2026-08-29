@@ -1,61 +1,71 @@
 Surface Evolver Version 2.70a, August 27, 2013, 64-bit
 
-    7.09491667845857
+    7.09491732156215
 Vertices: 126  Edges: 401  Facets: 276  Bodies: 0  Facetedges: 828
 Element memory: 118 KB, or 0 MB
 Total data memory: 994 KB, or 0 MB.
 Vertices: 527  Edges: 1630  Facets: 1104  Bodies: 0  Facetedges: 3312
 Element memory: 480 KB, or 0 MB
 Total data memory: 1130 KB, or 1 MB.
-    6.91757082743527
+    6.91752912561443
 Quiet OFF. (was on)
-    6.86361402248666
+    6.86413961805429
 Quiet OFF. (was on)
-    6.83001274186761
+    6.83056204131992
 Quiet OFF. (was on)
-    6.79762902722549
+    6.79783213629675
 Quiet OFF. (was on)
-     6.7760378399701
+    6.77595957870339
 Quiet OFF. (was on)
 Edges popped: 6
 Vertices popped: 2
-    6.73597465569659
+    6.74380477193508
 Quiet OFF. (was on)
-    6.70424639563588
+    6.70635972370665
 Quiet OFF. (was on)
-    6.68520790108369
+    6.68601825856409
 Quiet OFF. (was on)
-Edges popped: 0
+Edges popped: 1
 Vertices popped: 1
-    6.66633515021484
+    6.65643149060631
 Quiet OFF. (was on)
-    6.64719013399654
+    6.63446882652172
 Quiet OFF. (was on)
-    6.63930569719546
+
+data/surface_evolver/361/361_popped.fe Line 247:
+WARNING 1903: Edge 149 not deleted due to adjacent configuration involving facet 449.
+
+Called from: 
+Source file data/surface_evolver/361/361_popped.fe, line 235
+Source file data/surface_evolver/361/361_popped.fe, line 246
+
+    6.64030928958432
 Quiet OFF. (was on)
-Vertices: 1186  Edges: 3525  Facets: 2340  Bodies: 0  Facetedges: 7020
-Element memory: 1037 KB, or 1 MB
-Total data memory: 1599 KB, or 1 MB.
-Edges switched in equiangulation: 238
-Edges switched in equiangulation: 53
-Edges switched in equiangulation: 1
+Vertices: 1160  Edges: 3443  Facets: 2284  Bodies: 0  Facetedges: 6852
+Element memory: 1013 KB, or 0 MB
+Total data memory: 1581 KB, or 1 MB.
+Edges switched in equiangulation: 230
+Edges switched in equiangulation: 55
+Edges switched in equiangulation: 2
 Edges switched in equiangulation: 0
-    6.60688200308795
+    6.59902049974296
 Quiet OFF. (was on)
-    6.61305950629202
+    6.58685637919888
 Quiet OFF. (was on)
-    6.59335865323587
+    6.57708834252604
 Quiet OFF. (was on)
-    6.57759032774873
+    6.58864912919377
 Quiet OFF. (was on)
-    6.61127230938462
+    6.61846559419123
 Quiet OFF. (was on)
 Edges popped: 0
 Vertices popped: 0
-    6.59305827664986
+    6.59287196552058
 Quiet OFF. (was on)
-    6.58307334446566
+    6.57931972509254
 Quiet OFF. (was on)
-     6.5824139921714
+    6.57368871163835
 Quiet OFF. (was on)
 Dumping to data/surface_evolver/361/361_competitor.out.
+
+NOTE: There were warning messages. To review, do "print warning_messages"

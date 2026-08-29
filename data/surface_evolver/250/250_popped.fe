@@ -5,7 +5,7 @@ x3:  -0.5 * p1
 
 vertices
 1 1 0 0 fixed
-2 0.333334 0.942809 0 fixed
+2 0.333334 0.942809 5.55112e-17 fixed
 3 -0.333333 0.471404 -0.816497 fixed
 4 0.333333 -0.471405 -0.816497 fixed
 5 0.241582 0.95739 0.158249 fixed
@@ -19,7 +19,7 @@ vertices
 13 0.816497 -0.288675 0.5 fixed
 14 0.5 -0.786566 0.362373 fixed
 15 0.333333 0 0
-16 0.111111 0.31427 0
+16 0.111111 0.31427 1.85037e-17
 17 -0.111111 0.157135 -0.272166
 18 0.111111 -0.157135 -0.272166
 19 0.0805272 0.31913 0.0527495
@@ -230,23 +230,19 @@ subroutinequick := {
 }
 
 gogo := {
-    /*showq;*/
 
-    r 2;
-    subroutine 5;
-    o;
-    subroutine 3;
-    o;
-    subroutine 3;
-    r;
-    u 4;
-    subroutine 5;
-    o;
-    subroutine 3;
+            r;
+            subroutine 5;
+            o;
+            subroutine 5;
+            o;
+            subroutine 5;
+        
     dump "data/surface_evolver/250/250_competitor.out";
     /*close_show;*/ /* This raises an error if the window is not visible. */
 }
 
+/* showq; */
 gogo;
 
 quit;

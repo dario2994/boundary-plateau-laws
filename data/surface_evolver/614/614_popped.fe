@@ -282,7 +282,6 @@ subroutinequick := {
 }
 
 gogo := {
-    /*showq;*/
 
             subroutine 3;
             r;
@@ -298,6 +297,7 @@ gogo := {
     /*close_show;*/ /* This raises an error if the window is not visible. */
 }
 
+/* showq; */
 gogo;
 
 quit;

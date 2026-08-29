@@ -1,80 +1,80 @@
 Surface Evolver Version 2.70a, August 27, 2013, 64-bit
 
-    7.97105808754443
+    7.97105817053586
 Vertices: 150  Edges: 473  Facets: 324  Bodies: 0  Facetedges: 972
 Element memory: 139 KB, or 0 MB
 Total data memory: 995 KB, or 0 MB.
 Vertices: 623  Edges: 1918  Facets: 1296  Bodies: 0  Facetedges: 3888
 Element memory: 565 KB, or 0 MB
 Total data memory: 1182 KB, or 1 MB.
-    7.80107465835117
+    7.80095885220082
 Quiet OFF. (was on)
-    7.76661654146081
+     7.7666748399306
 Quiet OFF. (was on)
-    7.75818613065051
+    7.75817741813722
 Quiet OFF. (was on)
-    7.75219353723865
+    7.75227065617943
 Quiet OFF. (was on)
-    7.74931736600086
+    7.74931893116911
 Quiet OFF. (was on)
 Edges popped: 10
 Vertices popped: 4
-    7.69736411018048
+    7.69726958215719
 Quiet OFF. (was on)
-    7.67474939459301
+    7.67341639843872
 Quiet OFF. (was on)
-    7.65812178376634
+    7.64891155241845
 Quiet OFF. (was on)
-    7.61387661091643
+    7.61205007701805
 Quiet OFF. (was on)
-    7.58923098987748
-Quiet OFF. (was on)
-Edges popped: 0
-Vertices popped: 1
-    7.57374628407487
-Quiet OFF. (was on)
-       7.57049887758
-Quiet OFF. (was on)
-    7.54905854742107
-Quiet OFF. (was on)
-    7.53321393048814
-Quiet OFF. (was on)
-    7.52226750663348
-Quiet OFF. (was on)
-Edges popped: 0
-Vertices popped: 2
-    7.48141903653235
-Quiet OFF. (was on)
-     7.4670904728665
-Quiet OFF. (was on)
-     7.4569293402212
-Quiet OFF. (was on)
-    7.43831943018028
-Quiet OFF. (was on)
-    7.43867535406897
-Quiet OFF. (was on)
-Edges popped: 1
-Vertices popped: 2
-    7.42360402251084
-Quiet OFF. (was on)
-    7.41220717497167
-Quiet OFF. (was on)
-    7.41038711567668
-Quiet OFF. (was on)
-    7.40103498453687
-Quiet OFF. (was on)
-    7.38615175803621
+     7.5901640491149
 Quiet OFF. (was on)
 Edges popped: 0
 Vertices popped: 1
-     7.3418878375551
+    7.58378982486585
 Quiet OFF. (was on)
-    7.33297870924378
+    7.56083641503478
 Quiet OFF. (was on)
-    7.33105115557683
+    7.55003027585465
 Quiet OFF. (was on)
-    7.33668141953727
+    7.52344134150587
 Quiet OFF. (was on)
-    7.32757282264784
+    7.51047108658229
+Quiet OFF. (was on)
+Edges popped: 0
+Vertices popped: 2
+    7.50094200694906
+Quiet OFF. (was on)
+     7.4715426557625
+Quiet OFF. (was on)
+    7.44816230551689
+Quiet OFF. (was on)
+    7.46884203664875
+Quiet OFF. (was on)
+    7.45044663973306
+Quiet OFF. (was on)
+Edges popped: 0
+Vertices popped: 2
+    7.43184608661377
+Quiet OFF. (was on)
+    7.41171136582076
+Quiet OFF. (was on)
+    7.40750250505611
+Quiet OFF. (was on)
+    7.40854533973817
+Quiet OFF. (was on)
+    7.38970767245335
+Quiet OFF. (was on)
+Edges popped: 0
+Vertices popped: 1
+    7.35400880754394
+Quiet OFF. (was on)
+    7.33960202377783
+Quiet OFF. (was on)
+    7.32596078999301
+Quiet OFF. (was on)
+    7.32759023609624
+Quiet OFF. (was on)
+    7.34094450536635
 Quiet OFF. (was on)
 Dumping to data/surface_evolver/520/520_competitor.out.

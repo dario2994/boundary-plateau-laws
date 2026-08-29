@@ -130,13 +130,17 @@ ErrorOr<double> findCompetitor(int net_id, string name,
         assert(surface_evolver_exit_code == 0 or (x_error and !surface_evolver_error));
 
         string convert_format_command = format(
-            "/usr/bin/python3  scripts/prettify_surface_evolver_dump.py {}_competitor.out {}_competitor.txt > /dev/null",
+            "/usr/bin/python3  scripts/prettify_surface_evolver_dump.py {}_competitor.out {}_competitor.txt > /dev/null 2> /dev/null",
             filename_prefix, filename_prefix);
         int convert_format_exit_code = system(convert_format_command.c_str());
+        if (convert_format_exit_code != 0)
+            return ErrorMessage("There is an error in `" + filename_prefix + "_competitor.out` that made the conversion script `scripts/prettify_surface_evolver_dump.py` fail.");
         assert(convert_format_exit_code == 0);
     }
 
     ifstream competitor_in(filename_prefix + "_competitor.txt");
+    if (!competitor_in.is_open())
+        return ErrorMessage("The file `" + filename_prefix + "_competitor.txt` does not exist.");
     assert(competitor_in.is_open());
     ImmersedSimplicialComplex competitor = parseImmersedSimplicialComplex(competitor_in);
 
@@ -322,12 +326,10 @@ void proveInstabilityRigidNets() {
     cout << "Processing rigid nets." << endl;
     cout << "net_id: area gap" << endl;
     for (int net_id: rigid_nets) {
-        if (net_id < 736)
-            continue; // TODO;
         cout << net_id << ": \t";
         cout.flush();
 
-        auto maybe_proof = excludeFamilyOfNets(net_id, {}, false, FindCompetitorConfig());
+        auto maybe_proof = excludeFamilyOfNets(net_id, {}, true, FindCompetitorConfig());
         if (!maybe_proof.isOk())
             cout << maybe_proof.getError() << endl;
         assert(maybe_proof.isOk());

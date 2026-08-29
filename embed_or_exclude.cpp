@@ -72,6 +72,7 @@ int processNet(int net_id) {
         920, 938, 1029, 1096, 1100,
         1122};
 
+    // Goggles and fat fish.
     static const set<int> flexible_nets = {827, 1029};
 
     auto A = parseMarkedCombinatorialMaps("data/once_derived_computer.txt")[net_id];
@@ -95,14 +96,25 @@ int processNet(int net_id) {
         auto res = searchValidRealization(net, params);
         assert(res.has_value());
         ApproximatelyMetrizedNet net2 = *res;
-        saveMetrizedNet(net2,
-            "data/metrized_nets/" + to_string(net_id) + "_visualization.txt",
-            "data/metrized_nets/" + to_string(net_id) + ".txt");
         if (flexible_nets.count(net_id))
             return 1;
 
         // Rigidity
-        relaxMetrization(net2, 1e-4);
+        if (net_id != 736) {
+            for (double tolerance = 1e-5; ; tolerance *= 2) {
+                relaxMetrization(net2, tolerance);
+                params.forbidden_metrization.emplace(net2);
+                auto res2 = searchValidRealization(net, params);
+                if (res2.has_value())
+                    continue;
+                assert(!res2.has_value());
+
+                saveMetrizedNet(net2,
+                        "data/metrized_nets/" + to_string(net_id) + "_visualization.txt",
+                        "data/metrized_nets/" + to_string(net_id) + ".txt");
+                break;
+            }
+        }
         // For net 736, we prove rigidity by first proving that all lengths
         // but two are rigid.
         // Then, with this information, we prove algebraically that the
@@ -110,24 +122,27 @@ int processNet(int net_id) {
         // Finally, we rerun the rigidity-algorithm with this additional
         // information to obtain the desired rigidity.
         if (net_id == 736) {
-            net2.length(A.dart(16)) = Interval(0, 10);
-            net2.length(A.dart(12)) = Interval(0, 10);
-        }
-        params.forbidden_metrization.emplace(net2);
-        auto res2 = searchValidRealization(net, params);
-        assert(!res2.has_value());
+            relaxMetrization(net2, 1e-4);
+            if (net_id == 736) {
+                net2.length(A.dart(16)) = Interval(0, 10);
+                net2.length(A.dart(12)) = Interval(0, 10);
+            }
+            params.forbidden_metrization.emplace(net2);
+            auto res2 = searchValidRealization(net, params);
+            assert(!res2.has_value());
 
-        if (net_id == 736) {
             params.special_rigidity_736 = true;
-            auto res3 = searchValidRealization(net, params);
-            assert(!res3.has_value());
             params.forbidden_metrization.reset();
+            auto res3 = searchValidRealization(net, params);
+            assert(res3.has_value());
+            auto net3 = *res3;
+            relaxMetrization(net3, 1e-4);
+            params.forbidden_metrization.emplace(net3);
             auto res4 = searchValidRealization(net, params);
-            assert(res4.has_value());
-            saveMetrizedNet(*res4,
+            assert(!res4.has_value());
+            saveMetrizedNet(net3,
                 "data/metrized_nets/" + to_string(net_id) + "_visualization.txt",
                 "data/metrized_nets/" + to_string(net_id) + ".txt");
-            return 2;
         }
         return 2;
     } else {

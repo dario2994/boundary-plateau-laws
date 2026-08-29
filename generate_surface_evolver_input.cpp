@@ -318,6 +318,14 @@ string surfaceEvolverCommands(int net_id, string filename_prefix, bool net827_sl
             o;
             subroutine 2;
         )"},
+        {250, R"(
+            r;
+            subroutine 5;
+            o;
+            subroutine 5;
+            o;
+            subroutine 5;
+        )"},
         {346, R"(
             subroutine 2;
             o;
@@ -616,7 +624,8 @@ struct InternalGeodesicNetAntipodalPins {
     InternalGeodesicNetAntipodalPins(const CombinatorialMap& _A,
                              const vector<array<T, 3>>& _embedding,
                              pair<int,int> _pins): A(_A), embedding(_embedding), pins(_pins) {
-        assert(embedding[pins.first] == -embedding[pins.second]);
+        if constexpr (std::is_same_v<T, int>)
+            assert(embedding[pins.first] == -embedding[pins.second]);
     }
 
     bool isPin(int v) const {
@@ -642,9 +651,15 @@ typedef InternalGeodesicNetAntipodalPins<Interval> ApproximateGeodesicNetAntipod
 GeodesicNetAntipodalPins makeNetDeterministic(
             const ApproximateGeodesicNetAntipodalPins& net) {
     vector<Point> deterministic_embedding;
+
     for (auto& P: net.embedding)
         deterministic_embedding.push_back(makeDeterministic(P));
+
+    for (auto& P: deterministic_embedding)
+        P = P / norm(P);
+
     deterministic_embedding[net.pins.second] = -deterministic_embedding[net.pins.first];
+
     return GeodesicNetAntipodalPins(net.A, deterministic_embedding, net.pins);
 }
 
@@ -841,28 +856,27 @@ Interval validPinEdgeLength(ApproximatelyMetrizedNet net) {
     auto iso = net.getIsometryFromPinToPin(d1, d2);
 
     assert(len1 > 0.01 and len2 > 0.01);
-    assert(len1 < M_PI and len2 < M_PI);
+    assert(len1 < 1.01*pi.r and len2 < 1.01*pi.r);
 
-    // TODO: Qui sto barando e questo rompe la 736
-    double pos_x = iso({1, 0, 0})[0].mid();
-    double pos_y = iso({1, 0, 0})[1].mid();
-    double dist = atan2(pos_y, pos_x);
-    if (dist < 0) dist += 2 * M_PI;
+    Interval pos_x = iso({1, 0, 0})[0];
+    Interval pos_y = iso({1, 0, 0})[1];
+    assert(isSubset(pos_x*pos_x + pos_y*pos_y, Interval(0.99, 1.01)));
+    Interval dist = intersectWithCircle(pos_x, pos_y, Interval(0, (2*pi).r));
 
-    double almost_sign = iso({0, 0, 1})[2].mid();
-    assert(abs(almost_sign) > 0.999);
-    bool same_dir = almost_sign > 0;
+    Interval almost_sign = iso({0, 0, 1})[2];
+    assert(isSubset(abs(almost_sign), Interval(0.99, 1.01)));
+    bool same_dir = almost_sign.l > 0;
 
-    double l, r;
+    Interval l, r;
     if (same_dir) l = dist, r = dist + len2;
     else l = dist-len2, r = dist;
-    l -= M_PI;
-    r -= M_PI;
+    l = l - pi;
+    r = r - pi;
 
-    assert(l <= r);
-    assert(0 <= r and r <= M_PI);
+    assert(l < r);
+    assert(isSubset(r, Interval(0, pi.l)));
 
-    return intersection(Interval(0, len1), Interval(l, r));
+    return intersection(Interval(0, len1), Interval(l.l, r.r));
 }
 
 // We print some info which is useful for humans to come up with a reasonable pop.
@@ -966,16 +980,13 @@ ApproximateGeodesicNetAntipodalPins embedNetWithPins(
         embedding = getVertexEmbedding(net);
         pins_coord = computePinsEmbedding(net, len);
     } else if (net_id == 736) {
-        // As a consequence of what we have proven in the paper the two
-        // pins must fall extremely close to
-        // TODO: Prove this.
+        // The net and the pins are rigid, even though all the edges adjacent
+        // to a pin belong to the same equator.
         assert(params.empty());
         embedding = getVertexEmbedding(net);
-        Interval I = validPinEdgeLength(net);
-        cout << I << " " << I.empty() << endl;
-        cout << net.A.concaveAngles()[0] << endl;
-        assert(0);
-        pins_coord = {embedding[11], embedding[12]};
+        Interval len = validPinEdgeLength(net);
+        assert(len.len() < 0.01 and !len.empty());
+        pins_coord = computePinsEmbedding(net, len);
     } else {
         assert(params.empty());
         embedding = getVertexEmbedding(net);

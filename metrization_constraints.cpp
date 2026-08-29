@@ -379,7 +379,7 @@ vector<double> maxDistanceToPin(const ApproximatelyMetrizedNet& net) {
 
     vector<double> len_to_pin;
     for (const Dart& to_pin: A.concaveAngles()) {
-        double len = 10;
+        double len = pi.r;
         for (const Dart& d: A.darts()) {
             const auto& T = net.getIsometryToPin(d, to_pin);
 

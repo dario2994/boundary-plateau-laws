@@ -23,7 +23,7 @@ derived_script = "scripts/visualize_once_derived_net.py"
 metrization_txt = f"data/metrized_nets/{net_id}_visualization.txt"
 output_html = f"data/images3d/{net_id}.html"
 spherical_script = "scripts/visualize_spherical_geodesics.py"
-competitor = base_dir / f"data/surface_evolver/{net_id}_competitor.txt"
+competitor = base_dir / f"data/competitors/{net_id}/{net_id}_competitor.txt"
 competitor_template = base_dir / "scripts/competitor_visualizer.html"
 competitor_output = base_dir / f"data/images3d/{net_id}_competitor.html"
 
@@ -55,7 +55,9 @@ except subprocess.CalledProcessError as e:
 webbrowser.open(output_html.as_uri())
 
 # Visualize the competitor.
+print(competitor, competitor.exists())
 if competitor.exists():
+    print("CIAO")
     if competitor.exists() and competitor_template.exists():
         with open(competitor, "r") as f:
             raw_data = f.read()

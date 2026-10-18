@@ -107,7 +107,7 @@ ErrorOr<double> findCompetitor(int net_id, string name,
     SurfaceEvolverData cone = generateCone(link);
     SurfaceEvolverData popped_cone = generatePoppedConeCases(net_id, link, config);
 
-    const string& net_directory = format("data/surface_evolver/{}", net_id);
+    const string& net_directory = format("data/competitors/{}", net_id);
     const string& filename_prefix = format("{}/{}", net_directory, name);
 
     if (run_surface_evolver) {

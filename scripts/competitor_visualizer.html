@@ -475,10 +475,18 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        // --- Automatically load preloaded data if present ---
-        if (window.preloadedData) {
-            parseFile(window.preloadedData);
-            renderScene();
+        // Load file from URL parameter if present
+        const urlParams = new URLSearchParams(window.location.search);
+        const competitorPath = urlParams.get('file');
+        if (competitorPath) {
+            const filePath = "../data/competitors/" + competitorPath;
+            fetch(filePath)
+                .then(response => response.text())
+                .then(text => {
+                    parseFile(text);
+                    renderScene();
+                })
+                .catch(err => console.error("Error loading competitor file:", err));
         }
 
         animate();

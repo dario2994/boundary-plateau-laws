@@ -54,25 +54,26 @@ except subprocess.CalledProcessError as e:
 
 webbrowser.open(output_html.as_uri())
 
-# Visualize the competitor.
-print(competitor, competitor.exists())
+# Visualize the competitor
 if competitor.exists():
-    print("CIAO")
-    if competitor.exists() and competitor_template.exists():
-        with open(competitor, "r") as f:
-            raw_data = f.read()
+    competitor_path = f"{net_id}/{net_id}_competitor.txt"
+    webbrowser.open(f"{competitor_template.as_uri()}?file={competitor_path}")
+# if competitor.exists():
+#     if competitor.exists() and competitor_template.exists():
+#         with open(competitor, "r") as f:
+#             raw_data = f.read()
 
-        with open(competitor_template, "r") as f:
-            html_content = f.read()
+#         with open(competitor_template, "r") as f:
+#             html_content = f.read()
 
-        # Inject the text data directly into the global window context before the closing body tag
-        injection = f"<script>window.preloadedData = `{raw_data}`;</script>\n</body>"
-        html_content = html_content.replace("</body>", injection)
+#         # Inject the text data directly into the global window context before the closing body tag
+#         injection = f"<script>window.preloadedData = `{raw_data}`;</script>\n</body>"
+#         html_content = html_content.replace("</body>", injection)
 
-        # Ensure the output directory exists and save the configured file
-        competitor_output.parent.mkdir(parents=True, exist_ok=True)
-        with open(competitor_output, "w") as f:
-            f.write(html_content)
+#         # Ensure the output directory exists and save the configured file
+#         competitor_output.parent.mkdir(parents=True, exist_ok=True)
+#         with open(competitor_output, "w") as f:
+#             f.write(html_content)
 
-        # Open the configured HTML application
-        webbrowser.open(competitor_output.as_uri())
+#         # Open the configured HTML application
+#         webbrowser.open(competitor_output.as_uri())

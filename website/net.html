@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Net Details</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background: #fff; color: #333; }
+        .back-link { display: inline-block; margin-bottom: 20px; text-decoration: none; color: #007bff; font-weight: bold; }
+        .container { display: flex; gap: 40px; flex-wrap: wrap; }
+        .panel { flex: 1; min-width: 300px; background: #fdfdfd; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
+        img { max-width: 100%; height: auto; border: 1px solid #ccc; border-radius: 4px; }
+        .control-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; }
+        input[type=range] { width: 100%; }
+        button, .btn { padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; }
+        button:hover, .btn:hover { background: #218838; }
+
+        #padContainer { position: relative; width: 100%; height: 250px; background: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; cursor: crosshair; margin-bottom: 15px; }
+        #padCursor { position: absolute; width: 12px; height: 12px; background: #dc3545; border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; box-shadow: 0 0 4px rgba(0,0,0,0.5); }
+    </style>
+</head>
+<body>
+
+    <a class="back-link" href="index.html">&larr; Back to Dashboard</a>
+    <h1 id="netTitle">Net Details</h1>
+
+    <div class="container">
+        <div class="panel">
+            <h3>Once-Derived Image</h3>
+            <img id="onceDerivedImg" alt="Once-derived net preview" style="display:none;" />
+            <p id="noImg" style="color: #666;">Image not found.</p>
+        </div>
+
+        <div class="panel" id="competitorPanel" style="display:none;">
+            <h3>Competitors Selection</h3>
+            <p>The optimality of this family of nets is ruled out by a competitor or a family of competitors.</p>
+
+            <div class="control-group" id="sliderContainer" style="display:none;">
+                <label id="sliderLabel">Parameter: <span id="paramVal">0</span></label>
+                <input type="range" id="paramSlider" min="0" max="100" step="1" value="0">
+            </div>
+
+            <div class="control-group" id="padWrapper" style="display:none;">
+                <label>Parameter Space (<span id="param2DVal">X: 0, Y: 0</span>)</label>
+                <div id="padContainer">
+                    <div id="padCursor"></div>
+                </div>
+            </div>
+
+            <div class="control-group" id="fileInfoGroup" style="display:none;">
+                <p>Selected Competitor File: <code id="selectedFileText">None</code></p>
+            </div>
+
+            <div class="control-group">
+                <a id="visualizeBtn" class="btn" href="#" target="_blank">Visualize Competitor in 3D</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const netId = urlParams.get('id');
+        document.getElementById('netTitle').innerText = `Net ID: ${netId}`;
+
+        const imgElement = document.getElementById('onceDerivedImg');
+        const imgPath = `../data/once_derived_images/${netId}.png`;
+
+        fetch(imgPath, { method: 'HEAD' }).then(res => {
+            if (res.ok) {
+                imgElement.src = imgPath;
+                imgElement.style.display = 'block';
+                document.getElementById('noImg').style.display = 'none';
+            }
+        });
+
+        fetch('site_metadata.json')
+            .then(res => res.json())
+            .then(metadata => {
+                const compData = metadata.competitors[netId];
+                if (compData && compData.files && compData.files.length > 0) {
+                    document.getElementById('competitorPanel').style.display = 'block';
+                    setupCompetitorControls(netId, compData.files, compData.param_count);
+                }
+            });
+
+        function setupCompetitorControls(netId, filenames, paramCount) {
+            const parsedComps = filenames.map(fname => {
+                const cleanName = fname.replace('_competitor.txt', '');
+                const parts = cleanName.split('_');
+                const floatParams = parts.slice(1).map(Number);
+                return { filename: fname, params: floatParams };
+            });
+
+            if (paramCount === 0) {
+                document.getElementById('fileInfoGroup').style.display = 'none';
+                setupViewerLink(parsedComps[0].filename);
+            }
+            else if (paramCount === 1) {
+                document.getElementById('fileInfoGroup').style.display = 'block';
+                const sliderContainer = document.getElementById('sliderContainer');
+                const slider = document.getElementById('paramSlider');
+                sliderContainer.style.display = 'block';
+
+                const paramValues = [...new Set(parsedComps.map(c => c.params[0]))].sort((a,b) => a - b);
+                slider.min = 0;
+                slider.max = paramValues.length - 1;
+                slider.value = 0;
+
+                function update1DSelection(idx) {
+                    const targetVal = paramValues[idx];
+                    document.getElementById('paramVal').innerText = targetVal;
+
+                    let bestMatch = parsedComps.reduce((prev, curr) => {
+                        return (Math.abs(curr.params[0] - targetVal) < Math.abs(prev.params[0] - targetVal)) ? curr : prev;
+                    });
+
+                    document.getElementById('selectedFileText').innerText = bestMatch.filename;
+                    setupViewerLink(bestMatch.filename);
+                }
+
+                slider.oninput = (e) => update1DSelection(parseInt(e.target.value));
+                update1DSelection(0);
+            }
+            else if (paramCount === 2) {
+                document.getElementById('fileInfoGroup').style.display = 'block';
+                const padWrapper = document.getElementById('padWrapper');
+                padWrapper.style.display = 'block';
+
+                const padContainer = document.getElementById('padContainer');
+                const padCursor = document.getElementById('padCursor');
+
+                // If filename has 4 float parts (e.g. net 827), map indices [0] and [2] or [0] and [1] to X and Y
+                const xValues = parsedComps.map(c => c.params[0]);
+                const yValues = parsedComps.map(c => c.params[1] !== undefined ? c.params[1] : c.params[0]);
+                const minX = Math.min(...xValues), maxX = Math.max(...xValues);
+                const minY = Math.min(...yValues), maxY = Math.max(...yValues);
+
+                function update2DSelection(clientX, clientY) {
+                    const rect = padContainer.getBoundingClientRect();
+                    const xPct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+                    const yPct = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+
+                    padCursor.style.left = `${xPct * 100}%`;
+                    padCursor.style.top = `${yPct * 100}%`;
+
+                    const targetX = minX + xPct * (maxX - minX || 1);
+                    const targetY = minY + (1 - yPct) * (maxY - minY || 1);
+
+                    document.getElementById('param2DVal').innerText = `X: ${targetX.toFixed(4)}, Y: ${targetY.toFixed(4)}`;
+
+                    let bestMatch = parsedComps.reduce((prev, curr) => {
+                        const pY1 = prev.params[1] !== undefined ? prev.params[1] : prev.params[0];
+                        const cY1 = curr.params[1] !== undefined ? curr.params[1] : curr.params[0];
+                        const prevDist = Math.pow(prev.params[0] - targetX, 2) + Math.pow(pY1 - targetY, 2);
+                        const currDist = Math.pow(curr.params[0] - targetX, 2) + Math.pow(cY1 - targetY, 2);
+                        return currDist < prevDist ? curr : prev;
+                    });
+
+                    document.getElementById('selectedFileText').innerText = bestMatch.filename;
+                    setupViewerLink(bestMatch.filename);
+                }
+
+                let isDragging = false;
+                padContainer.addEventListener('mousedown', (e) => { isDragging = true; update2DSelection(e.clientX, e.clientY); });
+                window.addEventListener('mousemove', (e) => { if (isDragging) update2DSelection(e.clientX, e.clientY); });
+                window.addEventListener('mouseup', () => { isDragging = false; });
+
+                update2DSelection(padContainer.getBoundingClientRect().left + padContainer.clientWidth / 2,
+                                 padContainer.getBoundingClientRect().top + padContainer.clientHeight / 2);
+            }
+        }
+
+        function setupViewerLink(filename) {
+            const filePath = `data/competitors/${netId}/${filename}`;
+            const btn = document.getElementById('visualizeBtn');
+            btn.onclick = (e) => {
+                e.preventDefault();
+                window.location.href = `competitor.html?net_id=${netId}&file=${encodeURIComponent(filePath)}`;
+            };
+        }
+    </script>
+</body>
+</html>

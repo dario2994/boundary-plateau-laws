@@ -18,7 +18,7 @@ const set<int>& possible_nets = {
 
 const set<int>& rigid_nets = {182, 250, 319, 325, 361, 421, 468, 484, 520, 614, 712, 736, 909, 938, 1122};
 const set<int>& rigid_nets_flexible_pins = {28, 99, 346, 779, 1096};
-const set<int>& special_nets = {158, 681, 827, 920, 1029, 1100};
+const set<int>& special_nets = {158, 681, 920, 1100};
 const int FAT_FISH_ID = 827;
 const int GOGGLES_ID = 1029;
 

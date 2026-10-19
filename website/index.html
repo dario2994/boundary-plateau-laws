@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Net Visualizer Dashboard</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background: #f9f9f9; color: #333; line-height: 1.5; }
+        h1 { color: #222; }
+        .description { max-width: 800px; margin-bottom: 20px; background: #fff; padding: 15px; border: 1px solid #ddd; border-radius: 6px; }
+        .legend { margin-bottom: 20px; display: flex; gap: 20px; font-size: 0.9em; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .badge { width: 15px; height: 15px; display: inline-block; border-radius: 3px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 8px; }
+        .net-card {
+            padding: 10px; text-align: center; border-radius: 4px; text-decoration: none;
+            color: white; font-weight: bold; font-size: 0.9em; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: transform 0.1s;
+        }
+        .net-card:hover { transform: scale(1.05); }
+        .gray { background-color: #6c757d; } /* Cannot be embedded */
+        .green { background-color: #28a745; } /* Has competitor */
+        .red { background-color: #dc3545; } /* Minimizing or excluded via other means */
+    </style>
+</head>
+<body>
+    <h1>Simplicial Complex Nets Dashboard</h1>
+
+    <div class="description">
+        <p>This grid contains all the topologies that are candidates for being once-derived nets. The grey ones cannot be embedded in the sphere, for the green ones we find a competitor (or many competitors if it's a family) that rules out the minimality of the cone corresponding to the net, while the red ones are either minimizing or excluded via other means (see the paper).</p>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><span class="badge gray"></span> Grey (Cannot be embedded)</div>
+        <div class="legend-item"><span class="badge green"></span> Green (Has competitor/family)</div>
+        <div class="legend-item"><span class="badge red"></span> Red (Minimizing / Excluded otherwise)</div>
+    </div>
+
+    <div id="grid" class="grid">Loading nets...</div>
+
+    <script>
+        fetch('site_metadata.json')
+            .then(res => res.json())
+            .then(data => {
+                const grid = document.getElementById('grid');
+                grid.innerHTML = '';
+                
+                // Sort IDs numerically
+                const sortedIds = Object.keys(data.nets).sort((a, b) => parseInt(a) - parseInt(b));
+                
+                sortedIds.forEach(id => {
+                    const status = data.nets[id];
+                    const a = document.createElement('a');
+                    a.href = `net.html?id=${id}`;
+                    a.className = `net-card ${status}`;
+                    a.innerText = id;
+                    grid.appendChild(a);
+                });
+            })
+            .catch(err => {
+                document.getElementById('grid').innerText = "Failed to load metadata. Make sure generate_site.py has been run.";
+            });
+    </script>
+</body>
+</html>

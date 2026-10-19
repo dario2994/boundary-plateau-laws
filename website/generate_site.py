@@ -1,8 +1,16 @@
 import pathlib
 import json
+import sys
 
 site_dir = pathlib.Path(__file__).resolve().parent
 data_dir = site_dir.parent / "data"
+scripts_dir = site_dir.parent / "scripts"
+
+if str(scripts_dir) not in sys.path:
+    sys.path.append(str(scripts_dir))
+
+from visualize_spherical_geodesics import parse_metrization_file, build_3d_net_traces
+
 
 def get_net_statuses():
     nets = {}
@@ -15,9 +23,7 @@ def get_net_statuses():
         with open(embeddable_file, "r") as f:
             content = f.read().split()
             if content:
-                # Filter out the count header if present (e.g., '26')
                 tokens = [t for t in content if t.isdigit()]
-                # If the first token equals the count of remaining tokens, drop it
                 if tokens and int(tokens[0]) == len(tokens) - 1:
                     tokens = tokens[1:]
                 embeddable_ids = set(tokens)
@@ -32,23 +38,23 @@ def get_net_statuses():
                 total_nets = int(first_line)
 
     competitors_dir = data_dir / "competitors"
-    special_red_ids = {"158", "681", "827", "920", "1029", "1100"}
+    special_red_ids = {158, 681, 920, 1100}
 
     # 3. Evaluate all net IDs explicitly
-    for net_int in range(total_nets):
-        net_id = str(net_int)
+    for net_id in range(total_nets):
+        has_metrization = str(net_id) in embeddable_ids
 
-        has_metrization = (net_id in embeddable_ids) or (data_dir / f"metrized_nets/{net_id}_visualization.txt").exists()
-
-        net_comp_dir = competitors_dir / net_id
+        net_comp_dir = competitors_dir / str(net_id)
         if net_comp_dir.exists() and net_comp_dir.is_dir():
-            all_files = [p.name for p in net_comp_dir.glob("*_competitor.txt")]
+            all_files = [p.name for p in net_comp_dir.glob(f"{net_id}*_competitor.txt")]
 
-            # Filter valid standard competitor files and ignore legacy non-float files
             valid_files = []
             for fname in all_files:
                 clean = fname.replace('_competitor.txt', '')
                 parts = clean.split('_')
+                assert int(parts[0]) == net_id
+                if net_id == 827 and len(parts) != 5:
+                    continue
                 try:
                     [float(p) for p in parts[1:]]
                     valid_files.append(fname)
@@ -56,22 +62,13 @@ def get_net_statuses():
                     continue
 
             if valid_files:
-                # Hardcode parameter count or infer it
-                if net_id == "827":
-                    param_count = 2
-                else:
-                    sample_parts = valid_files[0].replace('_competitor.txt', '').split('_')[1:]
-                    if len(sample_parts) >= 4:
-                        param_count = 2
-                    else:
-                        param_count = 1 if len(sample_parts) == 1 else 0
-
+                param_count = (len(valid_files[0].split('_')) - 2) // 2
                 competitors_map[net_id] = {
                     "files": valid_files,
                     "param_count": param_count
                 }
 
-        # Status assignment precedence:
+        # Status assignment precedence
         if net_id in special_red_ids:
             nets[net_id] = "red"
         elif has_metrization or (net_id in competitors_map):
@@ -79,17 +76,37 @@ def get_net_statuses():
         else:
             nets[net_id] = "gray"
 
-    return nets, competitors_map
+    return nets, competitors_map, embeddable_ids
 
-nets, competitors_map = get_net_statuses()
+
+nets, competitors_map, embeddable_ids = get_net_statuses()
+
+# Generate 3D JSON trace data for embeddable nets
+nets_3d_dir = site_dir / "net_3d_data"
+nets_3d_dir.mkdir(parents=True, exist_ok=True)
+
+available_3d_ids = set()
+for net_id_str in embeddable_ids:
+    metrized_txt = data_dir / "metrized_nets" / f"{net_id_str}_visualization.txt"
+    if metrized_txt.exists():
+        try:
+            verts, edges = parse_metrization_file(metrized_txt)
+            traces = build_3d_net_traces(verts, edges)
+            out_file = nets_3d_dir / f"{net_id_str}.json"
+            with open(out_file, "w") as f:
+                json.dump(traces, f)
+            available_3d_ids.add(int(net_id_str))
+        except Exception as e:
+            print(f"Warning: Failed to generate 3D data for net {net_id_str}: {e}")
 
 metadata = {
     "nets": nets,
-    "competitors": competitors_map
+    "competitors": competitors_map,
+    "has_3d": sorted(list(available_3d_ids))
 }
 
 output_json_path = site_dir / "site_metadata.json"
 with open(output_json_path, "w") as f:
     json.dump(metadata, f)
 
-print(f"Successfully processed {len(nets)} nets. Red count: {sum(1 for v in nets.values() if v == 'red')}")
+print(f"Successfully processed {len(nets)} nets and generated {len(available_3d_ids)} 3D visual data files.")

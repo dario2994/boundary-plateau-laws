@@ -3,20 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <title>Net Details</title>
+    <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
     <style>
-        body { font-family: sans-serif; margin: 20px; background: #fff; color: #333; }
-        .back-link { display: inline-block; margin-bottom: 20px; text-decoration: none; color: #007bff; font-weight: bold; }
-        .container { display: flex; gap: 40px; flex-wrap: wrap; }
-        .panel { flex: 1; min-width: 300px; background: #fdfdfd; padding: 20px; border: 1px solid #ddd; border-radius: 8px; }
-        img { max-width: 100%; height: auto; border: 1px solid #ccc; border-radius: 4px; }
-        .control-group { margin-bottom: 15px; }
-        label { display: block; font-weight: bold; margin-bottom: 5px; }
-        input[type=range] { width: 100%; }
-        button, .btn { padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; }
-        button:hover, .btn:hover { background: #218838; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 24px 32px;
+            background: #f8f9fa;
+            color: #212529;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 16px;
+            text-decoration: none;
+            color: #0d6efd;
+            font-weight: 600;
+        }
+        .back-link:hover { text-decoration: underline; }
+        h1 { margin-top: 0; margin-bottom: 24px; font-size: 26px; }
 
-        #padContainer { position: relative; width: 100%; height: 250px; background: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; cursor: crosshair; margin-bottom: 15px; }
-        #padCursor { position: absolute; width: 12px; height: 12px; background: #dc3545; border: 2px solid white; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; box-shadow: 0 0 4px rgba(0,0,0,0.5); }
+        .layout-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        .panel {
+            background: #ffffff;
+            padding: 22px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+            box-sizing: border-box;
+        }
+        .panel h3 { margin-top: 0; margin-bottom: 16px; font-size: 18px; }
+
+        /* Row 2: Competitors spans both columns */
+        .full-row {
+            grid-column: 1 / -1;
+        }
+
+        .img-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 420px;
+            background: #fafafa;
+            border: 1px solid #eee;
+            border-radius: 4px;
+        }
+        img { max-width: 100%; max-height: 420px; object-fit: contain; }
+        #net3dPlot { width: 100%; height: 420px; }
+
+        .control-group { margin-bottom: 16px; }
+        label { display: block; font-weight: 600; margin-bottom: 6px; }
+        input[type=range] { width: 100%; max-width: 500px; }
+        .btn {
+            padding: 9px 18px;
+            background: #198754;
+            color: #ffffff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            font-weight: 500;
+        }
+        .btn:hover { background: #157347; }
+
+        #padContainer {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            height: 250px;
+            background: #e9ecef;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            cursor: crosshair;
+            margin-bottom: 15px;
+        }
+        #padCursor {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #dc3545;
+            border: 2px solid white;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            box-shadow: 0 0 4px rgba(0,0,0,0.5);
+        }
+        #matchedCursor {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #198754;
+            border: 2px solid white;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            box-shadow: 0 0 4px rgba(0,0,0,0.5);
+            z-index: 2;
+        }
+
+        @media (max-width: 860px) {
+            .layout-grid { grid-template-columns: 1fr; }
+            .full-row { grid-column: 1; }
+        }
     </style>
 </head>
 <body>
@@ -24,15 +115,25 @@
     <a class="back-link" href="index.html">&larr; Back to Dashboard</a>
     <h1 id="netTitle">Net Details</h1>
 
-    <div class="container">
+    <div class="layout-grid">
+        <!-- Row 1: Left Cell -->
         <div class="panel">
-            <h3>Once-Derived Image</h3>
-            <img id="onceDerivedImg" alt="Once-derived net preview" style="display:none;" />
-            <p id="noImg" style="color: #666;">Image not found.</p>
+            <h3>Once-Derived Topology</h3>
+            <div class="img-container">
+                <img id="onceDerivedImg" alt="Once-derived net preview" style="display:none;" />
+                <p id="noImg" style="color: #6c757d;">Image not found.</p>
+            </div>
         </div>
 
-        <div class="panel" id="competitorPanel" style="display:none;">
-            <h3>Competitors Selection</h3>
+        <!-- Row 1: Right Cell -->
+        <div class="panel" id="net3dPanel" style="display:none;">
+            <h3>A Metric Embedding of the Once-Derived Net</h3>
+            <div id="net3dPlot"></div>
+        </div>
+
+        <!-- Row 2: Full Width Competitor Cell -->
+        <div class="panel full-row" id="competitorPanel" style="display:none;">
+            <h3>Competitors</h3>
             <p>The optimality of this family of nets is ruled out by a competitor or a family of competitors.</p>
 
             <div class="control-group" id="sliderContainer" style="display:none;">
@@ -44,6 +145,7 @@
                 <label>Parameter Space (<span id="param2DVal">X: 0, Y: 0</span>)</label>
                 <div id="padContainer">
                     <div id="padCursor"></div>
+                    <div id="matchedCursor"></div>
                 </div>
             </div>
 
@@ -62,8 +164,9 @@
         const netId = urlParams.get('id');
         document.getElementById('netTitle').innerText = `Net ID: ${netId}`;
 
+        // 1. Once-derived 2D preview
         const imgElement = document.getElementById('onceDerivedImg');
-        const imgPath = `../data/once_derived_images/${netId}.png`;
+        const imgPath = `../data/once_derived_images/${netId}.svg`;
 
         fetch(imgPath, { method: 'HEAD' }).then(res => {
             if (res.ok) {
@@ -73,15 +176,43 @@
             }
         });
 
+        // 2. Fetch site metadata
         fetch('site_metadata.json')
             .then(res => res.json())
             .then(metadata => {
+                if (metadata.has_3d && metadata.has_3d.includes(parseInt(netId))) {
+                    load3DNet(netId);
+                }
+
                 const compData = metadata.competitors[netId];
                 if (compData && compData.files && compData.files.length > 0) {
                     document.getElementById('competitorPanel').style.display = 'block';
                     setupCompetitorControls(netId, compData.files, compData.param_count);
                 }
             });
+
+        function load3DNet(id) {
+            fetch(`net_3d_data/${id}.json`)
+                .then(res => {
+                    if (!res.ok) throw new Error("3D file not found");
+                    return res.json();
+                })
+                .then(traces => {
+                    document.getElementById('net3dPanel').style.display = 'block';
+                    const layout = {
+                        margin: { l: 0, r: 0, b: 0, t: 0 },
+                        hovermode: false,
+                        scene: {
+                            xaxis: { showgrid: false, zeroline: false, showticklabels: false, title: '', showspikes: false },
+                            yaxis: { showgrid: false, zeroline: false, showticklabels: false, title: '', showspikes:false },
+                            zaxis: { showgrid: false, zeroline: false, showticklabels: false, title: '', showspikes: false },
+                            aspectmode: 'cube'
+                        }
+                    };
+                    Plotly.newPlot('net3dPlot', traces, layout, { responsive: true, displayModeBar: false });
+                })
+                .catch(err => console.error(err));
+        }
 
         function setupCompetitorControls(netId, filenames, paramCount) {
             const parsedComps = filenames.map(fname => {
@@ -128,10 +259,10 @@
 
                 const padContainer = document.getElementById('padContainer');
                 const padCursor = document.getElementById('padCursor');
+                const matchedCursor = document.getElementById('matchedCursor');
 
-                // If filename has 4 float parts (e.g. net 827), map indices [0] and [2] or [0] and [1] to X and Y
                 const xValues = parsedComps.map(c => c.params[0]);
-                const yValues = parsedComps.map(c => c.params[1] !== undefined ? c.params[1] : c.params[0]);
+                const yValues = parsedComps.map(c => c.params[2]);
                 const minX = Math.min(...xValues), maxX = Math.max(...xValues);
                 const minY = Math.min(...yValues), maxY = Math.max(...yValues);
 
@@ -149,12 +280,19 @@
                     document.getElementById('param2DVal').innerText = `X: ${targetX.toFixed(4)}, Y: ${targetY.toFixed(4)}`;
 
                     let bestMatch = parsedComps.reduce((prev, curr) => {
-                        const pY1 = prev.params[1] !== undefined ? prev.params[1] : prev.params[0];
-                        const cY1 = curr.params[1] !== undefined ? curr.params[1] : curr.params[0];
-                        const prevDist = Math.pow(prev.params[0] - targetX, 2) + Math.pow(pY1 - targetY, 2);
-                        const currDist = Math.pow(curr.params[0] - targetX, 2) + Math.pow(cY1 - targetY, 2);
+                        const prevDist = Math.pow(prev.params[0] - targetX, 2) + Math.pow(prev.params[2] - targetY, 2);
+                        const currDist = Math.pow(curr.params[0] - targetX, 2) + Math.pow(curr.params[2] - targetY, 2);
                         return currDist < prevDist ? curr : prev;
                     });
+
+                    const matchX = bestMatch.params[0];
+                    const matchY = bestMatch.params[2];
+
+                    const matchXPct = (maxX - minX === 0) ? 0.5 : (matchX - minX) / (maxX - minX);
+                    const matchYPct = (maxY - minY === 0) ? 0.5 : (matchY - minY) / (maxY - minY);
+
+                    matchedCursor.style.left = `${matchXPct * 100}%`;
+                    matchedCursor.style.top  = `${(1 - matchYPct) * 100}%`;
 
                     document.getElementById('selectedFileText').innerText = bestMatch.filename;
                     setupViewerLink(bestMatch.filename);
@@ -171,11 +309,10 @@
         }
 
         function setupViewerLink(filename) {
-            const filePath = `data/competitors/${netId}/${filename}`;
             const btn = document.getElementById('visualizeBtn');
             btn.onclick = (e) => {
                 e.preventDefault();
-                window.location.href = `competitor.html?net_id=${netId}&file=${encodeURIComponent(filePath)}`;
+                window.location.href = `competitor.html?net_id=${netId}&file=${encodeURIComponent(filename)}`;
             };
         }
     </script>

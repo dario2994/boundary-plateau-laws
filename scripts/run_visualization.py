@@ -18,8 +18,8 @@ if not net_id.isdigit():
     sys.exit("Error: net_id must be a positive integer.")
 
 # Paths
-derived_png = f"data/once_derived_images/{net_id}.png"
-derived_script = "scripts/visualize_once_derived_net.py"
+once_derived_img = f"data/once_derived_images/{net_id}.svg"
+once_derived_script = "scripts/visualize_once_derived_net.py"
 metrization_txt = f"data/metrized_nets/{net_id}_visualization.txt"
 output_html = f"data/images3d/{net_id}.html"
 spherical_script = "scripts/visualize_spherical_geodesics.py"
@@ -28,19 +28,19 @@ competitor_template = base_dir / "scripts/competitor_visualizer.html"
 competitor_output = base_dir / f"data/images3d/{net_id}_competitor.html"
 
 # Transforming the relative paths into absolute paths.
-derived_png = base_dir / derived_png
-derived_script = base_dir / derived_script
+once_derived_img = base_dir / once_derived_img
+once_derived_script = base_dir / once_derived_script
 metrization_txt = base_dir / metrization_txt
 output_html = base_dir / output_html
 spherical_script = base_dir / spherical_script
 
 # Show or generate the derived image
-if not os.path.exists(derived_png):
+if not os.path.exists(once_derived_img):
     try:
-        subprocess.run(["python", derived_script, net_id], check=True)
+        subprocess.run(["python", once_derived_script, net_id], check=True)
     except subprocess.CalledProcessError as e:
-        sys.exit(f"Error: Failed to run {derived_script}: {e}")
-subprocess.run(["xdg-open", derived_png], check=False)
+        sys.exit(f"Error: Failed to run {once_derived_script}: {e}")
+subprocess.run(["xdg-open", once_derived_img], check=False)
 
 # Check for metrization data
 if not os.path.exists(metrization_txt):

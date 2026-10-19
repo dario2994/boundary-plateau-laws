@@ -14,14 +14,14 @@ once_derived_for_visualization = base_dir / 'data/once_derived_for_visualization
 once_derived_images_dir = base_dir / 'data/once_derived_images/'
 
 # Ensure a net ID is provided
-if len(sys.argv) != 2:
-    sys.exit("Usage: python visualize_once_derived_net.py <net_id>")
+# if len(sys.argv) != 2:
+#     sys.exit("Usage: python visualize_once_derived_net.py <net_id>")
 
-net_id = sys.argv[1]
+# net_id = sys.argv[1]
 
-# Validate net_id
-if not net_id.isdigit():
-    sys.exit("Error: net_id must be a positive integer.")
+# # Validate net_id
+# if not net_id.isdigit():
+#     sys.exit("Error: net_id must be a positive integer.")
 
 def parse_once_derived_nets():
     lines = []
@@ -142,19 +142,22 @@ def draw_once_derived_net(fig, _id, V, E, darts, next_dart, concave_angles, fake
 
     # ~ plt.show()
     os.makedirs(once_derived_images_dir, exist_ok=True)
-    fig.savefig(once_derived_images_dir / f'{_id}.png', dpi=300, bbox_inches='tight')
+    fig.savefig(once_derived_images_dir / f'{_id}.svg', format='svg', bbox_inches='tight')
+    # fig.savefig(once_derived_images_dir / f'{_id}.png', dpi=300, bbox_inches='tight')
     fig.clf()
 
 
 once_derived_nets = parse_once_derived_nets()
 
-# ~ survivors = []
-# ~ with open('data/once_derived_survivors.txt') as in_file:
-    # ~ survivors = list(map(int, in_file.readlines()[1].split()))
 
 plt.ioff()
 # We reuse the same figure as a workaround for a memory leak in
 # matplotlib.
 fig = plt.figure()
 
-draw_once_derived_net(fig, net_id, *(once_derived_nets[int(net_id)]))
+# Loop through all parsed nets and render them sequentially
+for idx, net_data in enumerate(once_derived_nets):
+    draw_once_derived_net(fig, str(idx), *net_data)
+
+print(f"Successfully generated {len(once_derived_nets)} SVG vector graphics in {once_derived_images_dir}")
+# draw_once_derived_net(fig, net_id, *(once_derived_nets[int(net_id)]))

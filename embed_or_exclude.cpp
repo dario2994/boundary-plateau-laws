@@ -210,7 +210,7 @@ int main() {
         if (outcome != 0)
             embeddable_once_derived.push_back(id);
     }
-    clog << endl; // TODO: Use clog everywhere?
+    clog << endl;
 
     ofstream out("data/embeddable_nets.txt");
     out << embeddable_once_derived.size() << endl;

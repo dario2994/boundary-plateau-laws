@@ -1,59 +1,111 @@
+import sys
 import numpy as np
 import plotly.graph_objects as go
-import sys
 
 
 def great_circle_path(p, v, length, num_points=50):
     """Generates points along the geodesic starting at p, in direction v, with given arc length."""
     t = np.linspace(0, length, num_points)
     path = np.cos(t)[:, None] * p + np.sin(t)[:, None] * v
-    path /= np.linalg.norm(path, axis=1)[:, None]  # Normalize to keep on sphere
+    path /= np.linalg.norm(path, axis=1)[:, None]
     return path
 
-def draw_geodesic_net(vertices, edges, output_file):
-    """Draws the spherical polygon given a list of (p_i, v_i, len_i)."""
-    fig = go.Figure()
 
-    # Add sphere (Earth)
-    theta = np.linspace(0, np.pi, 50)
-    phi = np.linspace(0, 2 * np.pi, 50)
-    x_sphere = np.outer(np.sin(theta), np.cos(phi))
-    y_sphere = np.outer(np.sin(theta), np.sin(phi))
-    z_sphere = np.outer(np.cos(theta), np.ones_like(phi))
-    fig.add_trace(go.Surface(x=x_sphere, y=y_sphere, z=z_sphere, colorscale='Blues', opacity=0.3))
+def parse_metrization_file(filepath):
+    """Parses a metrized net file into vertices and edges."""
+    with open(filepath, 'r') as f:
+        lines = [line.strip() for line in f if line.strip()]
 
-    # Draw geodesic edges
+    v, e = map(int, lines[0].split())
+    vertices = []
+    edges = []
+
+    for i in range(1, v + 1):
+        values = lines[i].split()
+        assert len(values) == 4
+        x, y, z = float(values[0]), float(values[1]), float(values[2])
+        label = values[3]
+        vertices.append(([x, y, z], label))
+
+    for i in range(v + 1, e + v + 1):
+        values = list(map(float, lines[i].split()))
+        assert len(values) == 7
+        p = np.array(values[0:3])
+        vec = np.array(values[3:6])
+        length = values[6]
+        edges.append((p, vec, length))
+
+    return vertices, edges
+
+
+def build_3d_net_traces(vertices, edges):
+    """Builds serialized Plotly-compatible traces for the spherical net."""
+    theta = np.linspace(0, np.pi, 40)
+    phi = np.linspace(0, 2 * np.pi, 40)
+    x_sphere = (np.outer(np.sin(theta), np.cos(phi))).tolist()
+    y_sphere = (np.outer(np.sin(theta), np.sin(phi))).tolist()
+    z_sphere = (np.outer(np.cos(theta), np.ones_like(phi))).tolist()
+
+    traces = [{
+        "type": "surface",
+        "x": x_sphere, "y": y_sphere, "z": z_sphere,
+        "colorscale": "Blues",
+        "opacity": 0.25,
+        "showscale": False,
+        "hoverinfo": "skip"
+    }]
+
+    # Single combined trace for all geodesic edges
+    edge_x, edge_y, edge_z = [], [], []
     for p, v, length in edges:
         path = great_circle_path(p, v, length)
-        fig.add_trace(go.Scatter3d(
-            x=path[:, 0], y=path[:, 1], z=path[:, 2],
-            mode='lines', line=dict(color='red', width=4)
-        ))
+        edge_x.extend(path[:, 0].tolist() + [None])
+        edge_y.extend(path[:, 1].tolist() + [None])
+        edge_z.extend(path[:, 2].tolist() + [None])
 
-    # Add vertices
-    for pos, name in vertices:
-        fig.add_trace(go.Scatter3d(
-            x=[pos[0]], y=[pos[1]], z=[pos[2]],
-            mode='markers+text',
-            marker=dict(size=3, color='green'),
-            text=[name],
-            textposition='top center',
-            textfont=dict(
-                color='black',
-                size=14  # Adjust size as desired
-            ),
-            name=name,
-            showlegend=False
-        ))
+    traces.append({
+        "type": "scatter3d",
+        "mode": "lines",
+        "x": edge_x, "y": edge_y, "z": edge_z,
+        "line": {"color": "red", "width": 4},
+        "hoverinfo": "skip",
+        "showlegend": False
+    })
 
-    # ~ vertices = [p for p, _, _ in data]
-    # ~ fig.add_trace(go.Scatter3d(
-        # ~ x=[p[0] for p in vertices], y=[p[1] for p in vertices], z=[p[2] for p in vertices],
-        # ~ mode='markers', marker=dict(size=6, color='black')
-    # ~ ))
+    # Vertices
+    traces.append({
+        "type": "scatter3d",
+        "mode": "markers+text",
+        "x": [pos[0] for pos, _ in vertices],
+        "y": [pos[1] for pos, _ in vertices],
+        "z": [pos[2] for pos, _ in vertices],
+        "text": [label for _, label in vertices],
+        "textposition": "top center",
+        "marker": {"size": 4, "color": "green"},
+        "textfont": {"color": "black", "size": 13},
+        "hoverinfo": "skip",
+        "showlegend": False
+    })
 
-    # Save and show
+    return traces
+
+
+def draw_geodesic_net(vertices, edges, output_file):
+    """Renders traces to a standalone HTML file."""
+    traces = build_3d_net_traces(vertices, edges)
+    fig = go.Figure(data=traces)
+    fig.update_layout(
+        hovermode=False,
+        scene=dict(
+            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, title='', showspikes=False),
+            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, title='', showspikes=False),
+            zaxis=dict(showgrid=False, zeroline=False, showticklabels=False, title='', showspikes=False),
+            aspectmode='cube'
+        ),
+        margin=dict(l=0, r=0, b=0, t=0)
+    )
     fig.write_html(output_file)
+
 
 def main():
     if len(sys.argv) != 3:
@@ -61,32 +113,9 @@ def main():
         sys.exit(1)
 
     input_file, output_file = sys.argv[1], sys.argv[2]
-    with open(input_file, 'r') as f:
-        lines = f.readlines()
-
-    v, e = map(int, lines[0].split())
-    vertices = []
-    edges = []
-    for i in range(1, v + 1):
-        values = lines[i].split()
-        assert(len(values) == 4)
-
-        x = float(values[0])
-        y = float(values[1])
-        z = float(values[2])
-        label = values[3]
-        p = np.array([x, y, z])
-        vertices.append((p, label))
-
-    for i in range(v + 1, e + v + 1):
-        values = list(map(float, lines[i].split()))
-        assert(len(values) == 7)
-        p = np.array(values[0:3])
-        v = np.array(values[3:6])
-        length = values[6]
-        edges.append((p, v, length))
-
+    vertices, edges = parse_metrization_file(input_file)
     draw_geodesic_net(vertices, edges, output_file)
+
 
 if __name__ == "__main__":
     main()

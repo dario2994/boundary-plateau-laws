@@ -35,10 +35,21 @@ It saves the competitors for family id in data/competitors/id/.
 
 Additional files:
 
-A) python scripts/run_visualization.py net_id
+A) python website/generate_site.py
+Generates the data necessary to visualize the nets in the browser.
+Should be run after the four main step have completed.
+Then, run python3 -m http.server 8000 in the website directory and open the
+browser at localhost:8000
+
+B) [Not useful if you can do A)]
+    python scripts/run_visualization.py net_id
 It visualizes the marked combinatorial map (in the once-derived nets list)
 with net_id as well as an embedding in the sphere (if one was found).
 
-B) ./pin-lower-bound
+C) [Not useful if you can do A)]
+    Open a browser at scripts/competitor_visualizer.html and selects a competitor from data/competitors.
+This allows you to visualize a given competitor.
+
+D) ./pin-lower-bound
 Verifies the positivity of a function, used in the proof of
 Proposition 11.2 (cf. Appendix F.1)

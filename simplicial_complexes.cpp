@@ -534,7 +534,6 @@ ImmersedSimplicialComplex parseImmersedSimplicialComplex(istream& in) {
 }
 
 
-// TODO: Should this be for human or for computers?
 ostream& operator<<(ostream& out, const ImmersedSimplicialComplex& X) {
     out << "V = " << X.V() << ", faces = " << (ssize(X.faces)-X.V()-1) << endl;
     for (auto face: X.faces) {

@@ -7,31 +7,12 @@
 #include "interval_geometry.cpp"
 #include "utils.cpp"
 
-// TODO: This functions are duplicated.
 bool containsBiangle(const MarkedCombinatorialMap& A) {
     for (const vector<Dart>& f: A.faces()) {
         if (A.faceType(f) == pair<int,int>{2, 0})
             return true;
     }
     return false;
-}
-
-int pinContribution(const MarkedCombinatorialMap& A, Dart d) {
-    if (A.faceType(d).second != 2)
-        return 0;
-
-    int dist = -1;
-    Dart curr = d;
-    while (1) {
-        if (A.isConcaveAngle(curr)) {
-            if (dist == -1) dist = 1;
-            else break;
-        } else if (dist >= 0) dist++;
-
-        curr = A.phi(curr);
-    }
-    int contribution = max(4-dist, 0);
-    return contribution;
 }
 
 

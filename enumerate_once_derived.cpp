@@ -51,35 +51,6 @@ bool checkAdjacentConvexFaces(const MarkedCombinatorialMap& A) {
     return true;
 }
 
-// TODO: This code is repeated identical in metrized_nets.cpp.
-//
-// Consider the face containing d.
-// Returns the boundary distance, avoiding d, between the two concave
-// angles on the boundary of the face, cf. Definition 6.1
-// Assumptions: The face containing d has two concave angles.
-int concaveAnglesBoundaryDistanceAvoiding(const MarkedCombinatorialMap& A, Dart d) {
-    assert(A.faceType(d).second == 2);
-
-    int dist = -1;
-    Dart curr = d;
-    while (1) {
-        if (A.isConcaveAngle(curr)) {
-            if (dist == -1) dist = 1;
-            else break;
-        } else if (dist >= 0) dist++;
-
-        curr = A.phi(curr);
-    }
-    return dist;
-}
-
-//Computes the contribution of a nonconvex face, cf. Lemma 6.6(a)&(b)
-int pinContribution(const MarkedCombinatorialMap& A, Dart d) {
-    if (A.faceType(d).second != 2)
-        return 0;
-    return max(4-concaveAnglesBoundaryDistanceAvoiding(A, d), 0);
-}
-
 //Computes the sum of the areas of the convex faces
 int sumAreaConvexFaces(const MarkedCombinatorialMap& A) {
     int res = 0;
@@ -116,7 +87,7 @@ bool checkBiangle(const MarkedCombinatorialMap& A) {
             return false;
 
         for (const Dart& d: A.darts()) {
-            // TODO: Do we actually need this?
+            // A triangle and a rectangle cannot be adjacent.
             if (A.faceType(d) == pair<int,int>{3, 0}
                     and A.faceType(A.rev(d)) == pair<int,int>{4, 0})
                 return false;

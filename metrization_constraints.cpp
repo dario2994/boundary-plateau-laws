@@ -460,7 +460,6 @@ bool checkPinsAntipodality2(const ApproximatelyMetrizedNet& net) {
     return true;
 }
 
-// TODO: Check consistency of the constants with the paper.
 // If it returns false, then there is no realization of the approximately
 // metrized net which satisfies all the a-priori lower bounds on the length of
 // the edges.

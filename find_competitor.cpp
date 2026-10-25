@@ -188,8 +188,8 @@ ErrorOr<double> excludeFamilyOfNets(int net_id, vector<Interval> net_params,
     double area_gap = res.getContent();
     double needed_gap = excludeFamilyViaStability(link, family);
 
-    cout.precision(7);
-    cout << fixed << area_gap << "\t(" << needed_gap << ")" << endl;
+    cout.precision(5);
+    cout << fixed << "Area gap = " << area_gap << endl;
 
     assert(needed_gap > 1e-8);
     if (area_gap < needed_gap) {
@@ -233,7 +233,6 @@ double processFatFish(double theta0, double theta1) {
                 break;
         }
     }
-    cout << " gap = " << area_gap;
 
     return area_gap;
 }
@@ -253,8 +252,6 @@ double processFatFish(double theta0, double theta1) {
 //    is minimizing.
 //  - -1.0 if the function proves nothing.
 double proveInstabilityFatFishRecursive(Interval theta0, Interval theta1) {
-    static double area_processed = 0;
-
     if (theta0.len() + theta1.len() < 1e-4)
         return -1.0;
 
@@ -266,7 +263,7 @@ double proveInstabilityFatFishRecursive(Interval theta0, Interval theta1) {
     if (theta0.empty() or theta1.empty())
         return 1e-10;
 
-    cout << theta0 << " " << theta1 << ", " << (100*area_processed / 0.36) << "%, ";
+    cout << "Processing " << theta0 << " " << theta1 << ": " << endl;
 
     // If any net in the family admits a competitor with gap > desired_area_gap,
     // then automatically no net in the family can be minimizing.
@@ -280,12 +277,9 @@ double proveInstabilityFatFishRecursive(Interval theta0, Interval theta1) {
     if (theta0.len() + theta1.len() < 0.01) {
         double area_gap = processFatFish(p0, p1);
         if (desired_area_gap / 2 < area_gap) {
-            cout << " OK" << endl;
-            area_processed += theta0.len() * theta1.len();
             return area_gap;
         }
     }
-    cout << endl;
 
     // We recur on four subrectangles.
     // If the competitor produced while solving any of these subrectangles
@@ -311,20 +305,19 @@ double proveInstabilityFatFishRecursive(Interval theta0, Interval theta1) {
 }
 
 void proveInstabilityFatFish() {
-    cout << "Processing fat fish." << endl;
+    cout << endl << endl << "Processing fat fish." << endl;
     const double sigma = sqrt(2. / 3);
     double upperbound_theta1 = acos(sigma);
     double res = proveInstabilityFatFishRecursive(
             Interval(0, 1000),
             Interval(0, upperbound_theta1-0.01));
     assert(res > 0);
-    cout << "OK" << endl << endl;
 }
 
 
 void proveInstabilityRigidNets() {
     cout << "Processing rigid nets." << endl;
-    cout << "net_id: area gap" << endl;
+
     for (int net_id: rigid_nets) {
         cout << net_id << ": \t";
         cout.flush();
@@ -355,7 +348,7 @@ void coverInterval(Interval I, function<bool(Interval)> f) {
 };
 
 void proveInstabilityRigidNetsWithFlexiblePins() {
-    cout << "Processing rigid nets with flexible pins." << endl;
+    cout << endl << endl << "Processing rigid nets with flexible pins." << endl;
     for (int net_id: rigid_nets_flexible_pins) {
         cout << net_id << endl;
 
@@ -391,12 +384,12 @@ void proveInstabilityRigidNetsWithFlexiblePins() {
 
         coverInterval(param_region, try_interval);
 
-        cout << "OK" << endl << endl;
+        cout << endl << endl;
     }
 }
 
 void proveInstabilityGoggles() {
-    cout << "Processing goggles." << endl;
+    cout << endl << endl << "Processing goggles." << endl;
     // Here we are using the a-priori lower bound on the length of edges.
     Interval param_region = {0., acos(1.0/3) / 2 - 0.005};
     clog << "Param region: " << param_region << endl;
@@ -437,6 +430,4 @@ int main() {
     proveInstabilityRigidNetsWithFlexiblePins();
     proveInstabilityGoggles();
     proveInstabilityFatFish();
-
-    return 0;
 }

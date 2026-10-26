@@ -32,6 +32,9 @@ it finds a competitor (or many competitors for families with 1 or 2 parameters)
 using Brakke's surface evolver and proves that no element of the family can be
 a minimizer.
 It saves the competitors for family id in data/competitors/id/.
+For this to run, you must have Brakke's surface-evolver installed with the
+patch:
+https://gist.githubusercontent.com/dario2994/25b6b268ffd76eeef8e8d36904a12c09/raw/c47eb0c5fe9b479430bb17be794d1fb20a748c07/guide.md
 
 Additional files:
 

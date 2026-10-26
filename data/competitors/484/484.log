@@ -41,44 +41,44 @@ Edges switched in equiangulation: 13
 Edges switched in equiangulation: 0
 Edges switched in equiangulation: 0
 
-data/surface_evolver/484/484_popped.fe Line 159:
+data/competitors/484/484_popped.fe Line 159:
 WARNING 1903: Edge 1884 not deleted due to adjacent configuration involving facet 992.
 
 Called from: 
-Source file data/surface_evolver/484/484_popped.fe, line 150
-Source file data/surface_evolver/484/484_popped.fe, line 158
+Source file data/competitors/484/484_popped.fe, line 150
+Source file data/competitors/484/484_popped.fe, line 158
 
 
-data/surface_evolver/484/484_popped.fe Line 159:
+data/competitors/484/484_popped.fe Line 159:
 WARNING 1903: Edge 1942 not deleted due to adjacent configuration involving facet 1050.
 
 Called from: 
-Source file data/surface_evolver/484/484_popped.fe, line 150
-Source file data/surface_evolver/484/484_popped.fe, line 158
+Source file data/competitors/484/484_popped.fe, line 150
+Source file data/competitors/484/484_popped.fe, line 158
 
 
-data/surface_evolver/484/484_popped.fe Line 159:
+data/competitors/484/484_popped.fe Line 159:
 WARNING 1903: Edge 2664 not deleted due to adjacent configuration involving facet 1772.
 
 Called from: 
-Source file data/surface_evolver/484/484_popped.fe, line 150
-Source file data/surface_evolver/484/484_popped.fe, line 158
+Source file data/competitors/484/484_popped.fe, line 150
+Source file data/competitors/484/484_popped.fe, line 158
 
 
-data/surface_evolver/484/484_popped.fe Line 159:
+data/competitors/484/484_popped.fe Line 159:
 WARNING 1903: Edge 2669 not deleted due to adjacent configuration involving facet 1777.
 
 Called from: 
-Source file data/surface_evolver/484/484_popped.fe, line 150
-Source file data/surface_evolver/484/484_popped.fe, line 158
+Source file data/competitors/484/484_popped.fe, line 150
+Source file data/competitors/484/484_popped.fe, line 158
 
 
-data/surface_evolver/484/484_popped.fe Line 159:
+data/competitors/484/484_popped.fe Line 159:
 WARNING 1903: Edge 1883 not deleted due to adjacent configuration involving facet 992.
 
 Called from: 
-Source file data/surface_evolver/484/484_popped.fe, line 150
-Source file data/surface_evolver/484/484_popped.fe, line 158
+Source file data/competitors/484/484_popped.fe, line 150
+Source file data/competitors/484/484_popped.fe, line 158
 
     4.28486940502787
 Quiet OFF. (was on)
@@ -98,6 +98,6 @@ Quiet OFF. (was on)
 Quiet OFF. (was on)
     4.28452337198057
 Quiet OFF. (was on)
-Dumping to data/surface_evolver/484/484_competitor.out.
+Dumping to data/competitors/484/484_competitor.out.
 
 NOTE: There were warning messages. To review, do "print warning_messages"

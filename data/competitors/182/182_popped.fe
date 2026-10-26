@@ -1,7 +1,7 @@
 boundary 1 parameters 1
 x1:  0.647757 * p1
 x2:  -0.761847 * p1
-x3:  -7.35607e-06 * p1
+x3:  -7.34697e-06 * p1
 
 vertices
 1 1 0 0 fixed
@@ -26,8 +26,8 @@ vertices
 20 -0.761386 0.642701 0.0850065 fixed
 21 0.511874 -0.854845 0.0849996 fixed
 22 0.686676 -0.706222 -0.172413 fixed
-23 0.647757 -0.761847 -7.35607e-06 fixed
-24 -0.647757 0.761847 7.35607e-06 fixed
+23 0.647757 -0.761847 -7.34697e-06 fixed
+24 -0.647757 0.761847 7.34697e-06 fixed
 25 0.333333 0 0
 26 0.0536121 0.328994 1.85037e-17
 27 0.00828723 0.3244 -0.0762034
@@ -382,7 +382,7 @@ gogo := {
     subroutine 5;
     o;
     subroutine 3;
-    dump "data/surface_evolver/182/182_competitor.out";
+    dump "data/competitors/182/182_competitor.out";
     /*close_show;*/ /* This raises an error if the window is not visible. */
 }
 

@@ -10,12 +10,12 @@ Total data memory: 1126 KB, or 1 MB.
     7.23322415430859
 Quiet OFF. (was on)
 
-data/surface_evolver/938/938_popped.fe Line 245:
+data/competitors/938/938_popped.fe Line 245:
 WARNING 1903: Edge 573 not deleted due to adjacent configuration involving facet 1076.
 
 Called from: 
-Source file data/surface_evolver/938/938_popped.fe, line 229
-Source file data/surface_evolver/938/938_popped.fe, line 244
+Source file data/competitors/938/938_popped.fe, line 229
+Source file data/competitors/938/938_popped.fe, line 244
 
     7.15011663321819
 Quiet OFF. (was on)
@@ -66,6 +66,6 @@ Quiet OFF. (was on)
 Quiet OFF. (was on)
      6.7295134870411
 Quiet OFF. (was on)
-Dumping to data/surface_evolver/938/938_competitor.out.
+Dumping to data/competitors/938/938_competitor.out.
 
 NOTE: There were warning messages. To review, do "print warning_messages"

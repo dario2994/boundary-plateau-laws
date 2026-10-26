@@ -276,7 +276,7 @@ gogo := {
             o;
             subroutine 5;
         
-    dump "data/surface_evolver/520/520_competitor.out";
+    dump "data/competitors/520/520_competitor.out";
     /*close_show;*/ /* This raises an error if the window is not visible. */
 }
 

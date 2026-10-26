@@ -7,55 +7,65 @@ Total data memory: 1003 KB, or 0 MB.
 Vertices: 919  Edges: 2854  Facets: 1936  Bodies: 0  Facetedges: 5808
 Element memory: 841 KB, or 0 MB
 Total data memory: 1424 KB, or 1 MB.
-    9.80523181911003
+    9.80534814969396
 Quiet OFF. (was on)
-    9.72999807090749
+    9.73449094835119
 Quiet OFF. (was on)
-     9.6618365671725
+    9.67777798104448
 Quiet OFF. (was on)
-    9.62580726758948
+    9.62368056560589
 Quiet OFF. (was on)
-    9.58167275315071
+    9.59253356976151
 Quiet OFF. (was on)
-Edges popped: 23
-Vertices popped: 4
-     9.4724112752007
+Edges popped: 25
+Vertices popped: 3
+
+data/competitors/182/182_popped.fe Line 391:
+WARNING 1903: Edge 2585 not deleted due to adjacent configuration involving facet 1667.
+
+Called from: 
+Source file data/competitors/182/182_popped.fe, line 377
+Source file data/competitors/182/182_popped.fe, line 390
+
+    9.47682567851475
 Quiet OFF. (was on)
-    9.37702654937328
+    9.38344966920417
 Quiet OFF. (was on)
-    9.29099968316289
+    9.28716623332705
 Quiet OFF. (was on)
 Edges popped: 0
 Vertices popped: 1
-    9.21433931376837
+    9.20696698834183
 Quiet OFF. (was on)
-    9.17167274302887
+    9.17477099632071
 Quiet OFF. (was on)
-    9.11152652490586
+    9.12623676004519
 Quiet OFF. (was on)
-Vertices: 1961  Edges: 5840  Facets: 3880  Bodies: 0  Facetedges: 11640
-Element memory: 1718 KB, or 1 MB
-Total data memory: 2491 KB, or 2 MB.
-Edges switched in equiangulation: 372
-Edges switched in equiangulation: 71
+Vertices: 1967  Edges: 5862  Facets: 3896  Bodies: 0  Facetedges: 11688
+Element memory: 1724 KB, or 1 MB
+Total data memory: 2498 KB, or 2 MB.
+Edges switched in equiangulation: 360
+Edges switched in equiangulation: 67
 Edges switched in equiangulation: 6
 Edges switched in equiangulation: 0
-    9.10424616482931
+    9.09920874844074
 Quiet OFF. (was on)
-    9.08940637502645
+    9.07361752400076
 Quiet OFF. (was on)
-    9.07668448404593
+    9.06893655447532
 Quiet OFF. (was on)
-    9.07291307280398
+     9.0670333558968
 Quiet OFF. (was on)
-    9.06469180859967
+    9.06335653112922
 Quiet OFF. (was on)
 Edges popped: 0
 Vertices popped: 0
-    9.06676954236596
+     9.0618868478527
 Quiet OFF. (was on)
-    9.06460540755469
+    9.06133137691726
 Quiet OFF. (was on)
-    9.06082847927462
+     9.0602596704515
 Quiet OFF. (was on)
-Dumping to data/surface_evolver/182/182_competitor.out.
+Dumping to data/competitors/182/182_competitor.out.
+
+NOTE: There were warning messages. To review, do "print warning_messages"

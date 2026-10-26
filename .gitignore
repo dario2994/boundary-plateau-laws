@@ -31,17 +31,8 @@
 *.out
 *.app
 
-main
-main_geometric_classification
-main_combinatorial_classification
-analyze_once_derived_nets
-sieve_once_derived_nets
-play_spherical_geometry
-convex_continent
-data/once_derived_images
+
 __pycache__/
-data/images3d/*.html
-embed_or_exclude_nets
 .vscode/
 generate_surface_evolver_input
 rename_once_derived
@@ -49,11 +40,9 @@ enumerate_once_derived
 enumerate_twice_derived
 embed_or_exclude
 find_competitor
-data/surface_evolver/827
-data/surface_evolver/1029
 test_simplicial_complexes
 test_interval_geometry
-test_search_approximate_metrization
+test_search_valid_metrization
 data/competitors/28
 data/competitors/99
 data/competitors/346
@@ -63,6 +52,7 @@ data/competitors/1029
 data/competitors/1096
 website/net_3d_data
 website/site_metadata.json
+data/find_competitor_output.txt
 
 website/once_derived_topology/
 website/once_derived_embedded/

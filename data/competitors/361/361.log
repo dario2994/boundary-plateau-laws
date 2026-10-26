@@ -32,12 +32,12 @@ Quiet OFF. (was on)
     6.63446882652172
 Quiet OFF. (was on)
 
-data/surface_evolver/361/361_popped.fe Line 247:
+data/competitors/361/361_popped.fe Line 247:
 WARNING 1903: Edge 149 not deleted due to adjacent configuration involving facet 449.
 
 Called from: 
-Source file data/surface_evolver/361/361_popped.fe, line 235
-Source file data/surface_evolver/361/361_popped.fe, line 246
+Source file data/competitors/361/361_popped.fe, line 235
+Source file data/competitors/361/361_popped.fe, line 246
 
     6.64030928958432
 Quiet OFF. (was on)
@@ -66,6 +66,6 @@ Quiet OFF. (was on)
 Quiet OFF. (was on)
     6.57368871163835
 Quiet OFF. (was on)
-Dumping to data/surface_evolver/361/361_competitor.out.
+Dumping to data/competitors/361/361_competitor.out.
 
 NOTE: There were warning messages. To review, do "print warning_messages"

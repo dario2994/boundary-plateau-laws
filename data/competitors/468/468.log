@@ -20,28 +20,28 @@ Quiet OFF. (was on)
 Edges popped: 28
 Vertices popped: 1
 
-data/surface_evolver/468/468_popped.fe Line 305:
+data/competitors/468/468_popped.fe Line 305:
 WARNING 1903: Edge 1377 not deleted due to adjacent configuration involving facet 546.
 
 Called from: 
-Source file data/surface_evolver/468/468_popped.fe, line 291
-Source file data/surface_evolver/468/468_popped.fe, line 304
+Source file data/competitors/468/468_popped.fe, line 291
+Source file data/competitors/468/468_popped.fe, line 304
 
 
-data/surface_evolver/468/468_popped.fe Line 305:
+data/competitors/468/468_popped.fe Line 305:
 WARNING 1903: Edge 1007 not deleted due to adjacent configuration involving facet 709.
 
 Called from: 
-Source file data/surface_evolver/468/468_popped.fe, line 291
-Source file data/surface_evolver/468/468_popped.fe, line 304
+Source file data/competitors/468/468_popped.fe, line 291
+Source file data/competitors/468/468_popped.fe, line 304
 
 
-data/surface_evolver/468/468_popped.fe Line 305:
+data/competitors/468/468_popped.fe Line 305:
 WARNING 1903: Edge 901 not deleted due to adjacent configuration involving facet 546.
 
 Called from: 
-Source file data/surface_evolver/468/468_popped.fe, line 291
-Source file data/surface_evolver/468/468_popped.fe, line 304
+Source file data/competitors/468/468_popped.fe, line 291
+Source file data/competitors/468/468_popped.fe, line 304
 
     8.11290055647144
 Quiet OFF. (was on)
@@ -59,7 +59,7 @@ Quiet OFF. (was on)
 Quiet OFF. (was on)
 Vertices: 1853  Edges: 5540  Facets: 3688  Bodies: 0  Facetedges: 11064
 Element memory: 1630 KB, or 1 MB
-Total data memory: 2355 KB, or 2 MB.
+Total data memory: 2354 KB, or 2 MB.
 Edges switched in equiangulation: 286
 Edges switched in equiangulation: 36
 Edges switched in equiangulation: 3
@@ -82,6 +82,6 @@ Quiet OFF. (was on)
 Quiet OFF. (was on)
     7.98491882238922
 Quiet OFF. (was on)
-Dumping to data/surface_evolver/468/468_competitor.out.
+Dumping to data/competitors/468/468_competitor.out.
 
 NOTE: There were warning messages. To review, do "print warning_messages"

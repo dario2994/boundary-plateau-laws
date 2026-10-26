@@ -1,4 +1,9 @@
-<!DOCTYPE html>
+import argparse
+import json
+import pathlib
+
+
+STANDALONE_HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -24,9 +29,8 @@
         }
         .control-group { border-bottom: 1px solid #eee; padding-bottom: 10px; }
         .control-group:last-child { border-bottom: none; }
-        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 0.9em; color: #333;}
+        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 0.9em; color: #333; }
         textarea { width: 100%; height: 50px; padding: 5px; font-family: monospace; font-size: 0.85em; resize: vertical; box-sizing: border-box; }
-        input[type="file"] { width: 100%; }
         input[type="text"] { width: 65%; padding: 5px; }
         button { padding: 6px 12px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; font-size: 0.9em; }
         button:hover { background: #0056b3; }
@@ -34,8 +38,6 @@
         button.secondary:hover { background: #5a6268; }
         #stats { font-size: 0.85em; color: #666; margin-top: 5px; }
         .row { display: flex; justify-content: space-between; align-items: center; }
-
-        /* Highlight specific styles */
         #selectedCoords { background-color: #f9f9f9; color: #333; height: 80px; }
     </style>
     <script type="importmap">
@@ -51,26 +53,21 @@
 
     <div id="info">
         <h3>Simplicial Complex</h3>
+        <div id="stats">Vertices: 0 | Faces: 0</div>
 
         <div class="control-group">
-            <label>1. Load File</label>
-            <input type="file" id="fileInput" accept=".txt">
-            <div id="stats">Vertices: 0 | Faces: 0</div>
-        </div>
-
-        <div class="control-group">
-            <label>2. Embedding (id x y z)</label>
+            <label>1. Embedding (id x y z)</label>
             <textarea id="embeddingInput" placeholder="0 1.5 2.0 0.0&#10;5 0.0 1.0 1.0"></textarea>
         </div>
 
         <div class="control-group">
-            <label>3. Faces (+/- v1 v2 v3)</label>
+            <label>2. Faces (+/- v1 v2 v3)</label>
             <textarea id="facesInput" placeholder="+ 0 1 2&#10;- 3 4 5"></textarea>
             <button id="btnUpdate" style="width: 100%; margin-top: 5px;">Update / Render</button>
         </div>
 
         <div class="control-group">
-            <label>4. Select Vertices (Click mesh or type)</label>
+            <label>3. Select Vertices (Click mesh or type)</label>
             <div class="row">
                 <input type="text" id="vertexInput" placeholder="e.g. 0, 5, 12">
                 <button id="btnHighlight" class="secondary">Go</button>
@@ -87,7 +84,8 @@
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-        // --- Standard Three.js Setup ---
+        const INITIAL_DATA = __MESH_DATA_JSON__;
+
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0xf5f5f5);
 
@@ -102,7 +100,6 @@
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
 
-        // --- Lighting ---
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
         scene.add(ambientLight);
 
@@ -110,57 +107,36 @@
         dirLight.position.set(0, 0, 1);
         camera.add(dirLight);
 
-        // --- Global State ---
         let currentMesh = null;
         let currentWireframe = null;
         let markersGroup = new THREE.Group();
         scene.add(markersGroup);
 
-        // Data Model
-        let vertices = [];
-        let faces = [];
+        let vertices = INITIAL_DATA.vertices.map(v => ({ x: v[0], y: v[1], z: v[2] }));
+        let faces = INITIAL_DATA.faces.map(f => [...f]);
 
-        // Raycasting
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
-        let mouseDownPos = new THREE.Vector2(); // To distinguish click from drag
+        let mouseDownPos = new THREE.Vector2();
 
-        // --- UI Event Listeners ---
-
-        // File Loading
-        document.getElementById('fileInput').addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                parseFile(e.target.result);
-                renderScene();
-            };
-            reader.readAsText(file);
-        });
-
-        // Update Button
         document.getElementById('btnUpdate').addEventListener('click', () => {
             applyEmbeddingUpdates();
             applyFaceUpdates();
             renderScene();
         });
 
-        // Manual Highlight Button
         document.getElementById('btnHighlight').addEventListener('click', () => {
             const input = document.getElementById('vertexInput').value;
             highlightVertices(input);
         });
 
-        // Mouse Interactions for Raycasting
         window.addEventListener('mousedown', (event) => {
-            if(event.target !== renderer.domElement) return;
+            if (event.target !== renderer.domElement) return;
             mouseDownPos.set(event.clientX, event.clientY);
         });
 
         window.addEventListener('mouseup', (event) => {
-            if(event.target !== renderer.domElement) return;
-            // Check if mouse moved significantly (drag vs click)
+            if (event.target !== renderer.domElement) return;
             const dist = mouseDownPos.distanceTo(new THREE.Vector2(event.clientX, event.clientY));
             if (dist < 5) {
                 onMouseClick(event);
@@ -170,30 +146,23 @@
         function onMouseClick(event) {
             if (!currentMesh) return;
 
-            // Calculate mouse position in normalized device coordinates (-1 to +1)
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
             raycaster.setFromCamera(mouse, camera);
-
-            // Intersect with the mesh
             const intersects = raycaster.intersectObject(currentMesh);
 
             if (intersects.length > 0) {
                 const intersection = intersects[0];
                 const face = intersection.face;
                 const point = intersection.point;
-
-                // The face has 3 vertex indices (a, b, c)
                 const indices = [face.a, face.b, face.c];
 
-                // Find which of the 3 vertices is closest to the click point
                 const posAttribute = currentMesh.geometry.attributes.position;
                 let minDst = Infinity;
                 let closestVertexId = -1;
 
                 indices.forEach(idx => {
-                    // Extract vertex position (world space because mesh is at 0,0,0)
                     const vPos = new THREE.Vector3(
                         posAttribute.getX(idx),
                         posAttribute.getY(idx),
@@ -212,53 +181,13 @@
             }
         }
 
-        // --- Core Logic ---
-
-        function parseFile(text) {
-            const tokens = text.trim().split(/\s+/);
-            if (tokens.length < 2) { alert("Invalid file"); return; }
-
-            let ptr = 0;
-            const numVertices = parseInt(tokens[ptr++]);
-            const numFaces = parseInt(tokens[ptr++]);
-
-            vertices = [];
-            faces = [];
-
-            for (let i = 0; i < numVertices; i++) {
-                vertices.push({
-                    x: parseFloat(tokens[ptr++]),
-                    y: parseFloat(tokens[ptr++]),
-                    z: parseFloat(tokens[ptr++])
-                });
-            }
-
-            for (let i = 0; i < numFaces; i++) {
-                const k = parseInt(tokens[ptr++]);
-                if (k === 3) {
-                    faces.push([
-                        parseInt(tokens[ptr++]),
-                        parseInt(tokens[ptr++]),
-                        parseInt(tokens[ptr++])
-                    ]);
-                } else {
-                    ptr += k;
-                }
-            }
-
-            document.getElementById('embeddingInput').value = "";
-            document.getElementById('facesInput').value = "";
-            document.getElementById('vertexInput').value = "";
-            document.getElementById('selectedCoords').value = "";
-        }
-
         function applyEmbeddingUpdates() {
             const text = document.getElementById('embeddingInput').value.trim();
             if (!text) return;
 
-            const lines = text.split('\n');
+            const lines = text.split('\\n');
             lines.forEach(line => {
-                const parts = line.trim().split(/\s+/);
+                const parts = line.trim().split(/\\s+/);
                 if (parts.length < 4) return;
                 const id = parseInt(parts[0]);
                 const x = parseFloat(parts[1]);
@@ -268,10 +197,10 @@
 
                 if (id >= vertices.length) {
                     for (let k = vertices.length; k <= id; k++) {
-                        vertices[k] = {x: 0, y: 0, z: 0};
+                        vertices[k] = { x: 0, y: 0, z: 0 };
                     }
                 }
-                vertices[id] = {x, y, z};
+                vertices[id] = { x, y, z };
             });
         }
 
@@ -279,16 +208,16 @@
             const text = document.getElementById('facesInput').value.trim();
             if (!text) return;
 
-            const lines = text.split('\n');
+            const lines = text.split('\\n');
             lines.forEach(line => {
-                const parts = line.trim().split(/\s+/);
+                const parts = line.trim().split(/\\s+/);
                 if (parts.length < 4) return;
                 const op = parts[0];
                 const idxs = [parseInt(parts[1]), parseInt(parts[2]), parseInt(parts[3])];
-                const sortedIdxs = [...idxs].sort((a,b)=>a-b);
+                const sortedIdxs = [...idxs].sort((a, b) => a - b);
 
                 const existingIndex = faces.findIndex(f => {
-                    const sortedF = [...f].sort((a,b)=>a-b);
+                    const sortedF = [...f].sort((a, b) => a - b);
                     return sortedF[0] === sortedIdxs[0] && sortedF[1] === sortedIdxs[1] && sortedF[2] === sortedIdxs[2];
                 });
 
@@ -314,9 +243,6 @@
                 currentWireframe.material.dispose();
             }
 
-            // Re-apply highlights to ensure positions are correct if geometry moved
-            // But geometry changes might invalidate IDs if count changed.
-            // For now, we clear highlights on render to be safe.
             clearMarkers();
             document.getElementById('vertexInput').value = "";
             document.getElementById('selectedCoords').value = "";
@@ -357,26 +283,23 @@
             geometry.computeBoundingSphere();
             const r = geometry.boundingSphere.radius || 1;
             camera.position.set(0, 0, r * 2.5);
-            controls.target.set(0,0,0);
+            controls.target.set(0, 0, 0);
             controls.update();
         }
 
         function toggleVertexSelection(id) {
             const inputField = document.getElementById('vertexInput');
-            let currentIds = inputField.value.split(/[\s,]+/)
+            let currentIds = inputField.value.split(/[\\s,]+/)
                 .map(s => parseInt(s))
                 .filter(n => !isNaN(n));
 
             const idx = currentIds.indexOf(id);
             if (idx === -1) {
-                // Add
                 currentIds.push(id);
             } else {
-                // Remove (Toggle behavior)
                 currentIds.splice(idx, 1);
             }
 
-            // Update input and trigger highlight
             const newValue = currentIds.join(', ');
             inputField.value = newValue;
             highlightVertices(newValue);
@@ -389,7 +312,7 @@
             const posAttr = currentMesh.geometry.attributes.position;
             const count = posAttr.count;
 
-            const ids = inputString.split(/[\s,]+/)
+            const ids = inputString.split(/[\\s,]+/)
                 .map(s => parseInt(s))
                 .filter(n => !isNaN(n) && n >= 0 && n < count);
 
@@ -399,7 +322,6 @@
             const coordOutput = [];
 
             ids.forEach(id => {
-                // 1. Visual Marker (using Centered Geometry)
                 const x = posAttr.getX(id);
                 const y = posAttr.getY(id);
                 const z = posAttr.getZ(id);
@@ -416,33 +338,29 @@
                 sprite.scale.set(scale * 25, scale * 12.5, 1);
                 markersGroup.add(sprite);
 
-                // 2. Data Output (using Raw Vertex Data)
-                // We use the original 'vertices' array to show the true coordinates,
-                // not the centered/visual ones.
                 if (vertices[id]) {
                     const v = vertices[id];
                     coordOutput.push(`${id} ${v.x} ${v.y} ${v.z}`);
                 }
             });
 
-            // Update the coordinate box
-            document.getElementById('selectedCoords').value = coordOutput.join('\n');
+            document.getElementById('selectedCoords').value = coordOutput.join('\\n');
         }
 
         function clearMarkers() {
-            while(markersGroup.children.length > 0){
+            while (markersGroup.children.length > 0) {
                 const child = markersGroup.children[0];
                 markersGroup.remove(child);
-                if(child.geometry) child.geometry.dispose();
-                if(child.material) {
-                    if(child.material.map) child.material.map.dispose();
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) {
+                    if (child.material.map) child.material.map.dispose();
                     child.material.dispose();
                 }
             }
         }
 
         function makeTextSprite(message, parameters) {
-            if ( parameters === undefined ) parameters = {};
+            if (parameters === undefined) parameters = {};
             const fontface = parameters.hasOwnProperty("fontface") ? parameters["fontface"] : "Arial";
             const fontsize = parameters.hasOwnProperty("fontsize") ? parameters["fontsize"] : 48;
 
@@ -455,12 +373,12 @@
             context.fillStyle = "rgba(0, 0, 0, 1.0)";
             context.textAlign = "center";
             context.textBaseline = "middle";
-            context.fillText( message, canvas.width/2, canvas.height/2);
+            context.fillText(message, canvas.width / 2, canvas.height / 2);
 
             const texture = new THREE.Texture(canvas);
             texture.needsUpdate = true;
-            const spriteMaterial = new THREE.SpriteMaterial( { map: texture } );
-            return new THREE.Sprite( spriteMaterial );
+            const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+            return new THREE.Sprite(spriteMaterial);
         }
 
         function animate() {
@@ -475,7 +393,65 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
+        renderScene();
         animate();
     </script>
 </body>
 </html>
+"""
+
+
+def parse_competitor_file(filepath):
+    """Parses a competitor .txt file into a JSON-serializable dict with vertices and triangular faces."""
+    with open(filepath, "r") as f:
+        tokens = f.read().split()
+
+    if len(tokens) < 2:
+        raise ValueError(f"Invalid competitor file: {filepath}")
+
+    ptr = 0
+    num_vertices = int(tokens[ptr])
+    ptr += 1
+    num_faces = int(tokens[ptr])
+    ptr += 1
+
+    vertices = []
+    for _ in range(num_vertices):
+        x = float(tokens[ptr])
+        y = float(tokens[ptr + 1])
+        z = float(tokens[ptr + 2])
+        ptr += 3
+        vertices.append([x, y, z])
+
+    faces = []
+    for _ in range(num_faces):
+        k = int(tokens[ptr])
+        ptr += 1
+        if k == 3:
+            faces.append([int(tokens[ptr]), int(tokens[ptr + 1]), int(tokens[ptr + 2])])
+        ptr += k
+
+    return {"vertices": vertices, "faces": faces}
+
+
+def write_competitor_html(mesh_data, output_file):
+    """Generates a standalone interactive HTML file for the given competitor mesh."""
+    html_content = STANDALONE_HTML_TEMPLATE.replace("__MESH_DATA_JSON__", json.dumps(mesh_data))
+    output_path = pathlib.Path(output_file)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w") as f:
+        f.write(html_content)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Visualize a competitor simplicial complex.")
+    parser.add_argument("--in", dest="input_file", required=True, help="Input competitor .txt file.")
+    parser.add_argument("--out", dest="output_file", required=True, help="Output standalone .html file.")
+    args = parser.parse_args()
+
+    mesh_data = parse_competitor_file(args.input_file)
+    write_competitor_html(mesh_data, args.output_file)
+
+
+if __name__ == "__main__":
+    main()

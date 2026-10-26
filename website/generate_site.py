@@ -1,5 +1,6 @@
 import pathlib
 import json
+import subprocess
 import sys
 
 site_dir = pathlib.Path(__file__).resolve().parent
@@ -9,7 +10,8 @@ scripts_dir = site_dir.parent / "scripts"
 if str(scripts_dir) not in sys.path:
     sys.path.append(str(scripts_dir))
 
-from visualize_spherical_geodesics import parse_metrization_file, build_3d_net_traces
+from visualize_once_derived_embedded import parse_metrization_file, build_3d_net_traces
+from visualize_competitor import parse_competitor_file
 
 
 def get_net_statuses():
@@ -50,8 +52,8 @@ def get_net_statuses():
 
             valid_files = []
             for fname in all_files:
-                clean = fname.replace('_competitor.txt', '')
-                parts = clean.split('_')
+                clean = fname.replace("_competitor.txt", "")
+                parts = clean.split("_")
                 assert int(parts[0]) == net_id
                 if net_id == 827 and len(parts) != 5:
                     continue
@@ -62,10 +64,10 @@ def get_net_statuses():
                     continue
 
             if valid_files:
-                param_count = (len(valid_files[0].split('_')) - 2) // 2
+                param_count = (len(valid_files[0].split("_")) - 2) // 2
                 competitors_map[net_id] = {
-                    "files": valid_files,
-                    "param_count": param_count
+                    "files": sorted(valid_files),
+                    "param_count": param_count,
                 }
 
         # Status assignment precedence
@@ -79,11 +81,28 @@ def get_net_statuses():
     return nets, competitors_map, embeddable_ids
 
 
+# 1. Generate 2D topology SVGs in website/once_derived_topology/
+topology_input = data_dir / "once_derived_for_visualization.txt"
+topology_out_dir = site_dir / "once_derived_topology"
+if topology_input.exists():
+    subprocess.run(
+        [
+            sys.executable,
+            str(scripts_dir / "visualize_once_derived_topology.py"),
+            "--many",
+            "--in",
+            str(topology_input),
+            "--out",
+            str(topology_out_dir),
+        ],
+        check=True,
+    )
+
 nets, competitors_map, embeddable_ids = get_net_statuses()
 
-# Generate 3D JSON trace data for embeddable nets
-nets_3d_dir = site_dir / "net_3d_data"
-nets_3d_dir.mkdir(parents=True, exist_ok=True)
+# 2. Generate 3D JSON trace data for embeddable nets in website/once_derived_embedded/
+embedded_out_dir = site_dir / "once_derived_embedded"
+embedded_out_dir.mkdir(parents=True, exist_ok=True)
 
 available_3d_ids = set()
 for net_id_str in embeddable_ids:
@@ -92,21 +111,48 @@ for net_id_str in embeddable_ids:
         try:
             verts, edges = parse_metrization_file(metrized_txt)
             traces = build_3d_net_traces(verts, edges)
-            out_file = nets_3d_dir / f"{net_id_str}.json"
+            out_file = embedded_out_dir / f"{net_id_str}.json"
             with open(out_file, "w") as f:
                 json.dump(traces, f)
             available_3d_ids.add(int(net_id_str))
         except Exception as e:
             print(f"Warning: Failed to generate 3D data for net {net_id_str}: {e}")
 
+# 3. Generate parsed competitor JSON meshes in website/competitors/<net_id>/<stem>.json
+site_competitors_dir = site_dir / "competitors"
+competitor_json_count = 0
+
+for net_id, comp_info in competitors_map.items():
+    out_net_comp_dir = site_competitors_dir / str(net_id)
+    out_net_comp_dir.mkdir(parents=True, exist_ok=True)
+
+    json_files = []
+    for txt_fname in comp_info["files"]:
+        src_txt = data_dir / "competitors" / str(net_id) / txt_fname
+        try:
+            mesh_data = parse_competitor_file(src_txt)
+            json_fname = f"{pathlib.Path(txt_fname).stem}.json"
+            with open(out_net_comp_dir / json_fname, "w") as f:
+                json.dump(mesh_data, f)
+            json_files.append(json_fname)
+            competitor_json_count += 1
+        except Exception as e:
+            print(f"Warning: Failed to parse competitor {src_txt}: {e}")
+
+    comp_info["files"] = json_files
+
 metadata = {
     "nets": nets,
     "competitors": competitors_map,
-    "has_3d": sorted(list(available_3d_ids))
+    "has_3d": sorted(list(available_3d_ids)),
 }
 
 output_json_path = site_dir / "site_metadata.json"
 with open(output_json_path, "w") as f:
     json.dump(metadata, f)
 
-print(f"Successfully processed {len(nets)} nets and generated {len(available_3d_ids)} 3D visual data files.")
+print(
+    f"Successfully processed {len(nets)} nets, "
+    f"{len(available_3d_ids)} 3D embedded nets, "
+    f"and {competitor_json_count} competitor meshes."
+)

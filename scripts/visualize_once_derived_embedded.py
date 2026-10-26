@@ -1,4 +1,5 @@
-import sys
+import argparse
+import pathlib
 import numpy as np
 import plotly.graph_objects as go
 
@@ -13,7 +14,7 @@ def great_circle_path(p, v, length, num_points=50):
 
 def parse_metrization_file(filepath):
     """Parses a metrized net file into vertices and edges."""
-    with open(filepath, 'r') as f:
+    with open(filepath, "r") as f:
         lines = [line.strip() for line in f if line.strip()]
 
     v, e = map(int, lines[0].split())
@@ -46,14 +47,18 @@ def build_3d_net_traces(vertices, edges):
     y_sphere = (np.outer(np.sin(theta), np.sin(phi))).tolist()
     z_sphere = (np.outer(np.cos(theta), np.ones_like(phi))).tolist()
 
-    traces = [{
-        "type": "surface",
-        "x": x_sphere, "y": y_sphere, "z": z_sphere,
-        "colorscale": "Blues",
-        "opacity": 0.25,
-        "showscale": False,
-        "hoverinfo": "skip"
-    }]
+    traces = [
+        {
+            "type": "surface",
+            "x": x_sphere,
+            "y": y_sphere,
+            "z": z_sphere,
+            "colorscale": "Blues",
+            "opacity": 0.25,
+            "showscale": False,
+            "hoverinfo": "skip",
+        }
+    ]
 
     # Single combined trace for all geodesic edges
     edge_x, edge_y, edge_z = [], [], []
@@ -63,29 +68,35 @@ def build_3d_net_traces(vertices, edges):
         edge_y.extend(path[:, 1].tolist() + [None])
         edge_z.extend(path[:, 2].tolist() + [None])
 
-    traces.append({
-        "type": "scatter3d",
-        "mode": "lines",
-        "x": edge_x, "y": edge_y, "z": edge_z,
-        "line": {"color": "red", "width": 4},
-        "hoverinfo": "skip",
-        "showlegend": False
-    })
+    traces.append(
+        {
+            "type": "scatter3d",
+            "mode": "lines",
+            "x": edge_x,
+            "y": edge_y,
+            "z": edge_z,
+            "line": {"color": "red", "width": 4},
+            "hoverinfo": "skip",
+            "showlegend": False,
+        }
+    )
 
     # Vertices
-    traces.append({
-        "type": "scatter3d",
-        "mode": "markers+text",
-        "x": [pos[0] for pos, _ in vertices],
-        "y": [pos[1] for pos, _ in vertices],
-        "z": [pos[2] for pos, _ in vertices],
-        "text": [label for _, label in vertices],
-        "textposition": "top center",
-        "marker": {"size": 4, "color": "green"},
-        "textfont": {"color": "black", "size": 13},
-        "hoverinfo": "skip",
-        "showlegend": False
-    })
+    traces.append(
+        {
+            "type": "scatter3d",
+            "mode": "markers+text",
+            "x": [pos[0] for pos, _ in vertices],
+            "y": [pos[1] for pos, _ in vertices],
+            "z": [pos[2] for pos, _ in vertices],
+            "text": [label for _, label in vertices],
+            "textposition": "top center",
+            "marker": {"size": 4, "color": "green"},
+            "textfont": {"color": "black", "size": 13},
+            "hoverinfo": "skip",
+            "showlegend": False,
+        }
+    )
 
     return traces
 
@@ -97,24 +108,26 @@ def draw_geodesic_net(vertices, edges, output_file):
     fig.update_layout(
         hovermode=False,
         scene=dict(
-            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, title='', showspikes=False),
-            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, title='', showspikes=False),
-            zaxis=dict(showgrid=False, zeroline=False, showticklabels=False, title='', showspikes=False),
-            aspectmode='cube'
+            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, title="", showspikes=False),
+            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, title="", showspikes=False),
+            zaxis=dict(showgrid=False, zeroline=False, showticklabels=False, title="", showspikes=False),
+            aspectmode="cube",
         ),
-        margin=dict(l=0, r=0, b=0, t=0)
+        margin=dict(l=0, r=0, b=0, t=0),
     )
-    fig.write_html(output_file)
+    output_path = pathlib.Path(output_file)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.write_html(str(output_path))
 
 
 def main():
-    if len(sys.argv) != 3:
-        print("Usage: python script.py in.txt out.html")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Visualize embedded once-derived net.")
+    parser.add_argument("--in", dest="input_file", required=True, help="Input metrization .txt file.")
+    parser.add_argument("--out", dest="output_file", required=True, help="Output standalone .html file.")
+    args = parser.parse_args()
 
-    input_file, output_file = sys.argv[1], sys.argv[2]
-    vertices, edges = parse_metrization_file(input_file)
-    draw_geodesic_net(vertices, edges, output_file)
+    vertices, edges = parse_metrization_file(args.input_file)
+    draw_geodesic_net(vertices, edges, args.output_file)
 
 
 if __name__ == "__main__":

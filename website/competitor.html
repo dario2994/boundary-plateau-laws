@@ -59,49 +59,29 @@
         let currentMesh = null;
 
         if (filename) {
-            const filePath = `../data/competitors/${netId}/${filename}`
+            const jsonFilename = filename.endsWith('.txt') ? filename.replace(/\.txt$/, '.json') : filename;
+            const filePath = `competitors/${netId}/${jsonFilename}`;
             fetch(filePath)
-                .then(res => res.text())
-                .then(text => {
-                    parseAndRender(text);
+                .then(res => {
+                    if (!res.ok) throw new Error("Failed to load competitor JSON");
+                    return res.json();
+                })
+                .then(meshData => {
+                    renderMesh(meshData);
                 })
                 .catch(err => {
                     document.getElementById('stats').innerText = "Error loading competitor file.";
                 });
         }
 
-        function parseAndRender(text) {
-            const tokens = text.trim().split(/\s+/);
-            if (tokens.length < 2) return;
-
-            let ptr = 0;
-            const numVertices = parseInt(tokens[ptr++]);
-            const numFaces = parseInt(tokens[ptr++]);
-
-            const vertices = [];
-            const faces = [];
-
-            for (let i = 0; i < numVertices; i++) {
-                vertices.push({
-                    x: parseFloat(tokens[ptr++]),
-                    y: parseFloat(tokens[ptr++]),
-                    z: parseFloat(tokens[ptr++])
-                });
-            }
-
-            for (let i = 0; i < numFaces; i++) {
-                const k = parseInt(tokens[ptr++]);
-                if (k === 3) {
-                    faces.push([parseInt(tokens[ptr++]), parseInt(tokens[ptr++]), parseInt(tokens[ptr++])]);
-                } else {
-                    ptr += k;
-                }
-            }
+        function renderMesh(meshData) {
+            const vertices = meshData.vertices || [];
+            const faces = meshData.faces || [];
 
             document.getElementById('stats').innerText = `Vertices: ${vertices.length} | Faces: ${faces.length}`;
 
             const positions = [];
-            vertices.forEach(v => positions.push(v.x, v.y, v.z));
+            vertices.forEach(v => positions.push(v[0], v[1], v[2]));
             const indices = [];
             faces.forEach(f => indices.push(f[0], f[1], f[2]));
 
@@ -130,6 +110,12 @@
             camera.position.set(0, 0, r * 2.5);
             controls.update();
         }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
 
         function animate() {
             requestAnimationFrame(animate);

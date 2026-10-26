@@ -23,7 +23,7 @@ cannot be embedded. It also proves (for most nets) the (approximate) rigidity
 of the embedding.
 The ids of the embeddable nets are saved in data/embeddable_nets.txt
 For each embeddable net, the data of a valid embedding is saved in
-data/metrization/net_id.txt.
+data/metrized_nets/net_id.txt.
 
 4) ./find_competitor
 For each family of embeddable nets that must be excluded (rigid nets,
@@ -42,14 +42,20 @@ Then, run python3 -m http.server 8000 in the website directory and open the
 browser at localhost:8000
 
 B) [Not useful if you can do A)]
-    python scripts/run_visualization.py net_id
-It visualizes the marked combinatorial map (in the once-derived nets list)
-with net_id as well as an embedding in the sphere (if one was found).
+    python scripts/visualize_once_derived_topology.py --many --in data/once_derived_for_visualization.txt --out OUTPUT_DIRECTORY
+Generates an .svg image for each once-derived topology (a marked combinatorial
+map)  and saves it in the OUTPUT_DIRECTORY.
 
 C) [Not useful if you can do A)]
-    Open a browser at scripts/competitor_visualizer.html and selects a competitor from data/competitors.
-This allows you to visualize a given competitor.
+    python scripts/visualize_once_derived_embedded.py --in data/metrized_nets/ID.txt --out OUTPUT_FILE.html
+Generates a .html file (that you can then open with your browser) visualizing
+the given once-derived net embedded in the sphere.
 
-D) ./pin-lower-bound
+D) [Not useful if you can do A)]
+    python scripts/visualize_competitor.py --in data/competitors/ID/COMPETITOR_FILE.txt --out OUTPUT_FILE.html
+Generates an .html file (that you can then open with your browser) visualizing
+the given competitor.
+
+E) ./pin-lower-bound
 Verifies the positivity of a function, used in the proof of
 Proposition 11.2 (cf. Appendix F.1)

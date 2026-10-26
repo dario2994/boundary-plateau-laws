@@ -63,3 +63,7 @@ data/competitors/1029
 data/competitors/1096
 website/net_3d_data
 website/site_metadata.json
+
+website/once_derived_topology/
+website/once_derived_embedded/
+website/competitors/

@@ -164,9 +164,9 @@
         const netId = urlParams.get('id');
         document.getElementById('netTitle').innerText = `Net ID: ${netId}`;
 
-        // 1. Once-derived 2D preview
+        // 1. Once-derived 2D topology preview
         const imgElement = document.getElementById('onceDerivedImg');
-        const imgPath = `../data/once_derived_images/${netId}.svg`;
+        const imgPath = `once_derived_topology/${netId}.svg`;
 
         fetch(imgPath, { method: 'HEAD' }).then(res => {
             if (res.ok) {
@@ -192,7 +192,7 @@
             });
 
         function load3DNet(id) {
-            fetch(`net_3d_data/${id}.json`)
+            fetch(`once_derived_embedded/${id}.json`)
                 .then(res => {
                     if (!res.ok) throw new Error("3D file not found");
                     return res.json();
@@ -204,7 +204,7 @@
                         hovermode: false,
                         scene: {
                             xaxis: { showgrid: false, zeroline: false, showticklabels: false, title: '', showspikes: false },
-                            yaxis: { showgrid: false, zeroline: false, showticklabels: false, title: '', showspikes:false },
+                            yaxis: { showgrid: false, zeroline: false, showticklabels: false, title: '', showspikes: false },
                             zaxis: { showgrid: false, zeroline: false, showticklabels: false, title: '', showspikes: false },
                             aspectmode: 'cube'
                         }
@@ -216,7 +216,7 @@
 
         function setupCompetitorControls(netId, filenames, paramCount) {
             const parsedComps = filenames.map(fname => {
-                const cleanName = fname.replace('_competitor.txt', '');
+                const cleanName = fname.replace(/_competitor\.(txt|json)$/, '');
                 const parts = cleanName.split('_');
                 const floatParams = parts.slice(1).map(Number);
                 return { filename: fname, params: floatParams };
@@ -232,7 +232,7 @@
                 const slider = document.getElementById('paramSlider');
                 sliderContainer.style.display = 'block';
 
-                const paramValues = [...new Set(parsedComps.map(c => c.params[0]))].sort((a,b) => a - b);
+                const paramValues = [...new Set(parsedComps.map(c => c.params[0]))].sort((a, b) => a - b);
                 slider.min = 0;
                 slider.max = paramValues.length - 1;
                 slider.value = 0;

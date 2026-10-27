@@ -1,5 +1,6 @@
 import pathlib
 import json
+import shutil
 import subprocess
 import sys
 
@@ -81,9 +82,18 @@ def get_net_statuses():
     return nets, competitors_map, embeddable_ids
 
 
+topology_out_dir = site_dir / "once_derived_topology"
+embedded_out_dir = site_dir / "once_derived_embedded"
+site_competitors_dir = site_dir / "competitors"
+
+# Empty output directories before running
+for directory in [topology_out_dir, embedded_out_dir, site_competitors_dir]:
+    if directory.exists():
+        shutil.rmtree(directory)
+    directory.mkdir(parents=True, exist_ok=True)
+
 # 1. Generate 2D topology SVGs in website/once_derived_topology/
 topology_input = data_dir / "once_derived_for_visualization.txt"
-topology_out_dir = site_dir / "once_derived_topology"
 if topology_input.exists():
     subprocess.run(
         [
@@ -101,9 +111,6 @@ if topology_input.exists():
 nets, competitors_map, embeddable_ids = get_net_statuses()
 
 # 2. Generate 3D JSON trace data for embeddable nets in website/once_derived_embedded/
-embedded_out_dir = site_dir / "once_derived_embedded"
-embedded_out_dir.mkdir(parents=True, exist_ok=True)
-
 available_3d_ids = set()
 for net_id_str in embeddable_ids:
     metrized_txt = data_dir / "metrized_nets" / f"{net_id_str}_visualization.txt"
